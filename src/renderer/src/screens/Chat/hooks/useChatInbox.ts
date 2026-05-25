@@ -150,58 +150,67 @@ export function useChatInbox({
         }
 
         case "message.complete": {
-          // Cancel any pending flush — payload.text is authoritative
+          // Cancel any pending flush
           const timer = flushTimersRef.current.get(tabId);
           if (timer) {
             clearTimeout(timer);
             flushTimersRef.current.delete(tabId);
           }
+          // Capture any unflushed chunks before discarding
+          const pendingChunk = pendingChunksRef.current.get(tabId) ?? "";
           pendingChunksRef.current.delete(tabId);
-          // Flush reasoning into a ReasoningMessage before replacing content
+
+          const finalText = payload.text;
           const reasoningText = state?.streamingReasoning ?? "";
-          if (reasoningText) {
-            updateTab(tabId, { streamingReasoning: "" });
-            updateTabMessages(tabId, (prev) => {
+          const hadStreaming = !!(state?.streamingText) || !!pendingChunk;
+          // Compute fallback text: already-flushed streamingText + unflushed pending chunk
+          const fallbackText = `${state?.streamingText ?? ""}${pendingChunk}`;
+          const model = payload.usage?.model;
+          updateTab(tabId, { streamingText: "", streamingReasoning: "" });
+
+          // Single updateTabMessages: reasoning → content → model, all in one pass
+          updateTabMessages(tabId, (prev) => {
+            let msgs = prev;
+            // 1. Insert reasoning message before last agent message
+            if (reasoningText) {
               const reasoningMsg: ReasoningMessage = {
                 id: `reasoning-${Date.now()}`,
                 kind: "reasoning",
                 role: "agent",
                 text: reasoningText,
               };
-              // Insert before the last agent message
-              for (let i = prev.length - 1; i >= 0; i--) {
-                if (prev[i].role === "agent" && "content" in prev[i]) {
-                  return [...prev.slice(0, i), reasoningMsg, ...prev.slice(i)];
+              for (let i = msgs.length - 1; i >= 0; i--) {
+                if (msgs[i].role === "agent" && "content" in msgs[i]) {
+                  msgs = [...msgs.slice(0, i), reasoningMsg, ...msgs.slice(i)];
+                  break;
                 }
               }
-              return [...prev, reasoningMsg];
-            });
-          }
-          // Replace last agent message with gateway's final text
-          const finalText = payload.text;
-          const hadStreaming = !!(state?.streamingText);
-          updateTab(tabId, { streamingText: "" });
-          updateTabMessages(tabId, (prev) => {
-            if (finalText) {
-              for (let i = prev.length - 1; i >= 0; i--) {
-                const m = prev[i];
-                if (m.role === "agent" && "content" in m && typeof m.content === "string") {
-                  return [
-                    ...prev.slice(0, i),
-                    { ...m, content: finalText },
-                    ...prev.slice(i + 1),
-                  ];
-                }
-              }
-              // No existing agent message — create one
-              return [
-                ...prev,
-                { id: `agent-${Date.now()}`, sessionId: runtimeSid, role: "agent", content: finalText, timestamp: Date.now() },
-              ];
+              if (msgs === prev) msgs = [...prev, reasoningMsg];
             }
-            // Fallback: commit accumulated streaming text
-            if (hadStreaming) return appendStreaming(prev, state?.streamingText ?? "", runtimeSid);
-            return prev;
+            // 2. Replace last agent message content
+            const text = finalText || (hadStreaming ? fallbackText : "");
+            if (text) {
+              let replaced = false;
+              for (let i = msgs.length - 1; i >= 0; i--) {
+                const m = msgs[i];
+                if (m.role === "agent" && "content" in m && typeof m.content === "string") {
+                  msgs = [
+                    ...msgs.slice(0, i),
+                    { ...m, content: text, ...(model ? { model } : {}) },
+                    ...msgs.slice(i + 1),
+                  ];
+                  replaced = true;
+                  break;
+                }
+              }
+              if (!replaced) {
+                msgs = [
+                  ...msgs,
+                  { id: `agent-${Date.now()}`, sessionId: runtimeSid, role: "agent", content: text, timestamp: Date.now(), ...(model ? { model } : {}) },
+                ];
+              }
+            }
+            return msgs;
           });
           updateTab(tabId, {
             isLoading: false,
@@ -210,23 +219,8 @@ export function useChatInbox({
             pendingClarify: null,
             ...(event.sid ? { hermesSessionId: event.sid } : {}),
             ...(payload.usage ? { usage: usageFromPayload(payload.usage) } : {}),
-            ...(payload.usage?.model ? { model: payload.usage.model } : {}),
+            ...(model ? { model } : {}),
           });
-          if (payload.usage?.model) {
-            updateTabMessages(tabId, (prev) => {
-              for (let i = prev.length - 1; i >= 0; i--) {
-                const m = prev[i];
-                if (m.role === "agent" && "content" in m) {
-                  return [
-                    ...prev.slice(0, i),
-                    { ...m, model: payload.usage.model, timestamp: (m as any).timestamp || Date.now() },
-                    ...prev.slice(i + 1),
-                  ];
-                }
-              }
-              return prev;
-            });
-          }
           if (payload.warning) {
             const current = sessionsRef.current.get(tabId);
             updateTabMessages(tabId, (prev) => [
@@ -368,7 +362,7 @@ export function useChatInbox({
               timestamp: Date.now(),
             },
           ]);
-          updateTab(tabId, { isLoading: false, toolProgress: null });
+          updateTab(tabId, { isLoading: false, toolProgress: null, streamingReasoning: "" });
           break;
 
         case "session.info":
