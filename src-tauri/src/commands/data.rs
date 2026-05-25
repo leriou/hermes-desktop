@@ -308,42 +308,16 @@ pub async fn read_logs(app: AppHandle, log_file: Option<String>, lines: Option<u
 }
 
 #[command]
-pub async fn get_toolsets(state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<Value, String> {
-    // Try gateway first — same path as Electron (tools.list → tools.configure)
-    let gateway = state.gateway.lock().await;
-    if let Some(gw) = gateway.as_ref() {
-        if gw.is_running().await {
-            if let Ok(res) = gw.call("tools.list", json!({})).await {
-                let mut toolsets = Vec::new();
-                // Gateway may return toolsets as a top-level array or nested under "toolsets"
-                let items = if let Some(arr) = res.as_array() {
-                    arr.clone()
-                } else if let Some(arr) = res.get("toolsets").and_then(|v| v.as_array()) {
-                    arr.clone()
-                } else {
-                    vec![]
-                };
-                for item in &items {
-                    let key = item.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
-                    let label = item.get("label").and_then(|v| v.as_str()).unwrap_or(key);
-                    let description = item.get("description").and_then(|v| v.as_str()).unwrap_or("");
-                    let enabled = item.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
-                    let source = item.get("source").and_then(|v| v.as_str()).unwrap_or("built-in");
-                    toolsets.push(json!({ "key": key, "label": label, "description": description, "enabled": enabled, "source": source }));
-                }
-                if !toolsets.is_empty() { return Ok(json!(toolsets)); }
-            }
-        }
-    }
-    drop(gateway);
+pub async fn get_toolsets(_state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<Value, String> {
+    // Use CLI only — matches Electron's getToolsets which always runs `hermes tools list`
+    run_cli_toolsets(&app, profile)
+}
 
-    // Fallback: run CLI `hermes tools list` and parse output
-    let python_path = python::get_python_path(Some(&app));
-    let repo_path = python::get_hermes_repo(Some(&app));
-    let hermes_home = python::get_hermes_home_with_profile(Some(&app), profile);
-    eprintln!("[tools] CLI fallback: python={:?}, repo={:?}, home={:?}", python_path, repo_path, hermes_home);
+fn run_cli_toolsets(app: &AppHandle, profile: Option<String>) -> Result<Value, String> {
+    let python_path = python::get_python_path(Some(app));
+    let repo_path = python::get_hermes_repo(Some(app));
+    let hermes_home = python::get_hermes_home_with_profile(Some(app), profile);
     if !python_path.exists() {
-        eprintln!("[tools] Python not found");
         return Ok(json!([]));
     }
 
@@ -358,21 +332,17 @@ pub async fn get_toolsets(state: State<'_, AppState>, app: AppHandle, profile: O
     match output {
         Ok(out) => {
             if !out.status.success() {
-                let stderr = String::from_utf8_lossy(&out.stderr);
-                eprintln!("[tools] CLI error: {}", stderr);
                 return Ok(json!([]));
             }
             let text = String::from_utf8_lossy(&out.stdout);
             let re = regex::Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
             let clean = re.replace_all(&text, "");
-            eprintln!("[tools] CLI output lines: {}", clean.lines().count());
             let mut toolsets = Vec::new();
             let mut source = "built-in".to_string();
 
             for line in clean.lines() {
                 let trimmed = line.trim();
                 if trimmed.is_empty() { continue; }
-                // Section headers end with ':'
                 if trimmed.ends_with(':') && !trimmed.contains("enabled") && !trimmed.contains("disabled") {
                     let lower = trimmed.to_lowercase();
                     if lower.contains("plugin") { source = "plugin".to_string(); }
@@ -382,7 +352,6 @@ pub async fn get_toolsets(state: State<'_, AppState>, app: AppHandle, profile: O
                     continue;
                 }
 
-                // MCP lines: "byterover  all tools enabled"
                 if source == "mcp" {
                     if let Some(space_pos) = trimmed.find(' ') {
                         let key = &trimmed[..space_pos];
@@ -394,7 +363,6 @@ pub async fn get_toolsets(state: State<'_, AppState>, app: AppHandle, profile: O
                     continue;
                 }
 
-                // Match lines like: "✓ enabled  web  🌐 Web search..."
                 let pat = regex::Regex::new(r"^[✓✗✔✘]\s+(enabled|disabled)\s+(\S+)\s+(.*)").unwrap();
                 if let Some(caps) = pat.captures(trimmed) {
                     let enabled = caps.get(1).map(|m| m.as_str() == "enabled").unwrap_or(false);
@@ -403,13 +371,9 @@ pub async fn get_toolsets(state: State<'_, AppState>, app: AppHandle, profile: O
                     toolsets.push(json!({ "key": key, "label": key, "description": desc, "enabled": enabled, "source": source }));
                 }
             }
-            eprintln!("[tools] Parsed {} toolsets", toolsets.len());
             Ok(json!(toolsets))
         }
-        Err(e) => {
-            eprintln!("[tools] Failed to run CLI: {}", e);
-            Ok(json!([]))
-        }
+        Err(_) => Ok(json!([]))
     }
 }
 
