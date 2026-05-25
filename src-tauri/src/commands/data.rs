@@ -309,21 +309,27 @@ pub async fn read_logs(app: AppHandle, log_file: Option<String>, lines: Option<u
 
 #[command]
 pub async fn get_toolsets(state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<Value, String> {
-    // Try gateway first
+    // Try gateway first — same path as Electron (tools.list → tools.configure)
     let gateway = state.gateway.lock().await;
     if let Some(gw) = gateway.as_ref() {
         if gw.is_running().await {
             if let Ok(res) = gw.call("tools.list", json!({})).await {
                 let mut toolsets = Vec::new();
-                if let Some(items) = res.get("toolsets").and_then(|v| v.as_array()) {
-                    for item in items {
-                        let key = item.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
-                        let label = item.get("label").and_then(|v| v.as_str()).unwrap_or(key);
-                        let description = item.get("description").and_then(|v| v.as_str()).unwrap_or("");
-                        let enabled = item.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
-                        let source = item.get("source").and_then(|v| v.as_str()).unwrap_or("built-in");
-                        toolsets.push(json!({ "key": key, "label": label, "description": description, "enabled": enabled, "source": source }));
-                    }
+                // Gateway may return toolsets as a top-level array or nested under "toolsets"
+                let items = if let Some(arr) = res.as_array() {
+                    arr.clone()
+                } else if let Some(arr) = res.get("toolsets").and_then(|v| v.as_array()) {
+                    arr.clone()
+                } else {
+                    vec![]
+                };
+                for item in &items {
+                    let key = item.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                    let label = item.get("label").and_then(|v| v.as_str()).unwrap_or(key);
+                    let description = item.get("description").and_then(|v| v.as_str()).unwrap_or("");
+                    let enabled = item.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let source = item.get("source").and_then(|v| v.as_str()).unwrap_or("built-in");
+                    toolsets.push(json!({ "key": key, "label": label, "description": description, "enabled": enabled, "source": source }));
                 }
                 if !toolsets.is_empty() { return Ok(json!(toolsets)); }
             }
@@ -408,7 +414,22 @@ pub async fn get_toolsets(state: State<'_, AppState>, app: AppHandle, profile: O
 }
 
 #[command]
-pub async fn set_toolset_enabled(app: AppHandle, key: String, enabled: bool, profile: Option<String>) -> Result<Value, String> {
+pub async fn set_toolset_enabled(state: State<'_, AppState>, app: AppHandle, key: String, enabled: bool, profile: Option<String>) -> Result<Value, String> {
+    // Use gateway RPC — same path as Electron (tuiGateway.toolConfigure)
+    {
+        let gateway = state.gateway.lock().await;
+        if let Some(gw) = gateway.as_ref() {
+            if gw.is_running().await {
+                let result = gw.call("tools.configure", json!({ "action": if enabled { "enable" } else { "disable" }, "names": [key] })).await;
+                match result {
+                    Ok(_) => return Ok(json!({ "success": true })),
+                    Err(e) => eprintln!("[tools] gateway configure failed: {}, falling back to config.yaml", e),
+                }
+            }
+        }
+    }
+
+    // Fallback: direct config.yaml write (offline / pre-gateway)
     let home = python::get_hermes_home_with_profile(Some(&app), profile);
     if !home.exists() {
         fs::create_dir_all(&home).map_err(|e| format!("Failed to create profile directory: {}", e))?;
@@ -425,8 +446,6 @@ pub async fn set_toolset_enabled(app: AppHandle, key: String, enabled: bool, pro
         fs::write(&config_path, new_content).map_err(|e| e.to_string())?;
         Ok(json!({ "success": true }))
     } else {
-        // If not found in YAML but we are enabling, we should materialize the section if needed.
-        // For now, let's keep it consistent with config.rs logic.
         Ok(json!({ "success": false }))
     }
 }
