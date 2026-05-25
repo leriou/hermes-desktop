@@ -4,6 +4,7 @@ export {
   Brain,
   Building,
   ChevronDown,
+  ChevronRight,
   Clock,
   Copy,
   Download,
@@ -37,3 +38,9 @@ export { Ban } from "lucide-react";
 export { RotateCcw } from "lucide-react";
 export { Loader2 as Spinner } from "lucide-react";
 export { Columns3 as Kanban } from "lucide-react";
+export { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+export { Package } from "lucide-react";
+export { Pencil } from "lucide-react";
+export { Volume2 } from "lucide-react";
+export { Code } from "lucide-react";
+export { Route } from "lucide-react";

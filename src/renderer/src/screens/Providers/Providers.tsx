@@ -1,10 +1,41 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { SETTINGS_SECTIONS, PROVIDERS, OAUTH_PROVIDERS } from "../../constants";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { PROVIDERS, OAUTH_PROVIDERS, SETTINGS_SECTIONS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import BrandLogo from "../../components/common/BrandLogo";
 import { useDiscoveredModels } from "../../hooks/useDiscoveredModels";
 import OAuthLoginModal from "../../components/OAuthLoginModal";
-import { KeyRound } from "../../assets/icons";
+import { KeyRound, Check } from "../../assets/icons";
+
+type ProviderTab = "model" | "apikeys" | "tools" | "credentials" | "oauth";
+
+const PROVIDER_ENV_KEY: Record<string, string> = {
+  openrouter: "OPENROUTER_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  "openai-codex": "OPENAI_API_KEY",
+  google: "GOOGLE_API_KEY",
+  xai: "XAI_API_KEY",
+  mistral: "MISTRAL_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+  groq: "GROQ_API_KEY",
+  together: "TOGETHER_API_KEY",
+  fireworks: "FIREWORKS_API_KEY",
+  cerebras: "CEREBRAS_API_KEY",
+  perplexity: "PERPLEXITY_API_KEY",
+  huggingface: "HF_TOKEN",
+  nvidia: "NVIDIA_API_KEY",
+  zai: "GLM_API_KEY",
+  minimax: "MINIMAX_API_KEY",
+  custom: "CUSTOM_API_KEY",
+};
+
+const TABS: { key: ProviderTab; labelKey: string }[] = [
+  { key: "model", labelKey: "providers.tabs.model" },
+  { key: "apikeys", labelKey: "providers.tabs.apikeys" },
+  { key: "tools", labelKey: "providers.tabs.tools" },
+  { key: "credentials", labelKey: "providers.tabs.credentials" },
+  { key: "oauth", labelKey: "providers.tabs.oauth" },
+];
 
 function Providers({
   profile,
@@ -14,19 +45,24 @@ function Providers({
   visible?: boolean;
 }): React.JSX.Element {
   const { t } = useI18n();
+  const [tab, setTab] = useState<ProviderTab>("model");
 
   // Env / API keys
   const [env, setEnv] = useState<Record<string, string>>({});
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
 
-  // Model config
-  const [modelProvider, setModelProvider] = useState("auto");
-  const [modelName, setModelName] = useState("");
-  const [modelBaseUrl, setModelBaseUrl] = useState("");
-  const [modelSaved, setModelSaved] = useState(false);
-  const modelLoaded = useRef(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Model discovery (provider explorer)
+  const [discProvider, setDiscProvider] = useState("");
+  const [discBaseUrl, setDiscBaseUrl] = useState("");
+  const [discApiKey, setDiscApiKey] = useState("");
+  const [discRefresh, setDiscRefresh] = useState(0);
+
+  // Add-from-provider: selection & alias state
+  const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
+  const [modelAliases, setModelAliases] = useState<Record<string, string>>({});
+  const [addingModels, setAddingModels] = useState(false);
+  const [addedModels, setAddedModels] = useState<Set<string>>(new Set());
 
   // Credential pool
   const [credPool, setCredPool] = useState<
@@ -36,116 +72,38 @@ function Providers({
   const [poolNewKey, setPoolNewKey] = useState("");
   const [poolNewLabel, setPoolNewLabel] = useState("");
 
-  // OAuth sign-in modal — holds the provider def being authenticated.
+  // OAuth sign-in modal
   const [oauthModal, setOauthModal] = useState<
     (typeof OAUTH_PROVIDERS)[number] | null
   >(null);
 
-  // Per-key debounce timers for env auto-save on change. Previously env
-  // values were persisted only on input blur, so users who clicked the
-  // model dropdown (triggering the model-config auto-save) without first
-  // blurring the API key input lost their typed key — config.yaml
-  // updated but .env didn't. Issue #236. The on-blur handler stays as a
-  // "flush immediately" fast path; the debounce here catches the
-  // change-but-no-blur case.
   const envSaveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
-  // Mirror of `env` state, kept in a ref so the unmount cleanup can read
-  // the latest value when flushing pending debounces (a closure over
-  // `env` directly would capture a stale snapshot).
   const envRef = useRef<Record<string, string>>({});
 
   const loadConfig = useCallback(async (): Promise<void> => {
-    const [envData, mc, pool] = await Promise.all([
+    const [envData, pool] = await Promise.all([
       window.hermesAPI.getEnv(profile),
-      window.hermesAPI.getModelConfig(profile),
       window.hermesAPI.getCredentialPool(),
     ]);
     setEnv(envData);
-    setModelProvider(mc.provider);
-    setModelName(mc.model);
-    setModelBaseUrl(mc.baseUrl);
     setCredPool(pool);
-
-    requestAnimationFrame(() => {
-      modelLoaded.current = true;
-    });
   }, [profile]);
 
   useEffect(() => {
-    modelLoaded.current = false;
     loadConfig();
   }, [loadConfig]);
 
-  // Refresh model config when the screen becomes visible
   useEffect(() => {
-    if (!visible) return;
-    (async (): Promise<void> => {
-      const mc = await window.hermesAPI.getModelConfig(profile);
-      modelLoaded.current = false;
-      setModelProvider(mc.provider);
-      setModelName(mc.model);
-      setModelBaseUrl(mc.baseUrl);
-      requestAnimationFrame(() => {
-        modelLoaded.current = true;
-      });
-    })();
-  }, [visible, profile]);
-
-  // Auto-save the active model config (config.yaml) — debounced 500 ms so
-  // typing in the Model field still feels responsive.
-  const saveModelConfig = useCallback(async () => {
-    if (!modelLoaded.current) return;
-    await window.hermesAPI.setModelConfig(
-      modelProvider,
-      modelName,
-      modelBaseUrl,
-      profile,
-    );
-    setModelSaved(true);
-    setTimeout(() => setModelSaved(false), 2000);
-  }, [modelProvider, modelName, modelBaseUrl, profile]);
-
-  useEffect(() => {
-    if (!modelLoaded.current) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveModelConfig();
-    }, 500);
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [modelProvider, modelName, modelBaseUrl, saveModelConfig]);
-
-  // Separately, persist the (provider, model) pair to the Models library
-  // — but only after the user has been idle long enough that they've
-  // plausibly finished typing the model name.  The active-save debounce
-  // at 500 ms used to call `addModel` on every keystroke pause, leaving
-  // dead intermediate entries ("deepseek-reaso", "deepseek-reason", …)
-  // every time someone typed slowly.  2 s wait is enough for almost any
-  // real edit while still landing the entry without an explicit Save click.
-  const modelLibTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!modelLoaded.current) return;
-    if (!modelName.trim()) return;
-    if (modelLibTimer.current) clearTimeout(modelLibTimer.current);
-    modelLibTimer.current = setTimeout(() => {
-      const displayName = modelName.split("/").pop() || modelName;
-      window.hermesAPI
-        .addModel(displayName, modelProvider, modelName, modelBaseUrl)
-        .catch(() => {
-          /* non-fatal — library write is best-effort */
-        });
-    }, 2000);
-    return () => {
-      if (modelLibTimer.current) clearTimeout(modelLibTimer.current);
-    };
-  }, [modelProvider, modelName, modelBaseUrl]);
+    if (!discProvider) return;
+    const envKey = PROVIDER_ENV_KEY[discProvider];
+    if (envKey && env[envKey] && !discApiKey) {
+      setDiscApiKey(env[envKey]);
+    }
+  }, [env, discProvider]);
 
   async function handleBlur(key: string): Promise<void> {
-    // Cancel any pending debounced save for this key — the blur handler
-    // is a faster flush path with the "Saved" indicator.
     const pending = envSaveTimers.current.get(key);
     if (pending) {
       clearTimeout(pending);
@@ -159,12 +117,6 @@ function Providers({
 
   function handleChange(key: string, value: string): void {
     setEnv((prev) => ({ ...prev, [key]: value }));
-
-    // Persist the typed value on change (debounced 400ms) so users who
-    // navigate away — or trigger the model-config auto-save by changing
-    // the provider dropdown — don't lose what they typed if they never
-    // explicitly blurred the input. Matches the model config's
-    // auto-save behavior; resolves the asymmetry behind issue #236.
     const pending = envSaveTimers.current.get(key);
     if (pending) clearTimeout(pending);
     const timer = setTimeout(() => {
@@ -174,18 +126,11 @@ function Providers({
     envSaveTimers.current.set(key, timer);
   }
 
-  // Keep envRef in sync with the latest env state so the unmount
-  // cleanup below can read it without stale-closure issues.
   useEffect(() => {
     envRef.current = env;
   }, [env]);
 
   useEffect(() => {
-    // On unmount, flush any pending debounced env writes synchronously
-    // (fire-and-forget — the IPC handler in the main process completes
-    // regardless of React lifecycle). Without this, typing an API key
-    // and immediately navigating away within the debounce window would
-    // lose the typed value, exactly the original bug.
     const timers = envSaveTimers.current;
     return () => {
       for (const [key, timer] of timers) {
@@ -231,327 +176,484 @@ function Providers({
     });
   }
 
-  const isCustomProvider = modelProvider === "custom";
+  function toggleModelSelect(modelId: string): void {
+    setSelectedModels((prev) => {
+      const next = new Set(prev);
+      if (next.has(modelId)) next.delete(modelId);
+      else next.add(modelId);
+      return next;
+    });
+  }
 
-  // Live model discovery: fetch the provider's /v1/models list and feed
-  // it into a datalist that powers the Model field's autocomplete.  Only
-  // runs once the Providers tab is visible so we don't fire on every
-  // background remount.
-  const [discoveryRefresh, setDiscoveryRefresh] = useState(0);
+  function selectAllModels(): void {
+    if (selectedModels.size === discovery.models.length) {
+      setSelectedModels(new Set());
+    } else {
+      setSelectedModels(new Set(discovery.models));
+    }
+  }
+
+  async function handleAddSelected(): Promise<void> {
+    if (selectedModels.size === 0) return;
+    setAddingModels(true);
+    const allAlias = modelAliases;
+    let successCount = 0;
+    for (const modelId of selectedModels) {
+      try {
+        const alias = allAlias[modelId]?.trim() || undefined;
+        await window.hermesAPI.addModel(
+          modelId,
+          discProvider === "custom" ? "custom" : discProvider,
+          modelId,
+          discBaseUrl,
+          alias,
+          profile,
+        );
+        successCount++;
+        setAddedModels((prev) => new Set(prev).add(modelId));
+      } catch (err) {
+        console.error(`Failed to add model ${modelId}:`, err);
+      }
+    }
+    setAddingModels(false);
+    setSelectedModels(new Set());
+    setModelAliases({});
+    // Clear added highlight after 3s
+    setTimeout(() => setAddedModels(new Set()), 3000);
+  }
+
+  const isCustomProvider = discProvider === "custom";
+
   const discovery = useDiscoveredModels({
-    provider: modelProvider,
-    baseUrl: isCustomProvider ? modelBaseUrl : undefined,
+    provider: discProvider,
+    baseUrl: isCustomProvider ? discBaseUrl : undefined,
+    apiKey: discApiKey || undefined,
     profile,
-    enabled: !!visible && modelProvider !== "auto",
-    refreshToken: discoveryRefresh,
+    enabled: !!visible && !!discProvider && discProvider !== "auto",
+    refreshToken: discRefresh,
   });
-  const discoveryListId = "provider-model-discovery";
+
+  const isLlmSection = (title: string) =>
+    title === "constants.sectionLlmProviders";
+
+  const llmSection = SETTINGS_SECTIONS.find((s) =>
+    isLlmSection(s.title),
+  );
+  const toolSections = SETTINGS_SECTIONS.filter((s) => !isLlmSection(s.title));
+
+  function renderEnvField(
+    field: { key: string; label: string; type: string; hint: string },
+    asCard: boolean,
+  ): React.JSX.Element {
+    return (
+      <div key={field.key} className={asCard ? "provider-key-card" : "settings-field"}>
+        {asCard && (
+          <div className="provider-key-card-head">
+            <BrandLogo provider={field.key} size={22} />
+            <span className="provider-key-card-title">{t(field.label)}</span>
+            {savedKey === field.key && (
+              <span className="settings-saved">{t("common.saved")}</span>
+            )}
+          </div>
+        )}
+        {!asCard && (
+          <label className="settings-field-label">
+            {t(field.label)}
+            {savedKey === field.key && (
+              <span className="settings-saved">{t("common.saved")}</span>
+            )}
+          </label>
+        )}
+        <div className="settings-input-row">
+          <input
+            className="input"
+            type={
+              field.type === "password" && !visibleKeys.has(field.key)
+                ? "password"
+                : "text"
+            }
+            value={env[field.key] || ""}
+            onChange={(e) => handleChange(field.key, e.target.value)}
+            onBlur={() => handleBlur(field.key)}
+            placeholder={t(field.label)}
+          />
+          {field.type === "password" && (
+            <button
+              className="btn-ghost settings-toggle-btn"
+              onClick={() => toggleVisibility(field.key)}
+            >
+              {visibleKeys.has(field.key) ? t("common.hide") : t("common.show")}
+            </button>
+          )}
+        </div>
+        <div className="settings-field-hint">{t(field.hint)}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-container">
       <h1 className="settings-header">{t("providers.title")}</h1>
-      <p className="models-subtitle" style={{ marginBottom: 16 }}>
-        {t("providers.subtitle")}
-      </p>
 
-      <div className="settings-section">
-        <div className="settings-section-title">
-          {t("common.model")}
-          {modelSaved && (
-            <span className="settings-saved" style={{ marginLeft: 8 }}>
-              {t("common.saved")}
-            </span>
-          )}
-        </div>
+      <div className="persona-tabs">
+        {TABS.map(({ key, labelKey }) => (
+          <button
+            key={key}
+            className={`persona-tab ${tab === key ? "active" : ""}`}
+            onClick={() => setTab(key)}
+          >
+            {t(labelKey)}
+          </button>
+        ))}
+      </div>
 
-        <div className="settings-field">
-          <label className="settings-field-label">{t("common.provider")}</label>
-          <div className="settings-provider-row">
-            <BrandLogo provider={modelProvider} modelId={modelName} size={20} />
-            <select
-              className="input settings-select"
-              value={modelProvider}
-              onChange={(e) => {
-                const v = e.target.value;
-                setModelProvider(v);
-                if (v === "custom") {
-                  // Seed a local-LLM placeholder only when the field is empty
-                  // (don't clobber an existing custom URL the user has typed).
-                  if (!modelBaseUrl) {
-                    setModelBaseUrl("http://localhost:1234/v1");
-                  }
-                } else {
-                  // Switching to a named provider — its base_url is hardcoded
-                  // by the gateway, and a stale URL from a prior provider
-                  // would either be ignored (best case) or misroute (worst).
-                  setModelBaseUrl("");
-                }
-              }}
-            >
-              {PROVIDERS.options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {t(opt.label)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="settings-field-hint">
-            {isCustomProvider
-              ? t("settings.customProviderHint")
-              : t("settings.providerHint")}
-          </div>
-        </div>
-
-        <div className="settings-field">
-          <label className="settings-field-label">{t("common.model")}</label>
-          <div className="settings-model-row">
-            <input
-              className="input"
-              type="text"
-              value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
-              placeholder={t("settings.modelNamePlaceholder")}
-              list={discovery.models.length > 0 ? discoveryListId : undefined}
-              autoComplete="off"
-            />
-            {discovery.status !== "unsupported" &&
-              discovery.status !== "idle" && (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setDiscoveryRefresh((n) => n + 1)}
-                  disabled={discovery.status === "loading"}
-                  title={t("settings.refreshModels")}
-                >
-                  ↻
-                </button>
-              )}
-          </div>
-          {discovery.models.length > 0 && (
-            <datalist id={discoveryListId}>
-              {discovery.models.map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
-          )}
-          <div className="settings-field-hint">
-            {discovery.status === "loading"
-              ? t("settings.discoveringModels")
-              : discovery.status === "ok"
-                ? t("settings.discoveredCount", {
-                    count: discovery.models.length,
-                  })
-                : discovery.status === "no-key"
-                  ? t("settings.discoveryNoKey")
-                  : discovery.status === "error"
-                    ? t("settings.discoveryError")
-                    : t("settings.modelHint")}
-          </div>
-        </div>
-
-        {isCustomProvider && (
-          <div className="settings-field">
-            <label className="settings-field-label">
-              {t("common.baseUrl")}
-            </label>
-            <input
-              className="input"
-              type="text"
-              value={modelBaseUrl}
-              onChange={(e) => setModelBaseUrl(e.target.value)}
-              placeholder={t("settings.modelBaseUrlPlaceholder")}
-            />
-            <div className="settings-field-hint">
-              {t("settings.customBaseUrlHint")}
+      {/* ── Model Tab: Provider Explorer ── */}
+      {tab === "model" && (
+        <>
+          <p className="models-subtitle" style={{ marginBottom: 16 }}>
+            {t("providers.subtitle")}
+          </p>
+          <div className="settings-section">
+            <div className="settings-section-title">
+              {t("providers.explorerTitle")}
             </div>
-          </div>
-        )}
-      </div>
 
-      <div className="settings-section">
-        <div className="settings-section-title">
-          {t("settings.sections.credentialPool")}
-        </div>
-        <div className="settings-field">
-          <div className="settings-field-hint" style={{ marginBottom: 10 }}>
-            {t("settings.poolHint")}
-          </div>
-          <div className="settings-pool-add">
-            <select
-              className="input"
-              value={poolProvider}
-              onChange={(e) => setPoolProvider(e.target.value)}
-              style={{ width: 140 }}
-            >
-              <option value="">{t("common.provider")}</option>
-              {PROVIDERS.options
-                .filter((p) => p.value !== "auto")
-                .map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {t(p.label)}
-                  </option>
-                ))}
-            </select>
-            <input
-              className="input"
-              type="password"
-              value={poolNewKey}
-              onChange={(e) => setPoolNewKey(e.target.value)}
-              placeholder={t("settings.apiKeyPlaceholder")}
-              style={{ flex: 1 }}
-            />
-            <input
-              className="input"
-              type="text"
-              value={poolNewLabel}
-              onChange={(e) => setPoolNewLabel(e.target.value)}
-              placeholder={t("settings.labelPlaceholder", {
-                optional: t("common.optional"),
-              })}
-              style={{ width: 120 }}
-            />
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={handleAddPoolKey}
-              disabled={!poolProvider || !poolNewKey.trim()}
-            >
-              {t("settings.add")}
-            </button>
-          </div>
-          {Object.entries(credPool).map(
-            ([provider, entries]) =>
-              entries.length > 0 && (
-                <div key={provider} className="settings-pool-group">
-                  <div className="settings-pool-provider">
-                    <BrandLogo provider={provider} size={16} />
-                    {PROVIDERS.options.find((p) => p.value === provider)
-                      ? t(
-                          PROVIDERS.options.find((p) => p.value === provider)!
-                            .label,
-                        )
-                      : provider}
-                  </div>
-                  {entries.map((entry, idx) => (
-                    <div key={idx} className="settings-pool-entry">
-                      <span className="settings-pool-label">
-                        {entry.label || `${t("settings.keyLabel")} ${idx + 1}`}
-                      </span>
-                      <span className="settings-pool-key">
-                        {entry.key
-                          ? `${entry.key.slice(0, 8)}...${entry.key.slice(-4)}`
-                          : t("settings.empty")}
-                      </span>
-                      <button
-                        className="btn-ghost"
-                        style={{ color: "var(--error)", fontSize: 11 }}
-                        onClick={() => handleRemovePoolKey(provider, idx)}
-                      >
-                        {t("settings.remove")}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ),
-          )}
-        </div>
-      </div>
-
-      {SETTINGS_SECTIONS.map((section) => {
-        const isLlmProviders =
-          section.title === "constants.sectionLlmProviders";
-        return (
-          <div key={section.title} className="settings-section">
-            <div className="settings-section-title">{t(section.title)}</div>
-            <div className={isLlmProviders ? "provider-keys-grid" : undefined}>
-              {section.items.map((field) => (
-                <div
-                  key={field.key}
-                  className={
-                    isLlmProviders ? "provider-key-card" : "settings-field"
-                  }
+            <div className="settings-field">
+              <label className="settings-field-label">{t("common.provider")}</label>
+              <div className="settings-provider-row">
+                <BrandLogo provider={discProvider} size={20} />
+                <select
+                  className="input settings-select"
+                  value={discProvider}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDiscProvider(v);
+                    if (v === "custom" && !discBaseUrl) {
+                      setDiscBaseUrl("http://localhost:1234/v1");
+                    }
+                    const envKey = PROVIDER_ENV_KEY[v];
+                    setDiscApiKey(envKey ? env[envKey] || "" : "");
+                  }}
                 >
-                  {isLlmProviders && (
-                    <div className="provider-key-card-head">
-                      <BrandLogo provider={field.key} size={22} />
-                      <span className="provider-key-card-title">
-                        {t(field.label)}
-                      </span>
-                      {savedKey === field.key && (
-                        <span className="settings-saved">
-                          {t("common.saved")}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {!isLlmProviders && (
-                    <label className="settings-field-label">
-                      {t(field.label)}
-                      {savedKey === field.key && (
-                        <span className="settings-saved">
-                          {t("common.saved")}
-                        </span>
-                      )}
+                  <option value="">{t("providers.selectProvider")}</option>
+                  {PROVIDERS.options
+                    .filter((p) => p.value !== "auto")
+                    .map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {t(opt.label)}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            {discProvider && (
+              <div className="settings-field">
+                <label className="settings-field-label">
+                  {t("common.baseUrl")}
+                </label>
+                <input
+                  className="input"
+                  type="text"
+                  value={discBaseUrl}
+                  onChange={(e) => setDiscBaseUrl(e.target.value)}
+                  placeholder={t("settings.modelBaseUrlPlaceholder")}
+                />
+                <div className="settings-field-hint">
+                  {t("providers.baseUrlHint")}
+                </div>
+              </div>
+            )}
+
+            {discProvider && (
+              <div className="settings-field">
+                <label className="settings-field-label">
+                  API Key
+                </label>
+                <div className="settings-input-row">
+                  <input
+                    className="input"
+                    type={visibleKeys.has("disc-api-key") ? "text" : "password"}
+                    value={discApiKey}
+                    onChange={(e) => setDiscApiKey(e.target.value)}
+                    placeholder={t("settings.apiKeyPlaceholder")}
+                  />
+                  <button
+                    className="btn-ghost settings-toggle-btn"
+                    onClick={() => toggleVisibility("disc-api-key")}
+                  >
+                    {visibleKeys.has("disc-api-key") ? t("common.hide") : t("common.show")}
+                  </button>
+                </div>
+                <div className="settings-field-hint">
+                  {t("providers.apiKeyHint")}
+                </div>
+              </div>
+            )}
+
+            {discProvider && (
+              <div className="settings-field" style={{ marginTop: 8 }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setDiscRefresh((n) => n + 1)}
+                  disabled={discovery.status === "loading"}
+                >
+                  {discovery.status === "loading"
+                    ? t("settings.discoveringModels")
+                    : t("providers.checkModels")}
+                </button>
+              </div>
+            )}
+
+            {discovery.status === "ok" && discovery.models.length > 0 && (
+              <div className="providers-model-list">
+                <div className="providers-model-list-header">
+                  <div className="settings-field-hint">
+                    {t("settings.discoveredCount", { count: discovery.models.length })}
+                    {discovery.cached && ` (${t("providers.cached")})`}
+                  </div>
+                  <div className="providers-model-actions">
+                    <label className="providers-select-all">
+                      <input
+                        type="checkbox"
+                        checked={selectedModels.size === discovery.models.length && discovery.models.length > 0}
+                        onChange={selectAllModels}
+                      />
+                      {t("providers.selectAll", { defaultValue: "Select All" })}
                     </label>
-                  )}
-                  <div className="settings-input-row">
-                    <input
-                      className="input"
-                      type={
-                        field.type === "password" && !visibleKeys.has(field.key)
-                          ? "password"
-                          : "text"
-                      }
-                      value={env[field.key] || ""}
-                      onChange={(e) => handleChange(field.key, e.target.value)}
-                      onBlur={() => handleBlur(field.key)}
-                      placeholder={t(field.label)}
-                    />
-                    {field.type === "password" && (
+                    {selectedModels.size > 0 && (
                       <button
-                        className="btn-ghost settings-toggle-btn"
-                        onClick={() => toggleVisibility(field.key)}
+                        className="btn btn-primary btn-sm"
+                        onClick={handleAddSelected}
+                        disabled={addingModels}
                       >
-                        {visibleKeys.has(field.key)
-                          ? t("common.hide")
-                          : t("common.show")}
+                        {addingModels
+                          ? t("providers.adding", { defaultValue: "Adding..." })
+                          : t("providers.addSelected", { defaultValue: `Add ${selectedModels.size} to My Models` })}
                       </button>
                     )}
                   </div>
-                  <div className="settings-field-hint">{t(field.hint)}</div>
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
-      <div className="settings-section">
-        <div className="settings-section-title">
-          {t("providers.oauth.sectionTitle")}
-        </div>
-        <div className="settings-field-hint" style={{ marginBottom: 10 }}>
-          {t("providers.oauth.sectionHint")}
-        </div>
-        <div className="provider-keys-grid">
-          {OAUTH_PROVIDERS.map((p) => (
-            <div key={p.id} className="provider-key-card">
-              <div className="provider-key-card-head">
-                <BrandLogo provider={p.id} size={22} />
-                <span className="provider-key-card-title">{p.name}</span>
+                <table className="providers-model-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 36 }}></th>
+                      <th>{t("providers.colModel")}</th>
+                      <th style={{ width: 160 }}>{t("providers.colAlias", { defaultValue: "Alias" })}</th>
+                      <th style={{ width: 40 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {discovery.models.map((m) => {
+                      const isSelected = selectedModels.has(m);
+                      const isAdded = addedModels.has(m);
+                      return (
+                        <tr
+                          key={m}
+                          className={`providers-model-row ${isSelected ? "providers-model-row--selected" : ""} ${isAdded ? "providers-model-row--added" : ""}`}
+                        >
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleModelSelect(m)}
+                              disabled={isAdded}
+                            />
+                          </td>
+                          <td style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>
+                            {m}
+                          </td>
+                          <td>
+                            <input
+                              className="input providers-alias-input"
+                              type="text"
+                              value={modelAliases[m] || ""}
+                              onChange={(e) =>
+                                setModelAliases((prev) => ({ ...prev, [m]: e.target.value }))
+                              }
+                              placeholder={t("providers.aliasPlaceholder", { defaultValue: "optional" })}
+                              disabled={isAdded}
+                            />
+                          </td>
+                          <td>
+                            {isAdded && (
+                              <span className="providers-added-check">
+                                <Check size={14} />
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <div className="settings-field-hint">{t(p.desc)}</div>
-              <button
-                className="btn btn-secondary btn-sm oauth-signin-btn"
-                aria-label={`${t("providers.oauth.signIn")} — ${p.name}`}
-                onClick={() => setOauthModal(p)}
-              >
-                <KeyRound size={14} />
-                {t("providers.oauth.signIn")}
-              </button>
+            )}
+
+            {discovery.status === "no-key" && (
+              <div className="settings-field-hint" style={{ color: "var(--warning)" }}>
+                {t("settings.discoveryNoKey")}
+              </div>
+            )}
+            {discovery.status === "error" && (
+              <div className="settings-field-hint" style={{ color: "var(--error)" }}>
+                {t("settings.discoveryError")}
+              </div>
+            )}
+            {discovery.status === "unknown-host" && (
+              <div className="settings-field-hint" style={{ color: "var(--error)" }}>
+                {t("providers.unknownHost")}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── API Keys Tab ── */}
+      {tab === "apikeys" && llmSection && (
+        <div className="settings-section">
+          <div className="settings-section-title">{t(llmSection.title)}</div>
+          <div className="provider-keys-grid">
+            {llmSection.items.map((field) => renderEnvField(field, true))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Tools Tab ── */}
+      {tab === "tools" && (
+        <>
+          {toolSections.map((section) => (
+            <div key={section.title} className="settings-section">
+              <div className="settings-section-title">{t(section.title)}</div>
+              <div className="provider-keys-grid">
+                {section.items.map((field) => renderEnvField(field, true))}
+              </div>
             </div>
           ))}
+        </>
+      )}
+
+      {/* ── Credentials Tab ── */}
+      {tab === "credentials" && (
+        <div className="settings-section">
+          <div className="settings-section-title">
+            {t("settings.sections.credentialPool")}
+          </div>
+          <div className="settings-field">
+            <div className="settings-field-hint" style={{ marginBottom: 10 }}>
+              {t("settings.poolHint")}
+            </div>
+            <div className="settings-pool-add">
+              <select
+                className="input"
+                value={poolProvider}
+                onChange={(e) => setPoolProvider(e.target.value)}
+                style={{ width: 140 }}
+              >
+                <option value="">{t("common.provider")}</option>
+                {PROVIDERS.options
+                  .filter((p) => p.value !== "auto")
+                  .map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {t(p.label)}
+                    </option>
+                  ))}
+              </select>
+              <input
+                className="input"
+                type="password"
+                value={poolNewKey}
+                onChange={(e) => setPoolNewKey(e.target.value)}
+                placeholder={t("settings.apiKeyPlaceholder")}
+                style={{ flex: 1 }}
+              />
+              <input
+                className="input"
+                type="text"
+                value={poolNewLabel}
+                onChange={(e) => setPoolNewLabel(e.target.value)}
+                placeholder={t("settings.labelPlaceholder", {
+                  optional: t("common.optional"),
+                })}
+                style={{ width: 120 }}
+              />
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleAddPoolKey}
+                disabled={!poolProvider || !poolNewKey.trim()}
+              >
+                {t("settings.add")}
+              </button>
+            </div>
+            {Object.entries(credPool).map(
+              ([provider, entries]) =>
+                entries.length > 0 && (
+                  <div key={provider} className="settings-pool-group">
+                    <div className="settings-pool-provider">
+                      <BrandLogo provider={provider} size={16} />
+                      {PROVIDERS.options.find((p) => p.value === provider)
+                        ? t(
+                            PROVIDERS.options.find((p) => p.value === provider)!
+                              .label,
+                          )
+                        : provider}
+                    </div>
+                    {entries.map((entry, idx) => (
+                      <div key={idx} className="settings-pool-entry">
+                        <span className="settings-pool-label">
+                          {entry.label || `${t("settings.keyLabel")} ${idx + 1}`}
+                        </span>
+                        <span className="settings-pool-key">
+                          {entry.key
+                            ? `${entry.key.slice(0, 8)}...${entry.key.slice(-4)}`
+                            : t("settings.empty")}
+                        </span>
+                        <button
+                          className="btn-ghost"
+                          style={{ color: "var(--error)", fontSize: 11 }}
+                          onClick={() => handleRemovePoolKey(provider, idx)}
+                        >
+                          {t("settings.remove")}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ),
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── OAuth Tab ── */}
+      {tab === "oauth" && (
+        <div className="settings-section">
+          <div className="settings-section-title">
+            {t("providers.oauth.sectionTitle")}
+          </div>
+          <div className="settings-field-hint" style={{ marginBottom: 10 }}>
+            {t("providers.oauth.sectionHint")}
+          </div>
+          <div className="provider-keys-grid">
+            {OAUTH_PROVIDERS.map((p) => (
+              <div key={p.id} className="provider-key-card">
+                <div className="provider-key-card-head">
+                  <BrandLogo provider={p.id} size={22} />
+                  <span className="provider-key-card-title">{p.name}</span>
+                </div>
+                <div className="settings-field-hint">{t(p.desc)}</div>
+                <button
+                  className="btn btn-secondary btn-sm oauth-signin-btn"
+                  aria-label={`${t("providers.oauth.signIn")} — ${p.name}`}
+                  onClick={() => setOauthModal(p)}
+                >
+                  <KeyRound size={14} />
+                  {t("providers.oauth.signIn")}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {oauthModal && (
         <OAuthLoginModal

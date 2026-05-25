@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash, Search, X } from "../../assets/icons";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Plus, Trash, Search, X, ArrowRight } from "../../assets/icons";
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import BrandLogo from "../../components/common/BrandLogo";
-import { detectProviderFromUrl } from "./detect-provider";
-import { useDiscoveredModels } from "../../hooks/useDiscoveredModels";
+import { cache } from "../../utils/prefetchCache";
 
 interface SavedModel {
   id: string;
@@ -12,7 +11,16 @@ interface SavedModel {
   provider: string;
   model: string;
   baseUrl: string;
+  aliases?: string[];
   createdAt: number;
+}
+
+interface TemplateModel {
+  name: string;
+  provider: string;
+  model: string;
+  baseUrl: string;
+  tags?: string[];
 }
 
 function providerLabelKey(value: string): string {
@@ -21,11 +29,17 @@ function providerLabelKey(value: string): string {
 
 interface ModelsProps {
   visible?: boolean;
+  profile?: string;
+  onNavigate?: (view: string) => void;
 }
 
-function Models({ visible }: ModelsProps = {}): React.JSX.Element {
+type TabType = "myModels" | "templates";
+
+function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}): React.JSX.Element {
   const { t } = useI18n();
+  const [tab, setTab] = useState<TabType>("myModels");
   const [models, setModels] = useState<SavedModel[]>([]);
+  const [templates, setTemplates] = useState<TemplateModel[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -38,14 +52,9 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
   const [formModel, setFormModel] = useState("");
   const [formBaseUrl, setFormBaseUrl] = useState("");
   const [formApiKey, setFormApiKey] = useState("");
+  const [formAlias, setFormAlias] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [formError, setFormError] = useState("");
-  // Whether the user has manually picked a value from the Provider dropdown
-  // for this open of the modal. While false, the dropdown follows whatever
-  // detectProviderFromUrl() infers from the Base URL field. Once the user
-  // touches the dropdown we stop overriding their choice.
-  const [providerTouched, setProviderTouched] = useState(false);
-  const [providerAutoFilled, setProviderAutoFilled] = useState(false);
 
   function resolveCustomEnvKey(url: string): string {
     if (!url) return "CUSTOM_API_KEY";
@@ -63,36 +72,30 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
     return "CUSTOM_API_KEY";
   }
 
-  const loadModels = useCallback(async () => {
-    const list = await window.hermesAPI.listModels();
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [list, tmpl] = await Promise.all([
+      cache.getOrFetch("models:list", 30_000, () =>
+        (window.hermesAPI.listModels(profile) as Promise<any[]>).then((r) => r ?? []),
+      ),
+      cache.getOrFetch("models:templates", 60_000, () =>
+        (window.hermesAPI.listTemplates() as Promise<any[]>).then((r) => r ?? []),
+      ),
+    ]);
     setModels(list);
+    setTemplates(tmpl);
     setLoading(false);
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
-    loadModels();
-  }, [loadModels]);
+    loadData();
+  }, [loadData]);
 
-  // Re-load whenever the Models pane becomes visible — entries added
-  // elsewhere (Providers save → addModel, chat picker → addModel) won't
-  // otherwise appear since the component is mounted once and kept alive.
   useEffect(() => {
-    if (visible) loadModels();
-  }, [visible, loadModels]);
+    if (visible) loadData();
+  }, [visible, loadData]);
 
-  // Live model discovery for the Add/Edit modal — feeds an HTML
-  // <datalist> off the Model ID input.  Pauses when the modal is closed
-  // so we don't fire background requests on every keystroke elsewhere.
   const isCustomForm = formProvider === "custom";
-  const [discoveryRefresh, setDiscoveryRefresh] = useState(0);
-  const discovery = useDiscoveredModels({
-    provider: formProvider,
-    baseUrl: isCustomForm ? formBaseUrl : undefined,
-    apiKey: formApiKey || undefined,
-    enabled: showModal && formProvider !== "auto",
-    refreshToken: discoveryRefresh,
-  });
-  const modelDiscoveryListId = "models-modal-discovery";
 
   function openAddModal(): void {
     setEditingModel(null);
@@ -101,10 +104,9 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
     setFormModel("");
     setFormBaseUrl("");
     setFormApiKey("");
+    setFormAlias("");
     setShowApiKey(false);
     setFormError("");
-    setProviderTouched(false);
-    setProviderAutoFilled(false);
     setShowModal(true);
   }
 
@@ -115,11 +117,9 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
     setFormModel(m.model);
     setFormBaseUrl(m.baseUrl);
     setFormApiKey("");
+    setFormAlias(m.aliases?.[0] || "");
     setShowApiKey(false);
     setFormError("");
-    // Editing an existing entry — respect the saved provider, don't auto-overwrite it.
-    setProviderTouched(true);
-    setProviderAutoFilled(false);
     setShowModal(true);
   }
 
@@ -127,33 +127,7 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
     setShowModal(false);
     setEditingModel(null);
     setFormError("");
-    setProviderTouched(false);
-    setProviderAutoFilled(false);
   }
-
-  // Auto-detect provider from base URL while the modal is open and the user
-  // hasn't manually picked a provider yet. Detection runs on every URL
-  // change so backspacing the URL also clears the auto-fill flag.
-  useEffect(() => {
-    if (!showModal || providerTouched) {
-      if (!showModal) setProviderAutoFilled(false);
-      return;
-    }
-    const detected = detectProviderFromUrl(formBaseUrl);
-    if (detected && detected !== formProvider) {
-      setFormProvider(detected);
-      setProviderAutoFilled(true);
-    } else if (!detected && providerAutoFilled) {
-      // URL no longer matches; drop the badge but keep whatever's selected.
-      setProviderAutoFilled(false);
-    }
-  }, [
-    formBaseUrl,
-    showModal,
-    providerTouched,
-    formProvider,
-    providerAutoFilled,
-  ]);
 
   async function handleSave(): Promise<void> {
     const name = formName.trim();
@@ -170,29 +144,39 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
         provider: formProvider,
         model,
         baseUrl: formBaseUrl.trim(),
-      });
+      }, profile);
     } else {
       await window.hermesAPI.addModel(
         name,
         formProvider,
         model,
         formBaseUrl.trim(),
+        formAlias.trim() || undefined,
+        profile,
       );
     }
 
     if (formApiKey.trim() && formProvider === "custom") {
       const envKey = resolveCustomEnvKey(formBaseUrl.trim());
-      await window.hermesAPI.setEnv(envKey, formApiKey.trim());
+      await window.hermesAPI.setEnv(envKey, formApiKey.trim(), profile);
     }
 
     closeModal();
-    await loadModels();
+    cache.invalidate("models:list");
+    await loadData();
   }
 
   async function handleDelete(id: string): Promise<void> {
-    await window.hermesAPI.removeModel(id);
+    await window.hermesAPI.removeModel(id, profile);
+    cache.invalidate("models:list");
     setConfirmDelete(null);
-    await loadModels();
+    await loadData();
+  }
+
+  async function handleQuickAdd(tmpl: TemplateModel): Promise<void> {
+    await window.hermesAPI.addModel(tmpl.name, tmpl.provider, tmpl.model, tmpl.baseUrl, undefined, profile);
+    cache.invalidate("models:list");
+    await loadData();
   }
 
   const filtered = models.filter((m) => {
@@ -201,9 +185,15 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
     return (
       m.name.toLowerCase().includes(q) ||
       m.model.toLowerCase().includes(q) ||
-      m.provider.toLowerCase().includes(q)
+      m.provider.toLowerCase().includes(q) ||
+      (m.aliases?.some((a) => a.toLowerCase().includes(q)) ?? false)
     );
   });
+
+  const existingModelKeys = useMemo(
+    () => new Set(models.map((m) => `${m.provider}::${m.model}`)),
+    [models],
+  );
 
   if (loading) {
     return (
@@ -225,98 +215,197 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
           </h1>
           <p className="models-subtitle">{t("models.subtitle")}</p>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={openAddModal}>
-          <Plus size={14} />
-          {t("models.addModel")}
+        {tab === "myModels" && (
+          <div className="models-header-actions">
+            {onNavigate && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => onNavigate("providers")}
+                title={t("models.addFromProviderHint", { defaultValue: "Go to Providers to discover and add models" })}
+              >
+                <ArrowRight size={14} />
+                {t("models.addFromProvider", { defaultValue: "Add from Provider" })}
+              </button>
+            )}
+            <button className="btn btn-primary btn-sm" onClick={openAddModal}>
+              <Plus size={14} />
+              {t("models.addModel")}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="settings-theme-options" style={{ marginBottom: 24 }}>
+        <button
+          className={`settings-theme-option ${tab === "myModels" ? "active" : ""}`}
+          onClick={() => setTab("myModels")}
+        >
+          {t("models.tabs.myModels")}
+        </button>
+        <button
+          className={`settings-theme-option ${tab === "templates" ? "active" : ""}`}
+          onClick={() => setTab("templates")}
+        >
+          {t("models.tabs.templates")}
         </button>
       </div>
 
-      {models.length > 0 && (
-        <div className="models-search">
-          <Search size={14} />
-          <input
-            className="models-search-input"
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("models.searchPlaceholder")}
-          />
-        </div>
-      )}
-
-      {filtered.length === 0 ? (
-        <div className="models-empty">
-          {models.length === 0 ? (
-            <>
-              <p className="models-empty-text">{t("models.empty")}</p>
-              <p className="models-empty-hint">{t("models.emptyHint")}</p>
-            </>
-          ) : (
-            <p className="models-empty-text">{t("models.noMatch")}</p>
-          )}
-        </div>
-      ) : (
-        <div className="models-grid">
-          {filtered.map((m) => (
-            <div
-              key={m.id}
-              className="models-card"
-              onClick={() => openEditModal(m)}
-            >
-              <div className="models-card-header">
-                <div className="models-card-title">
-                  <BrandLogo
-                    provider={m.provider}
-                    modelId={m.model}
-                    size={20}
-                  />
-                  <div className="models-card-name">{m.name}</div>
-                </div>
-                <span className="models-card-provider">
-                  {t(providerLabelKey(m.provider))}
-                </span>
-              </div>
-              <div className="models-card-model">{m.model}</div>
-              {m.baseUrl && <div className="models-card-url">{m.baseUrl}</div>}
-              <div className="models-card-footer">
-                {confirmDelete === m.id ? (
-                  <div
-                    className="models-card-confirm"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span>{t("models.deleteConfirm")}</span>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-danger-text"
-                      onClick={() => handleDelete(m.id)}
-                    >
-                      {t("models.yes")}
-                    </button>
-                    <button
-                      className="btn btn-sm"
-                      onClick={() => setConfirmDelete(null)}
-                    >
-                      {t("models.no")}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    className="btn-ghost models-card-delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmDelete(m.id);
-                    }}
-                    title={t("models.deleteModelTitle")}
-                  >
-                    <Trash size={14} />
-                  </button>
-                )}
-              </div>
+      {/* ── My Models Tab ── */}
+      {tab === "myModels" && (
+        <>
+          {models.length > 0 && (
+            <div className="models-search">
+              <Search size={14} />
+              <input
+                className="models-search-input"
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("models.searchPlaceholder")}
+              />
             </div>
-          ))}
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="models-empty">
+              {models.length === 0 ? (
+                <>
+                  <p className="models-empty-text">{t("models.empty")}</p>
+                  <p className="models-empty-hint">{t("models.emptyHint")}</p>
+                </>
+              ) : (
+                <p className="models-empty-text">{t("models.noMatch")}</p>
+              )}
+            </div>
+          ) : (
+            <div className="models-grid">
+              {filtered.map((m) => (
+                <div
+                  key={m.id}
+                  className="models-card"
+                  onClick={() => openEditModal(m)}
+                >
+                  <div className="models-card-header">
+                    <div className="models-card-title">
+                      <BrandLogo provider={m.provider} modelId={m.model} size={20} />
+                      <div className="models-card-name">{m.name}</div>
+                    </div>
+                    <span className="models-card-provider">
+                      {t(providerLabelKey(m.provider))}
+                    </span>
+                  </div>
+                  <div className="models-card-model">{m.model}</div>
+                  {m.aliases && m.aliases.length > 0 && (
+                    <div className="models-card-tags">
+                      {m.aliases.map((a) => (
+                        <span key={a} className="models-card-tag">{a}</span>
+                      ))}
+                    </div>
+                  )}
+                  {m.baseUrl && (
+                    <div className="models-card-url">{m.baseUrl}</div>
+                  )}
+                  <div className="models-card-footer">
+                    {confirmDelete === m.id ? (
+                      <div
+                        className="models-card-confirm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span>{t("models.deleteConfirm")}</span>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger-text"
+                          onClick={() => handleDelete(m.id)}
+                        >
+                          {t("models.yes")}
+                        </button>
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => setConfirmDelete(null)}
+                        >
+                          {t("models.no")}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn-ghost models-card-delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDelete(m.id);
+                        }}
+                        title={t("models.deleteModelTitle")}
+                      >
+                        <Trash size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Templates Tab ── */}
+      {tab === "templates" && (
+        <div className="tools-content animate-in">
+          <p className="models-subtitle" style={{ marginBottom: 16 }}>
+            {t("models.templates.subtitle")}
+          </p>
+          <div className="models-grid">
+            {templates.map((tmpl) => {
+              const key = `${tmpl.provider}::${tmpl.model}`;
+              const added = existingModelKeys.has(key);
+              return (
+                <div
+                  key={key}
+                  className={`models-card ${added ? "tools-card-disabled" : "tools-card-enabled"}`}
+                >
+                  <div className="models-card-header">
+                    <div className="models-card-title">
+                      <BrandLogo
+                        provider={tmpl.provider}
+                        modelId={tmpl.model}
+                        size={20}
+                      />
+                      <div className="models-card-name">{tmpl.name}</div>
+                    </div>
+                    <span className="models-card-provider">
+                      {t(providerLabelKey(tmpl.provider))}
+                    </span>
+                  </div>
+                  <div className="models-card-model">{tmpl.model}</div>
+                  {tmpl.tags && tmpl.tags.length > 0 && (
+                    <div className="models-card-tags">
+                      {tmpl.tags.map((tag) => (
+                        <span key={tag} className="models-card-tag">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="models-card-footer">
+                    {added ? (
+                      <span className="models-card-added">
+                        {t("models.templates.alreadyAdded")}
+                      </span>
+                    ) : (
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => handleQuickAdd(tmpl)}
+                      >
+                        {t("models.templates.quickAdd")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
+      {/* ── Add/Edit Modal ── */}
       {showModal && (
         <div className="models-modal-overlay" onClick={closeModal}>
           <div className="models-modal" onClick={(e) => e.stopPropagation()}>
@@ -356,21 +445,12 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
                   htmlFor="model-form-provider"
                 >
                   {t("common.provider")}
-                  {providerAutoFilled && !providerTouched && (
-                    <span className="models-modal-auto-badge">
-                      &nbsp;· auto-detected from base URL
-                    </span>
-                  )}
                 </label>
                 <select
                   id="model-form-provider"
                   className="input"
                   value={formProvider}
-                  onChange={(e) => {
-                    setFormProvider(e.target.value);
-                    setProviderTouched(true);
-                    setProviderAutoFilled(false);
-                  }}
+                  onChange={(e) => setFormProvider(e.target.value)}
                   aria-label={t("common.provider")}
                 >
                   {PROVIDERS.options.map((p) => (
@@ -385,56 +465,14 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
                 <label className="models-modal-label">
                   {t("models.modelId")}
                 </label>
-                <div className="settings-model-row">
-                  <input
-                    className="input"
-                    type="text"
-                    value={formModel}
-                    onChange={(e) => setFormModel(e.target.value)}
-                    placeholder={t("models.modelIdPlaceholder")}
-                    list={
-                      discovery.models.length > 0
-                        ? modelDiscoveryListId
-                        : undefined
-                    }
-                    autoComplete="off"
-                  />
-                  {discovery.status !== "unsupported" &&
-                    discovery.status !== "idle" && (
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setDiscoveryRefresh((n) => n + 1)}
-                        disabled={discovery.status === "loading"}
-                        title={t("settings.refreshModels")}
-                      >
-                        ↻
-                      </button>
-                    )}
-                </div>
-                {discovery.models.length > 0 && (
-                  <datalist id={modelDiscoveryListId}>
-                    {discovery.models.map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
-                )}
-                {discovery.status !== "idle" &&
-                  discovery.status !== "unsupported" && (
-                    <span className="models-modal-hint">
-                      {discovery.status === "loading"
-                        ? t("settings.discoveringModels")
-                        : discovery.status === "ok"
-                          ? t("settings.discoveredCount", {
-                              count: discovery.models.length,
-                            })
-                          : discovery.status === "no-key"
-                            ? t("settings.discoveryNoKey")
-                            : discovery.status === "error"
-                              ? t("settings.discoveryError")
-                              : ""}
-                    </span>
-                  )}
+                <input
+                  className="input"
+                  type="text"
+                  value={formModel}
+                  onChange={(e) => setFormModel(e.target.value)}
+                  placeholder={t("models.modelIdPlaceholder")}
+                  autoComplete="off"
+                />
               </div>
 
               <div className="models-modal-field">
@@ -450,6 +488,22 @@ function Models({ visible }: ModelsProps = {}): React.JSX.Element {
                 />
                 <span className="models-modal-hint">
                   {t("models.customProviderHint")}
+                </span>
+              </div>
+
+              <div className="models-modal-field">
+                <label className="models-modal-label">
+                  {t("models.aliasLabel") || "Alias"} ({t("common.optional") || "optional"})
+                </label>
+                <input
+                  className="input"
+                  type="text"
+                  value={formAlias}
+                  onChange={(e) => setFormAlias(e.target.value)}
+                  placeholder={t("models.aliasPlaceholder") || "e.g. my-model"}
+                />
+                <span className="models-modal-hint">
+                  {t("models.aliasHint") || "Shortcut name to switch models quickly"}
                 </span>
               </div>
 

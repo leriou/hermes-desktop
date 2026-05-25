@@ -86,7 +86,7 @@ sudo dnf install ./hermes-desktop-<version>.rpm
 ## Features
 
 - **Guided first-run install** for Hermes Agent with progress tracking and dependency resolution
-- **Local or remote backend** — run Hermes locally on `127.0.0.1:8642`, or connect the desktop app to a remote Hermes API server with URL + API key
+- **Local or remote backend** — run Hermes locally on `127.0.0.1:8765`, or connect the desktop app to a remote Hermes API server with URL + API key
 - **Multi-provider support** — OpenRouter, Anthropic, OpenAI, Google (Gemini), xAI (Grok), Nous Portal, Qwen, MiniMax, Hugging Face, Groq, and local OpenAI-compatible endpoints (LM Studio, Ollama, vLLM, llama.cpp)
 - **Streaming chat UI** with SSE streaming, tool progress indicators, markdown rendering, and syntax highlighting
 - **Token usage tracking** — live prompt/completion token counts and cost display in the chat footer, plus a `/usage` slash command
@@ -97,6 +97,7 @@ sudo dnf install ./hermes-desktop-<version>.rpm
 - **Memory system** — view/edit memory entries, user profile memory, capacity tracking, and discoverable memory providers (Honcho, Hindsight, Mem0, RetainDB, Supermemory, ByteRover)
 - **Persona editor** — edit and reset your agent's SOUL.md personality
 - **Saved models** — CRUD management for model configurations across providers
+- **Routing & Fallback** — dedicated panel for default model, provider, and fallback chain configuration
 - **Scheduled tasks** — cron job builder (minutes, hourly, daily, weekly, custom cron) with 15 delivery targets
 - **16 messaging gateways** — Telegram, Discord, Slack, WhatsApp, Signal, Matrix, Mattermost, Email (IMAP/SMTP), SMS (Twilio/Vonage), iMessage (BlueBubbles), DingTalk, Feishu/Lark, WeCom, WeChat (iLink Bot), Webhooks, Home Assistant
 - **Hermes Office (Claw3d)** — visual 3D interface with dev server and adapter management
@@ -117,7 +118,7 @@ On first launch, the app:
 5. Saves provider config and API keys through Hermes config files.
 6. Launches the main workspace once setup is complete.
 
-In local mode, chat requests go through `http://127.0.0.1:8642` with SSE streaming. In remote mode, the app talks to your configured remote URL with the same streaming protocol. The desktop app parses the stream in real time, rendering tool progress, markdown content, and token usage as it arrives.
+In local mode, chat requests go through `http://127.0.0.1:8765` with SSE streaming. In remote mode, the app talks to your configured remote URL with the same streaming protocol. The desktop app parses the stream in real time, rendering tool progress, markdown content, and token usage as it arrives.
 
 ## Screens
 
@@ -128,6 +129,7 @@ In local mode, chat requests go through `http://127.0.0.1:8642` with SSE streami
 | **Agents**    | Create, delete, and switch between Hermes profiles                                    |
 | **Skills**    | Browse, install, and manage bundled and installed skills                              |
 | **Models**    | Manage saved model configurations per provider                                        |
+| **Routing**   | Configure default model, provider, and fallback chain                                 |
 | **Memory**    | View/edit memory entries, user profile, and configure memory providers                |
 | **Soul**      | Edit the active profile's persona (SOUL.md)                                           |
 | **Tools**     | Enable or disable individual toolsets                                                 |
@@ -168,49 +170,49 @@ Exa Search, Parallel API, Tavily, Firecrawl, FAL.ai (image generation), Honcho, 
 
 ### Prerequisites
 
-- Node.js and npm
+- Node.js and Bun
 - A Unix-like shell environment for the Hermes installer
 - Network access for downloading Hermes during first-run install
 
 ### Install dependencies
 
 ```bash
-npm install
+bun install
 ```
 
 ### Start the app in development
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 ### Run checks
 
 ```bash
-npm run lint
-npm run typecheck
+bun run lint
+bun run typecheck
 ```
 
 ### Run tests
 
 ```bash
-npm run test
-npm run test:watch
+bun run test
+bun run test:watch
 ```
 
 ### Build the desktop app
 
 ```bash
-npm run build
+bun run build
 ```
 
 Platform packaging:
 
 ```bash
-npm run build:mac
-npm run build:win
-npm run build:linux
-npm run build:rpm    # Fedora/RHEL .rpm only
+bun run build:mac
+bun run build:win
+bun run build:linux
+bun run build:rpm    # Fedora/RHEL .rpm only
 ```
 
 ## First-Time Setup
@@ -257,7 +259,7 @@ Hermes files are managed in:
 - The desktop app depends on the upstream Hermes Agent project for agent behavior and tool execution.
 - The built-in installer runs the official Hermes install script with `--skip-setup`, then completes provider configuration in the GUI.
 - Local model providers do not require an API key, but the compatible server must already be running.
-- Alternative npm registry routes are supported for environments with restricted network access.
+- Alternative registry routes are supported for environments with restricted network access.
 
 ## Contributing
 
