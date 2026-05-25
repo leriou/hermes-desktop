@@ -179,11 +179,11 @@ export function SessionSidebar({
     return (): void => { cancelled = true; };
   }, [profile]);
 
-  // Build a set of db session IDs that are already open as tabs (excluding
-  // the active one so it stays visible in history with a highlight).
+  // Build a set of db session IDs that are already open as tabs
+  // (including the active one — no need to show it twice).
   const openDbIds = new Set<string>();
   for (const s of sessions) {
-    if (s.dbSessionId && s.dbSessionId !== activeDbSessionId) {
+    if (s.dbSessionId) {
       openDbIds.add(s.dbSessionId);
     }
   }

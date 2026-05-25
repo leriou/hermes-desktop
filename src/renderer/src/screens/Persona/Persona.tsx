@@ -97,6 +97,12 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
     );
   }
 
+  const charCounts: Record<Tab, number> = {
+    soul: soulContent.length,
+    memory: memoryContent.length,
+    user: userContent.length,
+  };
+
   const tabs: { key: Tab; label: string; file: string }[] = [
     { key: "soul", label: t("soul.title"), file: "soul.md" },
     { key: "memory", label: t("memory.agentMemory"), file: "memory.md" },
@@ -145,6 +151,7 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
           >
             {label}
             <span className="persona-tab-file">{file}</span>
+            <span className="persona-tab-chars">{charCounts[key].toLocaleString()}</span>
           </button>
         ))}
       </div>

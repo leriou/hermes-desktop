@@ -652,7 +652,7 @@ function Chat({
   return (
     <div
       className="chat-container"
-      hidden={!visible}
+      style={visible ? undefined : { display: "none" }}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

@@ -6022,6 +6022,13 @@ body {
   font-family: var(--font-mono);
 }
 
+.persona-tab-chars {
+  font-size: 10px;
+  opacity: 0.4;
+  font-family: var(--font-mono);
+  margin-left: auto;
+}
+
 .persona-actions {
   display: flex;
   align-items: center;
