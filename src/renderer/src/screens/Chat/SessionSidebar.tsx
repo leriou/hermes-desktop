@@ -14,6 +14,7 @@ export interface SessionEntry {
   messageCount: number;
   preview: string;
   dbSessionId?: string;
+  unreadCount?: number;
 }
 
 interface HistorySession {
@@ -75,6 +76,9 @@ const SessionItem = memo(function SessionItem({
         <span className="session-item-title">
           {sessionDisplayTitle(entry)}
         </span>
+        {!!entry.unreadCount && (
+          <span className="session-item-unread">{entry.unreadCount > 9 ? "9+" : entry.unreadCount}</span>
+        )}
         <button
           className="session-item-close"
           onClick={(e) => {

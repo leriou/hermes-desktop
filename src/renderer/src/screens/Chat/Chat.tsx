@@ -7,13 +7,11 @@ import { ModelPicker } from "./ModelPicker";
 import { TuiToolbar } from "./TuiToolbar";
 import { ChatStatusBar } from "./ChatStatusBar";
 import { useChatScroll } from "./hooks/useChatScroll";
-import { useChatIPC } from "./hooks/useChatIPC";
 import { useChatActions } from "./hooks/useChatActions";
 import { useModelConfig } from "./hooks/useModelConfig";
 import { useFastMode } from "./hooks/useFastMode";
 import { useLocalCommands } from "./hooks/useLocalCommands";
 import { useSessionLifecycle } from "./hooks/useSessionLifecycle";
-import { useStreamingText } from "./hooks/useStreamingText";
 import { useI18n } from "../../components/useI18n";
 import { buildChatTranscript } from "./transcriptUtils";
 import { shortModelName } from "./sessionDisplay";
@@ -27,7 +25,14 @@ interface ChatProps {
   sessionId: string | null;
   dbSessionId?: string | null;
   sessionTitle?: string;
+  isLoading?: boolean;
+  streamingText?: string;
+  usage?: import("./types").UsageState | null;
+  toolProgress?: string | null;
+  pendingApproval?: import("./types").ApprovalRequest | null;
+  pendingClarify?: import("./types").ClarifyRequest | null;
   profile?: string;
+  visible?: boolean;
   onSessionStarted?: () => void;
   onNewChat?: () => void;
   onSessionStateChange?: (patch: {
@@ -35,6 +40,13 @@ interface ChatProps {
     dbSessionId?: string | null;
     title?: string;
     model?: string;
+    pendingModelSwitch?: string | null;
+    isLoading?: boolean;
+    toolProgress?: string | null;
+    pendingApproval?: import("./types").ApprovalRequest | null;
+    pendingClarify?: import("./types").ClarifyRequest | null;
+    usage?: import("./types").UsageState | null;
+    streamingText?: string;
   }) => void;
 }
 
@@ -44,22 +56,30 @@ function Chat({
   sessionId,
   dbSessionId,
   sessionTitle: externalTitle,
+  isLoading = false,
+  streamingText = "",
+  usage = null,
+  toolProgress = null,
+  pendingApproval = null,
+  pendingClarify = null,
   profile,
+  visible = true,
   onSessionStarted,
   onNewChat,
   onSessionStateChange,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
-  const [isLoading, setIsLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [remoteMode, setRemoteMode] = useState(false);
   const [verbose, setVerbose] = useState(() => localStorage.getItem("hermes-verbose") === "true");
   const dragCounter = useRef(0);
-  const pendingModelSwitchRef = useRef<string | null>(null);
   const chatInputRef = useRef<ChatInputHandle>(null);
-  const { ref: streamingTextRef, text: streamingText } = useStreamingText();
 
   const { state: session, dispatch } = useSessionLifecycle(messages, sessionId, isLoading);
+  const setIsLoading = useCallback(
+    (loading: boolean) => onSessionStateChange?.({ isLoading: loading }),
+    [onSessionStateChange],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -222,6 +242,21 @@ function Chat({
               contextPercent: payload.usage.context_percent,
             },
           });
+          onSessionStateChange?.({
+            usage: {
+              promptTokens: payload.usage.input ?? payload.usage.promptTokens ?? 0,
+              completionTokens: payload.usage.output ?? payload.usage.completionTokens ?? 0,
+              totalTokens: payload.usage.total ?? payload.usage.totalTokens ?? 0,
+              cost: payload.usage.cost_usd ?? payload.usage.cost,
+              calls: payload.usage.calls,
+              cacheRead: payload.usage.cache_read,
+              cacheWrite: payload.usage.cache_write,
+              reasoning: payload.usage.reasoning,
+              contextUsed: payload.usage.context_used,
+              contextMax: payload.usage.context_max,
+              contextPercent: payload.usage.context_percent,
+            },
+          });
         }
         const summaryText = [payload.summary?.headline, payload.summary?.token_line, payload.summary?.note]
           .filter(Boolean)
@@ -243,7 +278,7 @@ function Chat({
           setIsLoading(false);
           return true;
         }
-        pendingModelSwitchRef.current = arg;
+        onSessionStateChange?.({ pendingModelSwitch: arg });
         addStatusMessage("Switching model", shortModelName(arg), "info");
         const result = await window.hermesAPI.tuiSetModel(runtimeSessionId, arg);
         const payload = result?.result ?? result ?? {};
@@ -297,53 +332,9 @@ function Chat({
     ],
   );
 
-  useChatIPC({
-    hermesSessionId: session.hermesSessionId,
-    dbSessionId,
-    setMessages,
-    setHermesSessionId: useCallback((id: string | null) => dispatch({ type: "setHermesSessionId", value: id }), [dispatch]),
-    setToolProgress: useCallback((p: string | null) => dispatch({ type: "setToolProgress", value: p }), [dispatch]),
-    setIsLoading,
-    setUsage: useCallback((u: import("./types").UsageState | null | ((prev: import("./types").UsageState | null) => import("./types").UsageState | null)) => {
-      if (u instanceof Function) return;
-      dispatch({ type: "setUsage", value: u });
-    }, [dispatch]),
-    setPendingApproval: useCallback((a: import("./types").ApprovalRequest | null) => dispatch({ type: "setPendingApproval", value: a }), [dispatch]),
-    setPendingClarify: useCallback((c: import("./types").ClarifyRequest | null) => dispatch({ type: "setPendingClarify", value: c }), [dispatch]),
-    streamingTextRef,
-    isLoading,
-    onSessionInfo: useCallback((info: { model: string; provider?: string }) => {
-      dispatch({ type: "setSessionModel", value: info.model });
-      onSessionStateChange?.({ model: info.model });
-      if (pendingModelSwitchRef.current) {
-        addStatusMessage("Model switched", shortModelName(info.model), "success");
-        pendingModelSwitchRef.current = null;
-      }
-    }, [dispatch, onSessionStateChange, addStatusMessage]),
-    onTitleAvailable: useCallback((title: string) => {
-      dispatch({ type: "setSessionTitle", value: title });
-      onSessionStateChange?.({ title });
-    }, [dispatch, onSessionStateChange]),
-    onStatusUpdate: useCallback((status: { kind?: string; text?: string }) => {
-      if (!status.text || status.kind === "process") return;
-      const tone =
-        status.kind === "error"
-          ? "error"
-          : status.kind === "warn" || status.kind === "approval"
-            ? "warning"
-            : "info";
-      const title =
-        status.kind === "compressing"
-          ? "Compressing session"
-          : status.kind === "goal"
-            ? "Goal update"
-            : "Session update";
-      addStatusMessage(title, status.text, tone);
-    }, [addStatusMessage]),
-  });
-
   // Cmd/Ctrl+N → new chat
   useEffect(() => {
+    if (!visible) return;
     function onKey(e: KeyboardEvent): void {
       if ((e.metaKey || e.ctrlKey) && e.key === "n") {
         e.preventDefault();
@@ -352,13 +343,14 @@ function Chat({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onNewChat]);
+  }, [onNewChat, visible]);
 
   const messagesRef = useRef(messages);
   useEffect(() => {
     messagesRef.current = messages;
   });
   useEffect(() => {
+    if (!visible) return;
     const unsub = window.hermesAPI.onContextMenuCopyChat((format) => {
       const msgs = messagesRef.current;
       if (msgs.length === 0) return;
@@ -372,9 +364,10 @@ function Chat({
     };
     window.addEventListener("hermes-copy-chat", handleCustom);
     return () => { unsub(); window.removeEventListener("hermes-copy-chat", handleCustom); };
-  }, []);
+  }, [visible]);
 
   useEffect(() => {
+    if (!visible) return;
     return window.hermesAPI.onContextMenuSelectBubble(({ x, y }) => {
       const bubble = document.elementFromPoint(x, y)?.closest(".chat-bubble");
       if (!bubble) return;
@@ -382,7 +375,7 @@ function Chat({
       selection?.removeAllRanges();
       selection?.selectAllChildren(bubble);
     });
-  }, []);
+  }, [visible]);
 
   const handleClear = useCallback(() => {
     if (isLoading) {
@@ -399,7 +392,17 @@ function Chat({
     dispatch({ type: "setContextFolder", value: null });
     dispatch({ type: "setUsage", value: null });
     dispatch({ type: "setToolProgress", value: null });
-  }, [isLoading, session.hermesSessionId, sessionId, setMessages, dispatch]);
+    onSessionStateChange?.({
+      hermesSessionId: null,
+      dbSessionId: null,
+      usage: null,
+      toolProgress: null,
+      pendingApproval: null,
+      pendingClarify: null,
+      streamingText: "",
+      isLoading: false,
+    });
+  }, [isLoading, session.hermesSessionId, sessionId, setMessages, dispatch, onSessionStateChange]);
 
   const toggleVerbose = useCallback(() => {
     setVerbose((v) => {
@@ -411,7 +414,7 @@ function Chat({
 
   const localCommands = useLocalCommands({
     profile,
-    usage: session.usage,
+    usage: usage,
     setFastMode: setFastTier,
     onNewChat,
     onClear: handleClear,
@@ -426,13 +429,19 @@ function Chat({
     isLoading,
     setIsLoading,
     setMessages,
-    setHermesSessionId: useCallback((id: string | null) => dispatch({ type: "setHermesSessionId", value: id }), [dispatch]),
+    setHermesSessionId: useCallback((id: string | null) => {
+      dispatch({ type: "setHermesSessionId", value: id });
+      onSessionStateChange?.({ hermesSessionId: id });
+    }, [dispatch, onSessionStateChange]),
     onSessionStarted,
     chatInputRef,
     localCommands,
     contextFolder: session.contextFolder,
-    pendingClarify: session.pendingClarify,
-    setPendingClarify: useCallback((c: import("./types").ClarifyRequest | null) => dispatch({ type: "setPendingClarify", value: c }), [dispatch]),
+    pendingClarify: pendingClarify,
+    setPendingClarify: useCallback((c: import("./types").ClarifyRequest | null) => {
+      dispatch({ type: "setPendingClarify", value: c });
+      onSessionStateChange?.({ pendingClarify: c });
+    }, [dispatch, onSessionStateChange]),
     executeGatewayCommand,
   });
 
@@ -613,6 +622,7 @@ function Chat({
   return (
     <div
       className="chat-container"
+      hidden={!visible}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -622,7 +632,7 @@ function Chat({
         sessionId={dbSessionId ?? sessionId}
         sessionTitle={session.sessionTitle || externalTitle}
         sessionModel={session.sessionModel}
-        usage={session.usage}
+        usage={usage}
         fastMode={fastMode}
         hasMessages={messages.length > 0}
         contextFolder={session.contextFolder}
@@ -641,8 +651,8 @@ function Chat({
           <MessageList
             messages={messages}
             isLoading={isLoading}
-            toolProgress={session.toolProgress}
-            pendingApproval={session.pendingApproval}
+            toolProgress={toolProgress}
+            pendingApproval={pendingApproval}
             onApprove={actions.handleApprove}
             onDeny={actions.handleDeny}
             streamingText={streamingText}
@@ -668,7 +678,7 @@ function Chat({
           sessionId={session.hermesSessionId}
           remoteMode={remoteMode}
           modelOptions={modelOptions}
-          pendingClarify={session.pendingClarify}
+          pendingClarify={pendingClarify}
           onModelSelect={handleModelInputSelect}
           onSubmit={actions.handleSend}
           onQuickAsk={actions.handleQuickAsk}
@@ -687,7 +697,7 @@ function Chat({
             aliases={modelConfig.aliases}
           />
           <ChatStatusBar
-            usage={session.usage}
+            usage={usage}
             isLoading={isLoading}
             hasMessages={messages.length > 0}
             sessionStart={session.sessionStart}

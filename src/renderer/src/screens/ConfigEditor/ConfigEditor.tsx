@@ -9,6 +9,25 @@ interface ConfigEditorProps {
 
 type ViewMode = "yaml" | "structured";
 
+const FOCUSED_TOP_KEYS = [
+  "model",
+  "model_aliases",
+  "providers",
+  "fallback_providers",
+  "display",
+  "approvals",
+] as const;
+
+const FOCUSED_TOP_KEY_SET = new Set<string>(FOCUSED_TOP_KEYS);
+
+const COMMON_TYPOS: Record<string, string> = {
+  fallback_provider: "fallback_providers",
+  model_alias: "model_aliases",
+  provider: "providers",
+  fallback: "fallback_providers",
+  approval: "approvals",
+};
+
 function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
   const { t } = useI18n();
   const [content, setContent] = useState("");
@@ -164,7 +183,9 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
     const keys: Array<{ key: string; line: number }> = [];
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(/^([a-zA-Z_][a-zA-Z0-9_]*):/);
-      if (m) keys.push({ key: m[1], line: i });
+      if (m && FOCUSED_TOP_KEY_SET.has(m[1])) {
+        keys.push({ key: m[1], line: i });
+      }
     }
     return keys;
   }, [content]);
@@ -185,15 +206,6 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
       return null;
     }
   }, [content]);
-
-  const STRUCTURED_SECTIONS = [
-    "model",
-    "model_aliases",
-    "providers",
-    "fallback_providers",
-    "display",
-    "approvals",
-  ];
 
   // ── Diff: compute changed top-level keys ──
   const diffKeys = useMemo(() => {
@@ -220,28 +232,12 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
   }, [content, original, dirty]);
 
   // ── Schema hints: detect common miskeys ──
-  const KNOWN_KEYS = new Set([
-    "model", "model_aliases", "providers", "fallback_providers",
-    "display", "approvals", "memory", "tools", "mcp_servers",
-    "skills", "voice", "logging", "agent", "cron",
-  ]);
-  const COMMON_TYPOS: Record<string, string> = {
-    fallback_provider: "fallback_providers",
-    model_alias: "model_aliases",
-    provider: "providers",
-    fallback: "fallback_providers",
-    approval: "approvals",
-    mcp: "mcp_servers",
-    server: "mcp_servers",
-  };
   const schemaHints = useMemo(() => {
     if (!parsedYaml) return [];
     const hints: Array<{ key: string; suggestion: string }> = [];
     for (const k of Object.keys(parsedYaml)) {
       if (COMMON_TYPOS[k]) {
         hints.push({ key: k, suggestion: `Did you mean "${COMMON_TYPOS[k]}"?` });
-      } else if (!KNOWN_KEYS.has(k)) {
-        hints.push({ key: k, suggestion: "Unknown top-level key" });
       }
     }
     return hints;
@@ -477,7 +473,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
         <div className="config-editor-body config-structured">
           {outline.length === 0 && (
             <div className="config-structured-empty">
-              {t("config.emptyConfig", { defaultValue: "Config is empty." })}
+              {t("config.emptyConfig", { defaultValue: "No supported sections found." })}
             </div>
           )}
           {outline.map(({ key }) => {
@@ -500,7 +496,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
                     {t("config.gotoYaml", { defaultValue: "View YAML" })}
                   </button>
                 </div>
-                {STRUCTURED_SECTIONS.includes(key) && value != null ? (
+                {FOCUSED_TOP_KEY_SET.has(key) && value != null ? (
                   <StructuredBlock
                     sectionKey={key}
                     value={value}
@@ -510,11 +506,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
                       setContent(yaml.dump(updated, { lineWidth: -1, noRefs: true }));
                     }}
                   />
-                ) : (
-                  <pre className="config-structured-raw">
-                    {yaml.dump(value, { lineWidth: -1, noRefs: true })}
-                  </pre>
-                )}
+                ) : null}
               </div>
             );
           })}
@@ -545,7 +537,7 @@ function StructuredBlock({
     typeof value === "object" &&
     value !== null
   ) {
-    return <AliasBlock value={value as Record<string, unknown>} onUpdate={onUpdate} />;
+    return <AliasBlock value={value as Record<string, unknown>} />;
   }
   if (sectionKey === "fallback_providers" && Array.isArray(value)) {
     return <FallbackBlock value={value} onUpdate={onUpdate} />;
@@ -597,10 +589,8 @@ function ModelBlock({
 
 function AliasBlock({
   value,
-  onUpdate,
 }: {
   value: Record<string, unknown>;
-  onUpdate: (v: unknown) => void;
 }): React.JSX.Element {
   const entries = Object.entries(value);
   return (

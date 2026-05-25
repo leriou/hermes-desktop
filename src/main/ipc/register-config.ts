@@ -50,6 +50,7 @@ import { setSshRemoteApiKey } from "../hermes";
 import { profileHome } from "../utils";
 import type { AppLocale } from "../../shared/i18n/types";
 import { withSsh } from "./dispatch";
+import { yamlToJson, jsonToYaml } from "../rust-bridge";
 
 export function registerConfigIPC(): void {
   // Locale
@@ -304,56 +305,34 @@ export function registerConfigIPC(): void {
       : HERMES_CONFIG_FILE;
     try {
       const content = await readFile(configPath, "utf-8");
-      const lines = content.split("\n");
+      const root = yamlToJson(content) || {};
+      const model = typeof root.model === "object" && root.model ? root.model : {};
+      const fallbackProviders = Array.isArray(root.fallback_providers)
+        ? root.fallback_providers
+        : [];
       const result: {
         defaultModel: string;
         defaultProvider: string;
         defaultBaseUrl: string;
         fallbacks: Array<{ model: string; provider: string }>;
       } = {
-        defaultModel: getConfigValue("model.default", _profile) || "",
-        defaultProvider: getConfigValue("model.provider", _profile) || "",
-        defaultBaseUrl: getConfigValue("model.base_url", _profile) || "",
-        fallbacks: [],
+        defaultModel:
+          typeof model.default === "string" ? model.default : "",
+        defaultProvider:
+          typeof model.provider === "string" ? model.provider : "",
+        defaultBaseUrl:
+          typeof model.base_url === "string" ? model.base_url : "",
+        fallbacks: fallbackProviders
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry) => {
+            const row = entry as Record<string, unknown>;
+            return {
+              model: typeof row.model === "string" ? row.model : "",
+              provider: typeof row.provider === "string" ? row.provider : "",
+            };
+          })
+          .filter((entry) => entry.model),
       };
-
-      // Parse fallback_providers array
-      let inFallback = false;
-      let current: { model: string; provider: string } | null = null;
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (/^fallback_providers\s*:/.test(line.trim())) {
-          inFallback = true;
-          continue;
-        }
-        if (inFallback) {
-          if (/^-\s+/.test(trimmed) || /^-\s*$/.test(trimmed)) {
-            if (current) result.fallbacks.push(current);
-            current = { model: "", provider: "" };
-            const inlineModel = trimmed.match(/model:\s*(\S+)/);
-            const inlineProvider = trimmed.match(/provider:\s*(\S+)/);
-            if (inlineModel) current.model = inlineModel[1];
-            if (inlineProvider) current.provider = inlineProvider[1];
-            continue;
-          }
-          if (current && /^\s+model:\s*(\S+)/.test(line)) {
-            current.model = line.match(/model:\s*(\S+)/)![1];
-            continue;
-          }
-          if (current && /^\s+provider:\s*(\S+)/.test(line)) {
-            current.provider = line.match(/provider:\s*(\S+)/)![1];
-            continue;
-          }
-          // Exit fallback_providers block on next top-level key
-          if (/^\S/.test(line) && !line.startsWith("#")) {
-            if (current) result.fallbacks.push(current);
-            inFallback = false;
-            current = null;
-          }
-        }
-      }
-      if (current) result.fallbacks.push(current);
-
       return result;
     } catch {
       return {
@@ -380,59 +359,42 @@ export function registerConfigIPC(): void {
       const configPath = _profile
         ? join(profileHome(_profile), "config.yaml")
         : HERMES_CONFIG_FILE;
-      let content: string;
+      let content = "";
       try {
         content = await readFile(configPath, "utf-8");
       } catch {
         content = "";
       }
+      const root = yamlToJson(content) || {};
+      const model = typeof root.model === "object" && root.model ? root.model : {};
+      root.model = model;
 
-      // Update scalar fields
-      if (data.defaultModel !== undefined)
-        setConfigValue("model.default", data.defaultModel, _profile);
-      if (data.defaultProvider !== undefined)
-        setConfigValue("model.provider", data.defaultProvider, _profile);
-      if (data.defaultBaseUrl !== undefined)
-        setConfigValue("model.base_url", data.defaultBaseUrl, _profile);
-
-      // Rewrite fallback_providers block
-      if (data.fallbacks !== undefined) {
-        const lines = content.split("\n");
-        const before: string[] = [];
-        const after: string[] = [];
-        let inFallback = false;
-        let pastFallback = false;
-
-        for (const line of lines) {
-          if (!pastFallback && /^fallback_providers\s*:/.test(line.trim())) {
-            inFallback = true;
-            continue;
-          }
-          if (inFallback) {
-            if (/^\s+-\s/.test(line) || /^\s+model:/.test(line) || /^\s+provider:/.test(line)) {
-              continue;
-            }
-            inFallback = false;
-            pastFallback = true;
-          }
-          if (pastFallback) after.push(line);
-          else before.push(line);
-        }
-
-        const fbLines = data.fallbacks.map(
-          (f) => `- model: ${f.model}\n  provider: ${f.provider}`,
-        );
-        const newBlock =
-          data.fallbacks.length > 0
-            ? `fallback_providers:\n${fbLines.join("\n")}`
-            : "";
-
-        content = [...before, newBlock, ...after]
-          .filter((l) => l !== "")
-          .join("\n");
-
-        await writeFile(configPath, content, "utf-8");
+      if (data.defaultModel !== undefined) {
+        if (data.defaultModel) model.default = data.defaultModel;
+        else delete model.default;
       }
+      if (data.defaultProvider !== undefined) {
+        if (data.defaultProvider) model.provider = data.defaultProvider;
+        else delete model.provider;
+      }
+      if (data.defaultBaseUrl !== undefined) {
+        if (data.defaultBaseUrl) model.base_url = data.defaultBaseUrl;
+        else delete model.base_url;
+      }
+      if (data.fallbacks !== undefined) {
+        root.fallback_providers = data.fallbacks
+          .filter((entry) => entry.model.trim())
+          .map((entry) => ({
+            model: entry.model.trim(),
+            ...(entry.provider.trim() ? { provider: entry.provider.trim() } : {}),
+          }));
+      }
+
+      const next = jsonToYaml(root);
+      if (next == null) {
+        throw new Error("Failed to serialize routing config");
+      }
+      await writeFile(configPath, next, "utf-8");
 
       return true;
     },

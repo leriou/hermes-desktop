@@ -16,6 +16,8 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
     Array<{ model: string; provider: string }>
   >([]);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [newFbModel, setNewFbModel] = useState("");
   const [newFbProvider, setNewFbProvider] = useState("");
 
@@ -26,8 +28,9 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
       setDefaultProvider(cfg.defaultProvider);
       setDefaultBaseUrl(cfg.defaultBaseUrl);
       setFallbacks(cfg.fallbacks || []);
+      setError("");
     } catch {
-      // ignore
+      setError("Failed to load routing config");
     }
   }, [profile]);
 
@@ -36,17 +39,25 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
   }, [load]);
 
   async function handleSave(): Promise<void> {
-    await window.hermesAPI.setRoutingConfig(
-      {
-        defaultModel,
-        defaultProvider,
-        defaultBaseUrl,
-        fallbacks,
-      },
-      profile,
-    );
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    setError("");
+    try {
+      await window.hermesAPI.setRoutingConfig(
+        {
+          defaultModel: defaultModel.trim(),
+          defaultProvider: defaultProvider.trim(),
+          defaultBaseUrl: defaultBaseUrl.trim(),
+          fallbacks,
+        },
+        profile,
+      );
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError((err as Error).message || String(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleAddFallback(): void {
@@ -119,6 +130,12 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
             Leave empty for provider default
           </div>
         </div>
+
+        {error && (
+          <div className="settings-field-hint" style={{ color: "var(--danger)" }}>
+            {error}
+          </div>
+        )}
       </div>
 
       <div className="settings-section" style={{ marginTop: 20 }}>
@@ -196,8 +213,9 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
         <button
           className="btn btn-primary"
           onClick={handleSave}
+          disabled={saving}
         >
-          {t("common.save", { defaultValue: "Save" })}
+          {saving ? "Saving..." : t("common.save", { defaultValue: "Save" })}
         </button>
         {saved && (
           <span className="settings-saved">{t("common.saved", { defaultValue: "Saved" })}</span>

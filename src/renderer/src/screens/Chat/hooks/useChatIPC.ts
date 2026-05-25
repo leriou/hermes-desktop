@@ -168,15 +168,40 @@ export function useChatIPC({
         }
 
         case "message.complete":
+          // Cancel any pending flush — payload.text is authoritative
           if (flushTimer.current) {
             clearTimeout(flushTimer.current);
             flushTimer.current = null;
           }
-          const remaining = pendingChunks.current;
           pendingChunks.current = "";
-          if (remaining) cb.streamingTextRef.current += remaining;
-          
-          commitStreamingText();
+
+          // Replace last agent message with gateway's final text
+          const finalText = payload.text;
+          const hadStreaming = !!cb.streamingTextRef.current;
+          cb.streamingTextRef.current = "";
+
+          cb.setMessages((prev) => {
+            if (finalText) {
+              for (let i = prev.length - 1; i >= 0; i--) {
+                const m = prev[i];
+                if (m.role === "agent" && "content" in m && typeof m.content === "string") {
+                  return [...prev.slice(0, i), { ...m, content: finalText }, ...prev.slice(i + 1)];
+                }
+              }
+              return [...prev, { id: `agent-${Date.now()}`, sessionId: sid ?? currentRuntimeSid ?? currentDbSid ?? undefined, role: "agent", content: finalText, timestamp: Date.now() }];
+            }
+            // Fallback: commit accumulated streaming text
+            if (hadStreaming) {
+              const text = ""; // streamingTextRef was already read above
+              if (!text.trim()) return prev;
+              const last = prev[prev.length - 1];
+              if (last && last.role === "agent" && "content" in last && typeof last.content === "string") {
+                return [...prev.slice(0, -1), { ...last, content: last.content }];
+              }
+            }
+            return prev;
+          });
+
           cb.setIsLoading(false);
           cb.setToolProgress(null);
           cb.setPendingApproval(null);

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import type { ChatMessage } from "../types";
+import type { ApprovalRequest, ChatMessage, ClarifyRequest } from "../types";
 import type { SessionEntry, SessionStatus } from "../SessionSidebar";
 import { sessionDisplayPreview, sessionDisplayTitle } from "../sessionDisplay";
 
@@ -10,6 +10,11 @@ export interface SessionState {
   isLoading: boolean;
   usage: import("../types").UsageState | null;
   toolProgress: string | null;
+  streamingText: string;
+  pendingApproval: ApprovalRequest | null;
+  pendingClarify: ClarifyRequest | null;
+  pendingModelSwitch: string | null;
+  unreadCount: number;
   title: string;
   model: string;
   updatedAt: number;
@@ -23,6 +28,11 @@ function emptySession(): SessionState {
     isLoading: false,
     usage: null,
     toolProgress: null,
+    streamingText: "",
+    pendingApproval: null,
+    pendingClarify: null,
+    pendingModelSwitch: null,
+    unreadCount: 0,
     title: "",
     model: "",
     updatedAt: Date.now(),
@@ -101,11 +111,18 @@ export function useSessionManager() {
 
   const switchTab = useCallback((id: string) => {
     setActiveTabIdState(id);
+    setSessionsState((prev) => {
+      const existing = prev.get(id);
+      if (!existing || existing.unreadCount === 0) return prev;
+      const next = new Map(prev);
+      next.set(id, { ...existing, unreadCount: 0, updatedAt: Date.now() });
+      return next;
+    });
     setTabOrder((prev) => {
       if (prev[0] === id) return prev;
       return [id, ...prev.filter((t) => t !== id)];
     });
-  }, [setActiveTabIdState]);
+  }, [setActiveTabIdState, setSessionsState]);
 
   const closeTab = useCallback(
     (id: string) => {
@@ -180,18 +197,22 @@ export function useSessionManager() {
           model: "",
           status: "idle" as SessionStatus,
           updatedAt: Date.now(),
-          messageCount: 0,
-          preview: "",
+        messageCount: 0,
+        preview: "",
+        unreadCount: 0,
         };
       }
       const lastMsg = s.messages[s.messages.length - 1];
-      const preview = lastMsg
+      // During streaming, show streaming text as preview for live feedback
+      const streamingPreview = s.streamingText ? s.streamingText.slice(-60) : "";
+      const msgPreview = lastMsg
         ? "content" in lastMsg
-          ? (lastMsg.content || "").slice(0, 60)
+          ? (lastMsg.content || "").slice(-60)
           : "text" in lastMsg
-            ? lastMsg.text.slice(0, 60)
+            ? lastMsg.text.slice(-60)
             : ""
         : "";
+      const preview = streamingPreview || msgPreview;
       return {
         id,
         title: sessionDisplayTitle({ title: s.title, preview }),
@@ -205,13 +226,15 @@ export function useSessionManager() {
         messageCount: s.messages.length,
         preview: sessionDisplayPreview({ title: s.title, preview, model: s.model, messageCount: s.messages.length }),
         dbSessionId: s.dbSessionId ?? s.hermesSessionId ?? undefined,
+        unreadCount: s.unreadCount,
       };
     })
-      .filter((e) => e.messageCount > 0 && !e.dbSessionId);
+      .filter((e) => e.messageCount > 0 || e.status === "streaming");
   }, [tabOrder, sessions]);
 
   return {
     sessions,
+    tabOrder,
     activeTabId,
     getActive,
     createTab,

@@ -95,8 +95,6 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
     if (visible) loadData();
   }, [visible, loadData]);
 
-  const isCustomForm = formProvider === "custom";
-
   function openAddModal(): void {
     setEditingModel(null);
     setFormName("");

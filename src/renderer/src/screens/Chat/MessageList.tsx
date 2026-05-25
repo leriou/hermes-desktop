@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ReasoningRow, ToolResultRow } from "./HistoryRow";
 import { ToolGroupRow } from "./ToolGroupRow";
+import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { mergeContinuationLabels } from "./sessionDisplay";
 import type { ApprovalRequest, ChatMessage, SystemStatusMessage, ToolCallMessage, ToolGroupMessage } from "./types";
 
@@ -207,9 +208,7 @@ export const MessageList = memo(function MessageList({
         <div className="chat-message chat-message-agent">
           <HermesAvatar />
           <div className="chat-bubble chat-bubble-agent">
-            <div className="markdown-body" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-              {streamingText}
-            </div>
+            <StreamingMarkdown>{streamingText}</StreamingMarkdown>
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import Chat, { ChatMessage } from "../Chat/Chat";
 import { SessionSidebar } from "../Chat/SessionSidebar";
 import { useSessionManager } from "../Chat/hooks/useSessionManager";
+import { useChatInbox } from "../Chat/hooks/useChatInbox";
 import { baseSessionTitle, parseTitleSegment } from "../Chat/sessionDisplay";
 import RemoteNotice from "../../components/RemoteNotice";
 import VerifyWarningBanner from "../../components/VerifyWarningBanner";
@@ -111,6 +112,16 @@ function Layout({
   const [remoteMode, setRemoteMode] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const sessionManager = useSessionManager();
+  const activeTabId = sessionManager.activeTabId;
+  const activeTab = activeTabId ? sessionManager.sessions.get(activeTabId) : undefined;
+  useChatInbox({
+    sessions: sessionManager.sessions,
+    activeTabId,
+    chatVisible: view === "chat",
+    findTabBySessionId: sessionManager.findTabBySessionId,
+    updateTab: sessionManager.updateTab,
+    updateTabMessages: sessionManager.updateTabMessages,
+  });
 
   const goTo = useCallback((v: View) => {
     setView(v);
@@ -160,6 +171,13 @@ function Layout({
   useEffect(() => {
     window.hermesAPI.startGateway(activeProfile);
   }, [activeProfile]);
+
+  useEffect(() => {
+    if (view !== "chat" || !activeTabId) return;
+    if (activeTab?.unreadCount) {
+      sessionManager.updateTab(activeTabId, { unreadCount: 0 });
+    }
+  }, [view, activeTabId, activeTab?.unreadCount, sessionManager.updateTab]);
 
   // Auto-update state
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
@@ -512,40 +530,53 @@ function Layout({
               onResumeSession={handleResumeSession}
             />
             <div style={paneStyle}>
-              {sessionManager.activeTabId && (() => {
-                const tab = sessionManager.getActive();
+              {sessionManager.tabOrder.map((tabId) => {
+                const tab = sessionManager.sessions.get(tabId);
                 if (!tab) return null;
-                const activeTabId = sessionManager.activeTabId;
+                const visible = tabId === sessionManager.activeTabId;
                 return (
                   <Chat
-                    key={activeTabId}
+                    key={tabId}
                     messages={tab.messages}
                     setMessages={(patch) => {
-                      if (!activeTabId) return;
                       if (typeof patch === "function") {
-                        sessionManager.updateTabMessages(activeTabId, patch);
+                        sessionManager.updateTabMessages(tabId, patch);
                       } else {
-                        sessionManager.updateTab(activeTabId, { messages: patch });
+                        sessionManager.updateTab(tabId, { messages: patch });
                       }
                     }}
                     sessionId={tab.hermesSessionId}
                     dbSessionId={tab.dbSessionId}
                     sessionTitle={tab.title}
+                    isLoading={tab.isLoading}
+                    streamingText={tab.streamingText}
+                    usage={tab.usage}
+                    toolProgress={tab.toolProgress}
+                    pendingApproval={tab.pendingApproval}
+                    pendingClarify={tab.pendingClarify}
                     profile={activeProfile}
+                    visible={visible}
                     onNewChat={handleNewChat}
                     onSessionStateChange={(patch) => {
-                      sessionManager.updateTab(activeTabId, {
+                      sessionManager.updateTab(tabId, {
                         ...(patch.hermesSessionId !== undefined ? { hermesSessionId: patch.hermesSessionId } : {}),
                         ...(patch.dbSessionId !== undefined ? { dbSessionId: patch.dbSessionId } : {}),
                         ...(patch.title !== undefined ? { title: patch.title } : {}),
                         ...(patch.model !== undefined ? { model: patch.model } : {}),
+                        ...(patch.pendingModelSwitch !== undefined ? { pendingModelSwitch: patch.pendingModelSwitch } : {}),
+                        ...(patch.isLoading !== undefined ? { isLoading: patch.isLoading } : {}),
+                        ...(patch.toolProgress !== undefined ? { toolProgress: patch.toolProgress } : {}),
+                        ...(patch.pendingApproval !== undefined ? { pendingApproval: patch.pendingApproval } : {}),
+                        ...(patch.pendingClarify !== undefined ? { pendingClarify: patch.pendingClarify } : {}),
+                        ...(patch.usage !== undefined ? { usage: patch.usage } : {}),
+                        ...(patch.streamingText !== undefined ? { streamingText: patch.streamingText } : {}),
                       });
                     }}
                   />
                 );
-              })()}
+              })}
             </div>
-          </div>
+        </div>
         )}
 
         {view === "sessions" && (
@@ -588,7 +619,7 @@ function Layout({
         {view === "models" && (
           <div style={paneStyle}>
             <Suspense fallback={<TabSpinner />}>
-              <Models visible={true} profile={activeProfile} onNavigate={goTo} />
+              <Models visible={true} profile={activeProfile} onNavigate={(view) => goTo(view as View)} />
             </Suspense>
           </div>
         )}
@@ -607,9 +638,13 @@ function Layout({
 
         {view === "routing" && (
           <div style={paneStyle}>
-            <Suspense fallback={<TabSpinner />}>
-              <Routing profile={activeProfile} />
-            </Suspense>
+            {remoteMode ? (
+              <RemoteNotice feature="Routing" />
+            ) : (
+              <Suspense fallback={<TabSpinner />}>
+                <Routing profile={activeProfile} />
+              </Suspense>
+            )}
           </div>
         )}
 

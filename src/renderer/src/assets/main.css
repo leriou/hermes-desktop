@@ -1272,6 +1272,19 @@ body {
   content: "-";
   color: var(--text-muted);
 }
+.session-item-unread {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
 .session-item-close {
   display: none;
   background: none;
@@ -2106,6 +2119,43 @@ body {
   color: var(--text-muted) !important;
   opacity: 0.5;
   user-select: none;
+}
+
+/* StreamingMarkdown — lightweight markdown for streaming phase */
+.sm-streaming {
+  word-break: break-word;
+}
+.sm-code-block {
+  border-radius: 6px;
+  margin: 8px 0;
+  overflow: hidden;
+  background: var(--code-bg);
+}
+.sm-code-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.sm-code-block pre {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+.sm-code-streaming {
+  border-right: 2px solid var(--accent);
+}
+.sm-inline-code {
+  background: var(--code-bg);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
 }
 
 /* Diff view */
