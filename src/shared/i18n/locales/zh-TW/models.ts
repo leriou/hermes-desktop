@@ -23,4 +23,13 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "儲存為環境變數。會依 URL 符合對應的環境變數名稱，否則使用 CUSTOM_API_KEY。",
+  tabs: {
+    myModels: "My Models",
+    templates: "Templates",
+  },
+  templates: {
+    subtitle: "Built-in model templates. Click to quickly add to your library.",
+    alreadyAdded: "Added",
+    quickAdd: "Add",
+  },
 } as const;

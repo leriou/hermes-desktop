@@ -120,8 +120,8 @@ describe("connection config secret exposure", () => {
         port: 22,
         username: "hermes",
         keyPath: "~/.ssh/id_rsa",
-        remotePort: 8642,
-        localPort: 18642,
+        remotePort: 8765,
+        localPort: 18765,
       },
     });
 

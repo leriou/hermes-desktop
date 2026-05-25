@@ -1,4 +1,5 @@
 import type { ChatMessage } from "./types";
+import { mergeContinuationLabels } from "./sessionDisplay";
 
 export type TranscriptFormat = "text" | "markdown";
 
@@ -14,8 +15,9 @@ export function buildChatTranscript(
   messages: ChatMessage[],
   format: TranscriptFormat,
 ): string {
-  return messages
+  return mergeContinuationLabels(messages)
     .filter((m) => "content" in m && typeof m.content === "string")
+    .filter((m) => (m as { kind?: string }).kind !== "system_status")
     .map((m) => {
       const msg = m as { role: "user" | "agent"; content: string };
       const speaker = msg.role === "user" ? "You" : "Hermes";

@@ -17,8 +17,13 @@ vi.mock("../../components/AgentMarkdown", () => ({
 }));
 
 import Skills from "./Skills";
+import { cache } from "../../utils/prefetchCache";
 
 describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
+  beforeEach(() => {
+    cache.clear();
+  });
+
   it("calls window.hermesAPI.installSkill(skill.name, profile) when Install is clicked on a Browse card", async () => {
     const installSkill = vi.fn().mockResolvedValue({ success: true });
     const listInstalledSkills = vi.fn().mockResolvedValue([]);
@@ -108,11 +113,13 @@ describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
     });
 
     const view = render(<Skills />);
-    await waitFor(() => expect(listBundledSkills).toHaveBeenCalled());
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(view.container.querySelector(".loading-spinner")).toBeNull();
+    });
 
-    const browseTab = view.container.querySelectorAll(
-      ".skills-tab",
-    )[1] as HTMLButtonElement;
+    const tabs = view.container.querySelectorAll(".skills-tab");
+    const browseTab = tabs[1] as HTMLButtonElement;
     await act(async () => {
       fireEvent.click(browseTab);
     });

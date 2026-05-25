@@ -4,6 +4,8 @@ export interface SlashCommand {
   category: "chat" | "agent" | "tools" | "info";
   /** If true, the command is handled locally instead of sent to the backend */
   local?: boolean;
+  /** If true, the command accepts parameters with a custom autocomplete menu */
+  hasParams?: boolean;
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
@@ -130,6 +132,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     name: "/model",
     description: "Show or switch the current model",
     category: "info",
+    hasParams: true,
   },
   { name: "/memory", description: "Show agent memory", category: "info" },
   { name: "/persona", description: "Show current persona", category: "info" },

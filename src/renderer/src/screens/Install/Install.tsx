@@ -114,7 +114,7 @@ function Install({
   // restart to adopt it (#272).
   async function handleUseExisting(): Promise<void> {
     setUseExistingError(null);
-    const dir = await window.hermesAPI.selectFolder();
+    const dir = await window.hermesAPI.selectHermesFolder();
     if (!dir) return;
     const ok = await window.hermesAPI.validateHermesHome(dir);
     if (!ok) {

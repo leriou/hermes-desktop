@@ -13,4 +13,9 @@ export default {
   emptyHint: "Mulai chat untuk membuat sesi pertama Anda",
   messages: "pesan",
   messageSingular: "pesan",
+  filterAll: "Semua",
+  filterType: "Tipe:",
+  filterMsgCount: "Pesan:",
+  filterClear: "Hapus",
+  parts: "bagian",
 } as const;

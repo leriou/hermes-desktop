@@ -1,10 +1,13 @@
 import { memo } from "react";
-import { Trash2 as Trash, Plus, Zap, FolderOpen, X } from "lucide-react";
+import { Trash2 as Trash, Plus, Zap, FolderOpen, X, Copy } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
+import { baseSessionTitle } from "./sessionDisplay";
 import type { UsageState } from "./types";
 
 interface ChatHeaderProps {
   sessionId: string | null;
+  sessionTitle?: string | null;
+  sessionModel?: string | null;
   usage: UsageState | null;
   fastMode: boolean;
   hasMessages: boolean;
@@ -21,16 +24,28 @@ interface ChatHeaderProps {
 }
 
 function UsageBadge({ usage }: { usage: UsageState }): React.JSX.Element {
-  const tooltip =
-    `Prompt: ${usage.promptTokens.toLocaleString()} | ` +
-    `Completion: ${usage.completionTokens.toLocaleString()}` +
-    (usage.cost != null ? ` | Cost: $${usage.cost.toFixed(4)}` : "");
+  const parts = [
+    `Prompt: ${usage.promptTokens.toLocaleString()}`,
+    `Completion: ${usage.completionTokens.toLocaleString()}`,
+  ];
+  if (usage.calls) parts.push(`Calls: ${usage.calls}`);
+  if (usage.reasoning) parts.push(`Reasoning: ${usage.reasoning.toLocaleString()}`);
+  if (usage.cacheRead) parts.push(`Cache read: ${usage.cacheRead.toLocaleString()}`);
+  if (usage.cacheWrite) parts.push(`Cache write: ${usage.cacheWrite.toLocaleString()}`);
+  if (usage.contextUsed && usage.contextMax) {
+    parts.push(`Context: ${usage.contextUsed.toLocaleString()} / ${usage.contextMax.toLocaleString()}`);
+  }
+  if (usage.cost != null) parts.push(`Cost: $${usage.cost.toFixed(4)}`);
+  const tooltip = parts.join(" | ");
 
   return (
     <span className="chat-token-counter" title={tooltip}>
       {usage.totalTokens.toLocaleString()} tokens
       {usage.cost != null && (
         <span className="chat-cost"> · ${usage.cost.toFixed(4)}</span>
+      )}
+      {usage.contextPercent != null && (
+        <span className="chat-context"> · {Math.round(usage.contextPercent)}%</span>
       )}
     </span>
   );
@@ -44,6 +59,8 @@ function folderName(p: string): string {
 
 export const ChatHeader = memo(function ChatHeader({
   sessionId,
+  sessionTitle,
+  sessionModel,
   usage,
   fastMode,
   hasMessages,
@@ -56,15 +73,31 @@ export const ChatHeader = memo(function ChatHeader({
   onClear,
 }: ChatHeaderProps): React.JSX.Element {
   const { t } = useI18n();
+  const displayTitle = baseSessionTitle(sessionTitle);
 
   return (
-    <div className="chat-header">
+    <div className="chat-header drag-surface" data-tauri-drag-region>
       <div className="chat-header-left">
         <div className="chat-header-title">
-          {sessionId
-            ? t("chat.sessionTitle", { id: sessionId.slice(-6) })
-            : t("chat.title")}
+          {displayTitle
+            || (sessionId
+              ? t("chat.sessionTitle", { id: sessionId.slice(-6) })
+              : t("chat.title"))}
+          {sessionId && (
+            <button
+              className="btn-ghost chat-copy-id-btn"
+              onClick={() => {
+                void window.hermesAPI.copyToClipboard(sessionId);
+              }}
+              title={sessionId}
+            >
+              <Copy size={12} />
+            </button>
+          )}
         </div>
+        {sessionModel && (
+          <span className="chat-session-model-badge">{sessionModel}</span>
+        )}
         {usage && <UsageBadge usage={usage} />}
       </div>
       <div className="chat-header-actions">

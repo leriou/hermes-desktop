@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus,
   Refresh,
@@ -11,82 +11,15 @@ import {
   RotateCcw,
   Sparkles,
 } from "../../assets/icons";
+import type {
+  KanbanTask,
+  KanbanBoard,
+  KanbanTaskDetail,
+} from "../../../../shared/api-types";
 
 interface KanbanProps {
   profile?: string;
   visible?: boolean;
-}
-
-interface KanbanTask {
-  id: string;
-  title: string;
-  body: string | null;
-  assignee: string | null;
-  status: string;
-  priority: number;
-  tenant: string | null;
-  workspace_kind: string;
-  workspace_path: string | null;
-  created_by: string | null;
-  created_at: number | null;
-  started_at: number | null;
-  completed_at: number | null;
-  result: string | null;
-  skills: string[];
-  max_retries: number | null;
-}
-
-interface KanbanBoard {
-  slug: string;
-  name: string;
-  description?: string | null;
-  icon?: string | null;
-  color?: string | null;
-  is_current: boolean;
-  archived?: boolean;
-  total: number;
-  counts: Record<string, number>;
-  db_path?: string;
-}
-
-interface KanbanComment {
-  id: number;
-  task_id: string;
-  author: string | null;
-  body: string;
-  created_at: number;
-}
-
-interface KanbanEvent {
-  id: number;
-  task_id: string;
-  kind: string;
-  payload: Record<string, unknown> | null;
-  created_at: number;
-  run_id: number | null;
-}
-
-interface KanbanRun {
-  id: number;
-  task_id: string;
-  profile: string | null;
-  status: string | null;
-  outcome: string | null;
-  summary: string | null;
-  error: string | null;
-  started_at: number | null;
-  ended_at: number | null;
-  last_heartbeat_at: number | null;
-}
-
-interface KanbanTaskDetail {
-  task: KanbanTask;
-  comments: KanbanComment[];
-  events: KanbanEvent[];
-  parents: string[];
-  children: string[];
-  runs: KanbanRun[];
-  latest_summary: string | null;
 }
 
 const COLUMNS: { key: string; label: string }[] = [
@@ -100,13 +33,8 @@ const COLUMNS: { key: string; label: string }[] = [
 
 const POLL_INTERVAL_MS = 6000;
 
-// Sentinel slug for the read-only Claw3D HQ virtual board. Distinct from any
-// real hermes-agent kanban board slug (which is bash-safe alphanumeric per
-// the backend CLI).
-const HQ_BOARD_SLUG = "__claw3d_hq__";
-
 // localStorage key for remembering which board the user last viewed across
-// sessions. Stored value is either a real board slug or HQ_BOARD_SLUG.
+// sessions. Stored value is a real board slug.
 const ACTIVE_BOARD_LS_KEY = "hermes:kanban:active-board";
 
 function readStoredActiveBoard(): string | null {
@@ -150,20 +78,11 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
-  // When the Claw3D HQ virtual board is active we route reads to the
-  // task-store JSON on the remote (via kanbanListClaw3dHqTasks) and hide all
-  // mutation affordances. Initialized from localStorage so the user's last
-  // selection survives reloads; null means "follow the real boards'
-  // is_current" until autoDefaultRef below decides otherwise.
+  // Initialized from localStorage so the user's last selection survives reloads.
   const [activeBoardSlug, setActiveBoardSlug] = useState<string | null>(
     readStoredActiveBoard,
   );
-  const isHqActive = activeBoardSlug === HQ_BOARD_SLUG;
-  const [hqAvailable, setHqAvailable] = useState(false);
-  // One-shot guard: only auto-default to HQ on the first loadAll. After
-  // that, respect the user's explicit choice (including switching back to
-  // Default), and never re-jump them to HQ on subsequent refreshes.
-  const autoDefaultedRef = useRef(false);
+  const isHqActive = false;
 
   // Create task form
   const [newTitle, setNewTitle] = useState("");
@@ -187,23 +106,12 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
     async (silent = false): Promise<void> => {
       if (!silent) setLoading(true);
       try {
-        // Always refresh the real boards list, plus either the active real
-        // board's tasks OR the Claw3D HQ tasks depending on which is selected.
-        const wantHq = activeBoardSlug === HQ_BOARD_SLUG;
-        type TasksRes = {
-          success: boolean;
-          data?: KanbanTask[];
-          error?: string;
-        };
-        const [boardsRes, tasksRes, hqRes] = await Promise.all([
+        const [boardsRes, tasksRes] = await Promise.all([
           window.hermesAPI.kanbanListBoards(false, profile),
-          wantHq
-            ? Promise.resolve<TasksRes>({ success: true, data: [] })
-            : window.hermesAPI.kanbanListTasks({
-                includeArchived: false,
-                profile,
-              }),
-          window.hermesAPI.kanbanListClaw3dHqTasks(),
+          window.hermesAPI.kanbanListTasks({
+            includeArchived: false,
+            profile,
+          }),
         ]);
         if (!boardsRes.success) {
           // Only the genuine unsupported-mode result (plain remote HTTP)
@@ -218,40 +126,14 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
           setError(boardsRes.error || "Failed to load boards");
           return;
         }
-        // HQ availability: we treat the board as available whenever the SSH
-        // reader succeeds (even with zero tasks — that's a valid empty board).
-        // Failure (not in SSH mode, file unreadable) → hide the chip entirely.
-        const hqOk = hqRes.success;
-        const hqTasks = hqOk ? hqRes.data || [] : [];
-        setHqAvailable(hqOk);
         setRemoteUnsupported(false);
         setBoards(boardsRes.data || []);
 
-        // One-shot auto-default to HQ: if this is the first load AND the
-        // user has no stored preference AND HQ is available, jump straight
-        // to HQ. `hqOk` already implies SSH tunnel mode (the SSH reader
-        // only succeeds when conn.mode === "ssh"), so this also satisfies
-        // "if I'm running tunnel mode, use tunnel not default". After this
-        // one-shot fires, respect the user's explicit choice — never
-        // re-jump them on subsequent refreshes.
-        if (!autoDefaultedRef.current && activeBoardSlug === null && hqOk) {
-          autoDefaultedRef.current = true;
-          setActiveBoardSlug(HQ_BOARD_SLUG);
-          setTasks(hqTasks);
-          setError("");
+        if (!tasksRes.success) {
+          setError(tasksRes.error || "Failed to load tasks");
           return;
         }
-        autoDefaultedRef.current = true;
-
-        if (wantHq) {
-          setTasks(hqTasks);
-        } else {
-          if (!tasksRes.success) {
-            setError(tasksRes.error || "Failed to load tasks");
-            return;
-          }
-          setTasks(tasksRes.data || []);
-        }
+        setTasks(tasksRes.data || []);
         setError("");
       } catch (e) {
         setError((e as Error).message);
@@ -259,7 +141,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
         if (!silent) setLoading(false);
       }
     },
-    [profile, activeBoardSlug],
+    [profile],
   );
 
   useEffect(() => {
@@ -282,7 +164,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
   useEffect(() => {
     if (!showCreate) return;
     window.hermesAPI.listProfiles().then((profiles) => {
-      setProfileOptions(profiles.map((p) => p.name));
+      setProfileOptions((profiles ?? []).map((p) => p.name));
     });
   }, [showCreate]);
 
@@ -382,14 +264,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
   }
 
   async function handleBoardSwitch(slug: string): Promise<void> {
-    // HQ is a virtual, renderer-only view; don't call the backend switch RPC.
-    if (slug === HQ_BOARD_SLUG) {
-      if (isHqActive) return;
-      setActiveBoardSlug(HQ_BOARD_SLUG);
-      setDetailTaskId(null);
-      return;
-    }
-    if (currentBoard?.slug === slug && !isHqActive) return;
+    if (currentBoard?.slug === slug) return;
     setActionBusy("board-switch");
     const res = await window.hermesAPI.kanbanSwitchBoard(slug, profile);
     setActionBusy(null);
@@ -591,7 +466,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
         </div>
       </div>
 
-      {(boards.length > 0 || hqAvailable) && (
+      {boards.length > 0 && (
         <div className="kanban-boards-bar">
           {boards.map((b) => {
             const active = isHqActive ? false : b.is_current;
@@ -611,32 +486,13 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
               </button>
             );
           })}
-          {hqAvailable && (
-            <button
-              key={HQ_BOARD_SLUG}
-              className={`kanban-board-chip${
-                isHqActive ? " kanban-board-chip-active" : ""
-              }`}
-              onClick={() => handleBoardSwitch(HQ_BOARD_SLUG)}
-              disabled={actionBusy === "board-switch"}
-              title="Claw3D headquarters board (read-only mirror)"
-            >
-              {isHqActive && <span className="kanban-board-dot" />}
-              <span>HQ (Claw3D)</span>
-              <span className="kanban-board-count">
-                {isHqActive ? tasks.length : ""}
-              </span>
-            </button>
-          )}
-          {!isHqActive && (
-            <button
-              className="kanban-board-chip kanban-board-chip-add"
-              onClick={() => setShowNewBoard(true)}
-            >
-              <Plus size={12} />
-              New board
-            </button>
-          )}
+          <button
+            className="kanban-board-chip kanban-board-chip-add"
+            onClick={() => setShowNewBoard(true)}
+          >
+            <Plus size={12} />
+            New board
+          </button>
         </div>
       )}
 
@@ -650,13 +506,6 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
           >
             <X size={14} />
           </button>
-        </div>
-      )}
-
-      {isHqActive && (
-        <div className="kanban-hq-banner">
-          Read-only mirror of Claw3D&apos;s headquarters board. Edits made here
-          would not sync — use the Office screen to manage HQ tasks.
         </div>
       )}
 

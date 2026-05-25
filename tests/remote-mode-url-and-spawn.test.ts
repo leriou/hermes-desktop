@@ -48,14 +48,14 @@ vi.mock("../src/main/config", () => ({
       port: 22,
       username: "",
       keyPath: "",
-      remotePort: 8642,
-      localPort: 18642,
+      remotePort: 8765,
+      localPort: 18765,
     },
   }),
 }));
 
 vi.mock("../src/main/ssh-tunnel", () => ({
-  getSshTunnelUrl: () => "http://localhost:18642",
+  getSshTunnelUrl: () => "http://localhost:18765",
   isSshTunnelActive: () => true,
   isSshTunnelHealthy: () => Promise.resolve(true),
   startSshTunnel: () => Promise.resolve(),
@@ -98,8 +98,8 @@ import http from "http";
 
 describe("normaliseRemoteUrl", () => {
   it("strips a trailing /v1 segment so callers don't double it", () => {
-    expect(normaliseRemoteUrl("http://127.0.0.1:8642/v1")).toBe(
-      "http://127.0.0.1:8642",
+    expect(normaliseRemoteUrl("http://127.0.0.1:8765/v1")).toBe(
+      "http://127.0.0.1:8765",
     );
     expect(normaliseRemoteUrl("https://api.example.com/v1")).toBe(
       "https://api.example.com",
@@ -107,35 +107,35 @@ describe("normaliseRemoteUrl", () => {
   });
 
   it("strips trailing slashes", () => {
-    expect(normaliseRemoteUrl("http://127.0.0.1:8642/")).toBe(
-      "http://127.0.0.1:8642",
+    expect(normaliseRemoteUrl("http://127.0.0.1:8765/")).toBe(
+      "http://127.0.0.1:8765",
     );
-    expect(normaliseRemoteUrl("http://127.0.0.1:8642///")).toBe(
-      "http://127.0.0.1:8642",
+    expect(normaliseRemoteUrl("http://127.0.0.1:8765///")).toBe(
+      "http://127.0.0.1:8765",
     );
   });
 
   it("strips trailing /v1/ (slash-suffixed)", () => {
-    expect(normaliseRemoteUrl("http://127.0.0.1:8642/v1/")).toBe(
-      "http://127.0.0.1:8642",
+    expect(normaliseRemoteUrl("http://127.0.0.1:8765/v1/")).toBe(
+      "http://127.0.0.1:8765",
     );
   });
 
   it("is case-insensitive on the /v1 segment", () => {
-    expect(normaliseRemoteUrl("http://127.0.0.1:8642/V1")).toBe(
-      "http://127.0.0.1:8642",
+    expect(normaliseRemoteUrl("http://127.0.0.1:8765/V1")).toBe(
+      "http://127.0.0.1:8765",
     );
   });
 
   it("trims whitespace", () => {
-    expect(normaliseRemoteUrl("  http://127.0.0.1:8642  ")).toBe(
-      "http://127.0.0.1:8642",
+    expect(normaliseRemoteUrl("  http://127.0.0.1:8765  ")).toBe(
+      "http://127.0.0.1:8765",
     );
   });
 
   it("leaves a clean URL untouched", () => {
-    expect(normaliseRemoteUrl("http://127.0.0.1:8642")).toBe(
-      "http://127.0.0.1:8642",
+    expect(normaliseRemoteUrl("http://127.0.0.1:8765")).toBe(
+      "http://127.0.0.1:8765",
     );
     expect(normaliseRemoteUrl("https://api.example.com")).toBe(
       "https://api.example.com",
@@ -180,11 +180,11 @@ describe("testRemoteConnection URL probe", () => {
         } as unknown as ReturnType<typeof http.request>;
       });
 
-    await testRemoteConnection("http://127.0.0.1:8642/v1");
-    expect(capturedTarget).toBe("http://127.0.0.1:8642/health");
+    await testRemoteConnection("http://127.0.0.1:8765/v1");
+    expect(capturedTarget).toBe("http://127.0.0.1:8765/health");
 
-    await testRemoteConnection("http://127.0.0.1:8642/V1/");
-    expect(capturedTarget).toBe("http://127.0.0.1:8642/health");
+    await testRemoteConnection("http://127.0.0.1:8765/V1/");
+    expect(capturedTarget).toBe("http://127.0.0.1:8765/health");
 
     reqSpy.mockRestore();
   });

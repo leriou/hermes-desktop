@@ -24,4 +24,13 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "Disimpan sebagai environment variable. Memilih env key yang cocok berdasarkan URL, atau CUSTOM_API_KEY jika tidak ada.",
+  tabs: {
+    myModels: "My Models",
+    templates: "Templates",
+  },
+  templates: {
+    subtitle: "Built-in model templates. Click to quickly add to your library.",
+    alreadyAdded: "Added",
+    quickAdd: "Add",
+  },
 } as const;

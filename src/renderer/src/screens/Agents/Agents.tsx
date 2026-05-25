@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash, ChatBubble } from "../../assets/icons";
 import HermesLogo from "../../components/common/HermesLogo";
 import { useI18n } from "../../components/useI18n";
+import { cache } from "../../utils/prefetchCache";
 
 interface ProfileInfo {
   name: string;
@@ -51,7 +52,9 @@ function Agents({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const loadProfiles = useCallback(async (): Promise<void> => {
-    const list = await window.hermesAPI.listProfiles();
+    const list = await cache.getOrFetch("agents:profiles", 20_000, async () =>
+      (await window.hermesAPI.listProfiles()) ?? [],
+    );
     setProfiles(list);
     setLoading(false);
   }, []);
@@ -70,6 +73,7 @@ function Agents({
     if (result.success) {
       setShowCreate(false);
       setNewName("");
+      cache.invalidate("agents:profiles");
       loadProfiles();
     } else {
       setError(result.error || t("agents.createFailed"));
@@ -80,6 +84,7 @@ function Agents({
     const result = await window.hermesAPI.deleteProfile(name);
     if (result.success) {
       if (activeProfile === name) onSelectProfile("default");
+      cache.invalidate("agents:profiles");
       loadProfiles();
     }
     setConfirmDelete(null);

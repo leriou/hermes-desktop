@@ -13,4 +13,9 @@ export default {
   emptyHint: "開始聊天以建立第一個工作階段",
   messages: "則訊息",
   messageSingular: "則訊息",
+  filterAll: "全部",
+  filterType: "類型:",
+  filterMsgCount: "訊息數:",
+  filterClear: "清除",
+  parts: "部分",
 } as const;

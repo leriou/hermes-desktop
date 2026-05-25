@@ -5,6 +5,7 @@ export default {
   auto: "Auto",
   commandsTitle: "Comandos",
   typeMessage: "Escreva uma mensagem... (Shift+Enter para nova linha)",
+  answerClarify: "Escreva a sua resposta...",
   quickAskTitle:
     "Pergunta Rápida (/btw) — pergunta lateral que não afectará o contexto da conversa",
   send: "Enviar",

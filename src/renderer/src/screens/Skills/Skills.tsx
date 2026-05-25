@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X, Download, Trash, Refresh } from "../../assets/icons";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { useI18n } from "../../components/useI18n";
+import { cache } from "../../utils/prefetchCache";
 
 interface InstalledSkill {
   name: string;
@@ -39,12 +40,16 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
   const searchRef = useRef<HTMLInputElement>(null);
 
   const loadInstalled = useCallback(async (): Promise<void> => {
-    const list = await window.hermesAPI.listInstalledSkills(profile);
+    const list = await cache.getOrFetch(`skills:installed:${profile ?? "default"}`, 20_000, async () =>
+      (await window.hermesAPI.listInstalledSkills(profile)) ?? [],
+    );
     setInstalledSkills(list);
   }, [profile]);
 
   const loadBundled = useCallback(async (): Promise<void> => {
-    const list = await window.hermesAPI.listBundledSkills();
+    const list = await cache.getOrFetch("skills:bundled", 120_000, async () =>
+      (await window.hermesAPI.listBundledSkills()) ?? [],
+    );
     setBundledSkills(list);
   }, []);
 
@@ -70,6 +75,7 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
     const result = await window.hermesAPI.installSkill(name, profile);
     setActionInProgress(null);
     if (result.success) {
+      cache.invalidate(`skills:installed:${profile ?? "default"}`);
       await loadInstalled();
     } else {
       setError(result.error || t("skills.installFailed"));
@@ -83,6 +89,7 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
     setActionInProgress(null);
     if (result.success) {
       setDetailSkill(null);
+      cache.invalidate(`skills:installed:${profile ?? "default"}`);
       await loadInstalled();
     } else {
       setError(result.error || t("skills.uninstallFailed"));

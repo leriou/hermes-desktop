@@ -1,12 +1,10 @@
-import { memo, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import icon from "../../assets/icon.png";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { AttachmentChip } from "../../components/AttachmentChip";
 import { useI18n } from "../../components/useI18n";
+import { Copy, Volume2 } from "../../assets/icons";
 import type { Attachment, ChatBubbleMessage, ChatMessage } from "./types";
-
-export const APPROVAL_RE =
-  /⚠️.*dangerous|requires? (your )?approval|\/approve.*\/deny|do you want (me )?to (proceed|continue|run|execute)/i;
 
 function isChatBubbleMessage(msg: ChatMessage): msg is ChatBubbleMessage {
   return (
@@ -34,38 +32,68 @@ interface MessageRowProps {
   isLoading: boolean;
   onApprove: () => void;
   onDeny: () => void;
+  lightweight?: boolean;
+}
+
+function formatMsgTime(ts?: number): string {
+  if (!ts) return "";
+  return new Date(ts).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function shortModelName(model: string): string {
+  if (model.includes("/")) model = model.split("/").pop()!;
+  if (model.startsWith("models/")) model = model.slice(7);
+  if (model.length > 28) model = model.slice(0, 26) + "…";
+  return model;
 }
 
 export const MessageRow = memo(function MessageRow({
   msg,
   isLast,
   isLoading,
-  onApprove,
-  onDeny,
+  onApprove: _onApprove,
+  onDeny: _onDeny,
+  lightweight = false,
 }: MessageRowProps): React.JSX.Element {
   const { t } = useI18n();
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(
     null,
   );
+  const [copied, setCopied] = useState(false);
 
-  // Only chat bubble messages have content/attachments
+  const handleCopy = useCallback(() => {
+    if (!isChatBubbleMessage(msg) || !msg.content) return;
+    void window.hermesAPI.copyToClipboard(msg.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [msg]);
+
+  const handleTts = useCallback(() => {
+    if (!isChatBubbleMessage(msg) || !msg.content) return;
+    window.hermesAPI.voiceTts(msg.content).catch((err) => {
+      console.warn("[TTS] voice-tts failed:", err);
+    });
+  }, [msg]);
+
   if (!isChatBubbleMessage(msg)) {
     return (
       <div className={`chat-message chat-message-${msg.role}`}>
         <HermesAvatar />
         <div className={`chat-bubble chat-bubble-${msg.role}`}>
-          {/* Reasoning/tool messages handled separately */}
         </div>
       </div>
     );
   }
 
-  const showApprovalBar =
-    msg.role === "agent" &&
-    !isLoading &&
-    isLast &&
-    APPROVAL_RE.test(msg.content);
   const hasAttachments = !!msg.attachments && msg.attachments.length > 0;
+  const isStreaming = msg.role === "agent" && isLast && isLoading;
+  const showToolbar = msg.role === "agent" && !isStreaming && !!msg.content;
+  const hasTimestamp = "timestamp" in msg && !!msg.timestamp;
+  const hasModel = msg.role === "agent" && "model" in msg && !!msg.model && !isStreaming;
 
   return (
     <div className={`chat-message chat-message-${msg.role}`}>
@@ -88,22 +116,48 @@ export const MessageRow = memo(function MessageRow({
         )}
         {msg.content &&
           (msg.role === "agent" ? (
-            <AgentMarkdown>{msg.content}</AgentMarkdown>
+            lightweight ? (
+              <div className="markdown-body" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {msg.content}
+              </div>
+            ) : (
+              <AgentMarkdown streaming={isStreaming}>{msg.content}</AgentMarkdown>
+            )
           ) : (
             msg.content
           ))}
       </div>
-      {showApprovalBar && (
-        <div className="chat-approval-bar">
-          <button
-            className="chat-approval-btn chat-approve"
-            onClick={onApprove}
-          >
-            {t("chat.approve")}
-          </button>
-          <button className="chat-approval-btn chat-deny" onClick={onDeny}>
-            {t("chat.deny")}
-          </button>
+      {!isStreaming && (showToolbar || hasTimestamp || hasModel) && (
+        <div className={`chat-bubble-toolbar${!showToolbar ? " chat-bubble-toolbar--visible" : ""}`}>
+          {showToolbar && (
+            <button
+              className="chat-toolbar-btn"
+              onClick={handleCopy}
+              title={t("chat.copy")}
+            >
+              <Copy size={13} />
+              {copied ? t("chat.copied") : ""}
+            </button>
+          )}
+          {hasTimestamp && (
+            <span className="chat-toolbar-time">
+              {formatMsgTime(msg.timestamp!)}
+            </span>
+          )}
+          {hasModel && (
+            <span className="chat-model-badge" title={msg.model}>
+              {shortModelName(msg.model!)}
+            </span>
+          )}
+          {showToolbar && (
+            <button
+              className="chat-toolbar-btn"
+              onClick={handleTts}
+              title={t("chat.tts")}
+            >
+              <Volume2 size={13} />
+            </button>
+          )}
         </div>
       )}
       {previewAttachment && previewAttachment.dataUrl && (

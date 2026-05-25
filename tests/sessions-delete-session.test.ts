@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdirSync, rmSync, existsSync } from "fs";
 
-const { TEST_HOME, DB_PATH } = vi.hoisted(() => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+const { TEST_HOME } = vi.hoisted(() => {
   const path = require("path");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const os = require("os");
   const home = path.join(
     os.tmpdir(),
@@ -12,7 +10,6 @@ const { TEST_HOME, DB_PATH } = vi.hoisted(() => {
   );
   return {
     TEST_HOME: home,
-    DB_PATH: path.join(home, "state.db"),
   };
 });
 
@@ -20,271 +17,49 @@ vi.mock("../src/main/installer", () => ({
   HERMES_HOME: TEST_HOME,
 }));
 
-// Simulate better-sqlite3 faithfully: readonly connections reject writes
-// with SQLITE_READONLY, just like the real native module.
-vi.mock("better-sqlite3", () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const fs = require("fs");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const path = require("path");
+// Mock rust-bridge to avoid native SQLite dependency
+interface SessionData {
+  id: string;
+  source: string;
+  started_at: number;
+  ended_at: number | null;
+  message_count: number;
+  model: string;
+  title: string | null;
+}
 
-  interface SessionRow {
-    id: string;
-    source: string;
-    started_at: number;
-    ended_at: number | null;
-    message_count: number;
-    model: string;
-    title: string | null;
-  }
+const mockDb = {
+  sessions: [] as SessionData[],
+};
 
-  interface MessageRow {
-    id: number;
-    session_id: string;
-    role: string;
-    content: string;
-    timestamp: number;
-  }
-
-  interface Store {
-    sessions: Map<string, SessionRow>;
-    messages: MessageRow[];
-    nextMessageId: number;
-  }
-
-  const stores = new Map<string, Store>();
-
-  function getStore(dbPath: string): Store {
-    if (!fs.existsSync(dbPath)) {
-      stores.set(dbPath, {
-        sessions: new Map<string, SessionRow>(),
-        messages: [],
-        nextMessageId: 1,
-      });
-      fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-      fs.writeFileSync(dbPath, "");
+vi.mock("../src/main/rust-bridge", () => ({
+  listSessionsFromRust: (_profile: string | undefined, limit: number, offset: number) => {
+    return mockDb.sessions.slice(offset, offset + limit);
+  },
+  deleteSessionFromRust: (_profile: string | undefined, sessionId: string) => {
+    const index = mockDb.sessions.findIndex(s => s.id === sessionId);
+    if (index >= 0) {
+      mockDb.sessions.splice(index, 1);
+      return true;
     }
+    return false;
+  },
+}));
 
-    let store = stores.get(dbPath);
-    if (!store) {
-      store = {
-        sessions: new Map<string, SessionRow>(),
-        messages: [],
-        nextMessageId: 1,
-      };
-      stores.set(dbPath, store);
-    }
-    return store;
-  }
+vi.mock("../src/main/session-cache", () => ({
+  removeSessionFromCache: vi.fn(),
+}));
 
-  class FakeStatement {
-    constructor(
-      private readonly sql: string,
-      private readonly store: Store,
-      private readonly readonlyMode: boolean,
-    ) {}
+import { deleteSession, listSessions } from "../src/main/sessions";
+import { removeSessionFromCache } from "../src/main/session-cache";
 
-    run(...args: unknown[]): { changes: number } {
-      if (this.readonlyMode) {
-        const isWrite =
-          /\b(DELETE|INSERT|UPDATE|REPLACE|DROP|CREATE|ALTER)\b/i.test(
-            this.sql,
-          );
-        if (isWrite) {
-          const err = new Error(
-            "attempt to write a readonly database",
-          ) as Error & { code: string };
-          err.code = "SQLITE_READONLY";
-          throw err;
-        }
-      }
-
-      // INSERT / REPLACE handlers (used by seedDb and production code)
-      if (
-        this.sql.includes("INSERT OR REPLACE INTO sessions") ||
-        this.sql.includes("INSERT INTO sessions")
-      ) {
-        const [id, source, startedAt, , messageCount, model, title] = args;
-        this.store.sessions.set(String(id), {
-          id: String(id),
-          source: String(source),
-          started_at: Number(startedAt),
-          ended_at: null,
-          message_count: Number(messageCount),
-          model: String(model),
-          title: title === null || title === undefined ? null : String(title),
-        });
-        return { changes: 1 };
-      }
-
-      if (this.sql.includes("INSERT INTO messages")) {
-        const [sessionId, role, content, timestamp] = args;
-        this.store.messages.push({
-          id: this.store.nextMessageId++,
-          session_id: String(sessionId),
-          role: String(role),
-          content: String(content),
-          timestamp: Number(timestamp),
-        });
-        return { changes: 1 };
-      }
-
-      if (this.sql.includes("DELETE FROM messages")) {
-        const sessionId = String(args[0]);
-        const before = this.store.messages.length;
-        this.store.messages = this.store.messages.filter(
-          (m) => m.session_id !== sessionId,
-        );
-        return { changes: before - this.store.messages.length };
-      }
-
-      if (this.sql.includes("DELETE FROM sessions")) {
-        const sessionId = String(args[0]);
-        const existed = this.store.sessions.has(sessionId);
-        this.store.sessions.delete(sessionId);
-        return { changes: existed ? 1 : 0 };
-      }
-
-      throw new Error(`Unhandled fake run SQL: ${this.sql}`);
-    }
-
-    all(...args: unknown[]): SessionRow[] | MessageRow[] {
-      if (this.sql.includes("FROM sessions s")) {
-        const [limit, offset] = args.map(Number);
-        return Array.from(this.store.sessions.values())
-          .sort((a, b) => b.started_at - a.started_at)
-          .slice(offset, offset + limit);
-      }
-
-      if (this.sql.includes("FROM messages")) {
-        const sessionId = String(args[0]);
-        return this.store.messages
-          .filter(
-            (m) =>
-              m.session_id === sessionId &&
-              ["user", "assistant"].includes(m.role) &&
-              m.content !== null,
-          )
-          .sort((a, b) => a.timestamp - b.timestamp || a.id - b.id);
-      }
-
-      throw new Error(`Unhandled fake all SQL: ${this.sql}`);
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    get(..._args: unknown[]): unknown {
-      throw new Error(`Unhandled fake get SQL: ${this.sql}`);
-    }
-  }
-
-  class FakeDatabase {
-    private readonly store: Store;
-    private readonly readonlyMode: boolean;
-
-    constructor(dbPath: string, options?: { readonly?: boolean }) {
-      this.store = getStore(dbPath);
-      this.readonlyMode = options?.readonly === true;
-    }
-
-    exec(): void {
-      /* no-op */
-    }
-
-    prepare(sql: string): FakeStatement {
-      return new FakeStatement(sql, this.store, this.readonlyMode);
-    }
-
-    // better-sqlite3's `transaction(fn)` returns a callable that runs
-    // `fn` inside a transaction. The fake doesn't need real atomicity —
-    // a synchronous passthrough is enough for deleteSession's two-step
-    // delete. Previously absent, which broke deleteSession's tests.
-    transaction<T extends (...args: never[]) => unknown>(fn: T): T {
-      return ((...args: never[]) => fn(...args)) as T;
-    }
-
-    close(): void {
-      /* no-op */
-    }
-  }
-
-  return { default: FakeDatabase };
-});
-
-import Database from "better-sqlite3";
-import {
-  deleteSession,
-  listSessions,
-  getSessionMessages,
-} from "../src/main/sessions";
-
-function seedDb(
-  sessions: Array<{
-    id: string;
-    started_at: number;
-    source?: string;
-    message_count?: number;
-    model?: string;
-    title?: string | null;
-    messages?: Array<{
-      role: "user" | "assistant";
-      content: string;
-      timestamp: number;
-    }>;
-  }>,
-): void {
-  mkdirSync(TEST_HOME, { recursive: true });
-  const db = new Database(DB_PATH);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      source TEXT,
-      started_at INTEGER,
-      ended_at INTEGER,
-      message_count INTEGER,
-      model TEXT,
-      title TEXT
-    );
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT,
-      role TEXT,
-      content TEXT,
-      tool_call_id TEXT,
-      tool_calls TEXT,
-      tool_name TEXT,
-      timestamp INTEGER,
-      reasoning TEXT,
-      reasoning_content TEXT,
-      reasoning_details TEXT
-    );
-  `);
-  const insSession = db.prepare(
-    `INSERT OR REPLACE INTO sessions (id, source, started_at, ended_at, message_count, model, title)
-     VALUES (?, ?, ?, NULL, ?, ?, ?)`,
-  );
-  const insMessage = db.prepare(
-    `INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)`,
-  );
-  for (const s of sessions) {
-    insSession.run(
-      s.id,
-      s.source ?? "cli",
-      s.started_at,
-      s.message_count ?? s.messages?.length ?? 0,
-      s.model ?? "gpt-4o",
-      s.title ?? null,
-    );
-    if (s.messages) {
-      for (const msg of s.messages) {
-        insMessage.run(s.id, msg.role, msg.content, msg.timestamp);
-      }
-    }
-  }
-  db.close();
+function seedDb(sessions: SessionData[]): void {
+  mockDb.sessions = [...sessions];
 }
 
 beforeEach(() => {
   mkdirSync(TEST_HOME, { recursive: true });
+  mockDb.sessions = [];
 });
 
 afterEach(() => {
@@ -295,22 +70,25 @@ afterEach(() => {
 
 describe("deleteSession", () => {
   it("deletes the session and all its messages from the database", () => {
-    const now = Math.floor(Date.now() / 1000);
+    const now = Date.now();
     seedDb([
       {
         id: "session-to-delete",
-        started_at: now,
-        message_count: 2,
-        messages: [
-          { role: "user", content: "hello", timestamp: now },
-          { role: "assistant", content: "hi there", timestamp: now + 1 },
-        ],
+        source: "cli",
+        started_at: now - 1000,
+        ended_at: now,
+        message_count: 5,
+        model: "gpt-4o",
+        title: "Session to delete",
       },
       {
-        id: "session-to-keep",
-        started_at: now + 10,
-        message_count: 1,
-        messages: [{ role: "user", content: "keep me", timestamp: now + 10 }],
+        id: "other-session",
+        source: "cli",
+        started_at: now - 500,
+        ended_at: now,
+        message_count: 3,
+        model: "gpt-4o",
+        title: "Other session",
       },
     ]);
 
@@ -318,33 +96,32 @@ describe("deleteSession", () => {
     const beforeSessions = listSessions();
     expect(beforeSessions).toHaveLength(2);
     expect(beforeSessions.map((s) => s.id).sort()).toEqual([
+      "other-session",
       "session-to-delete",
-      "session-to-keep",
     ]);
 
-    const beforeMessages = getSessionMessages("session-to-delete");
-    expect(beforeMessages).toHaveLength(2);
+    // Perform deletion
+    deleteSession("session-to-delete");
 
-    // Act: delete the session
-    expect(() => deleteSession("session-to-delete")).not.toThrow();
-
-    // Assert: target session gone, other session untouched
+    // Verify: session is gone from database
     const afterSessions = listSessions();
     expect(afterSessions).toHaveLength(1);
-    expect(afterSessions[0].id).toBe("session-to-keep");
+    expect(afterSessions[0].id).toBe("other-session");
 
-    const deletedMessages = getSessionMessages("session-to-delete");
-    expect(deletedMessages).toHaveLength(0);
+    // Verify: cache removal was also called
+    expect(removeSessionFromCache).toHaveBeenCalledWith("session-to-delete");
   });
 
   it("does nothing when deleting a non-existent session", () => {
-    const now = Math.floor(Date.now() / 1000);
     seedDb([
       {
-        id: "real-session",
-        started_at: now,
+        id: "s1",
+        source: "cli",
+        started_at: Date.now(),
+        ended_at: null,
         message_count: 1,
-        messages: [{ role: "user", content: "real", timestamp: now }],
+        model: "m",
+        title: "t",
       },
     ]);
 
@@ -352,16 +129,13 @@ describe("deleteSession", () => {
     expect(beforeSessions).toHaveLength(1);
 
     // Deleting a non-existent session should not throw
-    expect(() => deleteSession("nonexistent")).not.toThrow();
+    deleteSession("no-such-session");
 
-    // Existing session should still be there
     const afterSessions = listSessions();
     expect(afterSessions).toHaveLength(1);
-    expect(afterSessions[0].id).toBe("real-session");
-  });
-
-  it("returns early when the database file does not exist", () => {
-    // No DB seeded — HERMES_HOME/state.db doesn't exist
-    expect(() => deleteSession("any-session")).not.toThrow();
+    expect(afterSessions[0].id).toBe("s1");
+    
+    // Cache removal still called (defensive)
+    expect(removeSessionFromCache).toHaveBeenCalledWith("no-such-session");
   });
 });

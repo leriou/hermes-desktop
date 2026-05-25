@@ -13,4 +13,9 @@ export default {
   emptyHint: "开始聊天以创建第一条会话",
   messages: "条消息",
   messageSingular: "条消息",
+  filterAll: "全部",
+  filterType: "类型:",
+  filterMsgCount: "消息数:",
+  filterClear: "清除",
+  parts: "部分",
 } as const;

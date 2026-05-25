@@ -9,14 +9,11 @@ import {
   Download,
   Upload,
   FileText,
-  Send,
 } from "lucide-react";
 import {
   getAnalyticsConsent,
   setAnalyticsConsent,
 } from "../../utils/analytics";
-
-const TELEGRAM_COMMUNITY_URL = "https://t.me/hermes_agent_desktop";
 
 const LANGUAGE_NATIVE_NAMES: Record<AppLocale, string> = {
   en: "English",
@@ -49,15 +46,6 @@ function getCachedVersion(): string | null {
   }
 }
 
-function getCachedOpenClaw(): { found: boolean; path: string | null } | null {
-  try {
-    const raw = localStorage.getItem("hermes-openclaw-cache");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
 function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const { t, locale, setLocale } = useI18n();
   const [hermesHome, setHermesHome] = useState("");
@@ -75,25 +63,6 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const [updateResultType, setUpdateResultType] = useState<
     "success" | "error" | null
   >(null);
-
-  // OpenClaw migration — initialize from localStorage cache
-  const cachedClaw = getCachedOpenClaw();
-  const [openclawFound, setOpenclawFound] = useState(
-    cachedClaw?.found ?? false,
-  );
-  const [openclawPath, setOpenclawPath] = useState<string | null>(
-    cachedClaw?.path ?? null,
-  );
-  const [migrationDismissed, setMigrationDismissed] = useState(
-    () => localStorage.getItem("hermes-openclaw-dismissed") === "true",
-  );
-  const [migrating, setMigrating] = useState(false);
-  const [migrationLog, setMigrationLog] = useState("");
-  const [migrationResult, setMigrationResult] = useState<string | null>(null);
-  const [migrationResultType, setMigrationResultType] = useState<
-    "success" | "error" | null
-  >(null);
-  const migrationLogRef = useRef<HTMLPreElement>(null);
 
   // Connection mode
   const [connMode, setConnMode] = useState<"local" | "remote" | "ssh">("local");
@@ -122,7 +91,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const [logContent, setLogContent] = useState("");
   const [logFile, setLogFile] = useState("gateway.log");
   const [logPath, setLogPath] = useState("");
-  const [logsExpanded, setLogsExpanded] = useState(false);
+  const [logsExpanded, setLogsExpanded] = useState(true);
 
   // Network settings
   const [forceIpv4, setForceIpv4] = useState(false);
@@ -179,58 +148,19 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
         }
       }
     });
-
-    if (localStorage.getItem("hermes-openclaw-dismissed") !== "true") {
-      window.hermesAPI.checkOpenClaw().then((claw) => {
-        setOpenclawFound(claw.found);
-        setOpenclawPath(claw.path);
-        try {
-          localStorage.setItem("hermes-openclaw-cache", JSON.stringify(claw));
-        } catch {
-          /* ignore */
-        }
-      });
-    }
   }, [profile]);
 
   useEffect(() => {
     void Promise.resolve().then(loadConfig);
   }, [loadConfig]);
 
-  async function handleMigrate(): Promise<void> {
-    setMigrating(true);
-    setMigrationLog("");
-    setMigrationResult(null);
-
-    const cleanup = window.hermesAPI.onInstallProgress((p) => {
-      setMigrationLog(p.log);
+  // Load logs on mount since the section is expanded by default
+  useEffect(() => {
+    window.hermesAPI.readLogs(logFile, 300).then((result) => {
+      setLogContent(result.content);
+      setLogPath(result.path);
     });
-
-    try {
-      const result = await window.hermesAPI.runClawMigrate();
-      cleanup();
-      if (result.success) {
-        setMigrationResult(t("settings.migrationComplete"));
-        setMigrationResultType("success");
-        setOpenclawFound(false);
-      } else {
-        setMigrationResult(result.error || t("settings.migrationFailed"));
-        setMigrationResultType("error");
-      }
-    } catch (err) {
-      cleanup();
-      setMigrationResult(
-        (err as Error).message || t("settings.migrationFailed"),
-      );
-      setMigrationResultType("error");
-    }
-    setMigrating(false);
-  }
-
-  function handleDismissMigration(): void {
-    localStorage.setItem("hermes-openclaw-dismissed", "true");
-    setMigrationDismissed(true);
-  }
+  }, []);
 
   function getConnectionApiKeyForSave(): string | undefined {
     // Mask sentinel in the field means "the secret is still server-side
@@ -252,8 +182,8 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
         parseInt(sshPort, 10) || 22,
         sshUser.trim(),
         sshKeyPath.trim(),
-        parseInt(sshRemotePort, 10) || 8642,
-        18642,
+        parseInt(sshRemotePort, 10) || 8765,
+        18765,
       );
     } else {
       const apiKey = getConnectionApiKeyForSave();
@@ -291,7 +221,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
         parseInt(sshPort, 10) || 22,
         sshUser.trim(),
         sshKeyPath.trim(),
-        parseInt(sshRemotePort, 10) || 8642,
+        parseInt(sshRemotePort, 10) || 8765,
       );
       setConnTesting(false);
       setConnStatus(ok ? "SSH tunnel connected!" : "Could not connect via SSH");
@@ -550,28 +480,6 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">Community</div>
-        <div className="settings-field">
-          <div className="settings-field-hint" style={{ marginBottom: 10 }}>
-            Join our Telegram group to ask questions, report issues, and chat
-            with other Hermes users.
-          </div>
-          <div className="settings-hermes-actions">
-            <button
-              className="btn btn-secondary"
-              onClick={() =>
-                window.hermesAPI.openExternal(TELEGRAM_COMMUNITY_URL)
-              }
-              title={TELEGRAM_COMMUNITY_URL}
-            >
-              <Send size={14} style={{ marginRight: 6 }} />
-              Join Telegram Community
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="settings-section">
         <div className="settings-section-title">
           {t("settings.connectionSection")}
           {connStatus && (
@@ -628,7 +536,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
                 type="url"
                 value={connRemoteUrl}
                 onChange={(e) => setConnRemoteUrl(e.target.value)}
-                placeholder="http://192.168.1.100:8642"
+                placeholder="http://192.168.1.100:8765"
                 onBlur={handleSaveConnection}
               />
               <div className="settings-field-hint">
@@ -727,7 +635,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
               <label className="settings-field-label">
                 Remote Hermes Port{" "}
                 <span style={{ fontWeight: 400, opacity: 0.6 }}>
-                  (default 8642)
+                  (default 8765)
                 </span>
               </label>
               <input
@@ -735,7 +643,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
                 type="number"
                 value={sshRemotePort}
                 onChange={(e) => setSshRemotePort(e.target.value)}
-                placeholder="8642"
+                placeholder="8765"
               />
               <div className="settings-field-hint">
                 Make sure you can run{" "}
@@ -768,62 +676,6 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
           </>
         )}
       </div>
-
-      {openclawFound && !migrationDismissed && (
-        <div className="settings-migration-banner">
-          <div className="settings-migration-header">
-            <div>
-              <div className="settings-migration-title">
-                {t("settings.migrationDetected")}
-              </div>
-              <div
-                className="settings-migration-desc"
-                dangerouslySetInnerHTML={{
-                  __html: t("settings.migrationDesc", {
-                    path: openclawPath || "",
-                  }),
-                }}
-              />
-            </div>
-            <button
-              className="btn-ghost settings-migration-dismiss"
-              onClick={handleDismissMigration}
-              title={t("settings.migrationDismiss")}
-            >
-              &times;
-            </button>
-          </div>
-          {migrationLog && (
-            <pre className="settings-hermes-doctor" ref={migrationLogRef}>
-              {migrationLog}
-            </pre>
-          )}
-          {migrationResult && (
-            <div
-              className={`settings-hermes-result ${migrationResultType || "error"}`}
-            >
-              {migrationResult}
-            </div>
-          )}
-          <div className="settings-migration-actions">
-            <button
-              className="btn btn-primary "
-              onClick={handleMigrate}
-              disabled={migrating}
-            >
-              {migrating
-                ? t("settings.migrating")
-                : t("settings.migrateToHermes")}
-            </button>
-            <button
-              className="btn btn-secondary "
-              onClick={handleDismissMigration}
-            >
-              {t("settings.skip")}
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="settings-section">
         <div className="settings-section-title">
@@ -1054,7 +906,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
             <pre
               className="settings-hermes-doctor"
               style={{
-                maxHeight: 300,
+                maxHeight: 600,
                 overflow: "auto",
                 fontSize: 11,
                 whiteSpace: "pre-wrap",

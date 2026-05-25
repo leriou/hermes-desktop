@@ -10,6 +10,11 @@ interface UseLocalCommandsArgs {
   onNewChat?: () => void;
   onClear: () => void;
   addAgentMessage: (content: string) => void;
+  addStatusMessage?: (
+    title: string,
+    content?: string,
+    tone?: "info" | "success" | "warning" | "error",
+  ) => void;
 }
 
 interface UseLocalCommandsResult {
@@ -22,9 +27,18 @@ interface UseLocalCommandsResult {
 function isLocallyHandled(text: string): boolean {
   if (!text.startsWith("/")) return false;
   const cmd = text.split(/\s+/)[0].toLowerCase();
-  return SLASH_COMMANDS.some(
-    (c) => c.name === cmd && (c.local || c.category === "info"),
-  );
+  return new Set([
+    "/new",
+    "/clear",
+    "/memory",
+    "/tools",
+    "/skills",
+    "/persona",
+    "/version",
+    "/fast",
+    "/usage",
+    "/help",
+  ]).has(cmd);
 }
 
 /**
@@ -39,6 +53,7 @@ export function useLocalCommands({
   onNewChat,
   onClear,
   addAgentMessage,
+  addStatusMessage,
 }: UseLocalCommandsArgs): UseLocalCommandsResult {
   const { t } = useI18n();
   const usageRef = useRef(usage);
@@ -58,17 +73,6 @@ export function useLocalCommands({
         case "/clear":
           onClear();
           return true;
-
-        case "/model": {
-          const mc = await window.hermesAPI.getModelConfig(profile);
-          const display = mc.model || "Not set";
-          const prov = mc.provider || "auto";
-          addAgentMessage(
-            `**Current model:** \`${display}\`\n**Provider:** ${prov}` +
-              (mc.baseUrl ? `\n**Base URL:** ${mc.baseUrl}` : ""),
-          );
-          return true;
-        }
 
         case "/memory": {
           const mem = await window.hermesAPI.readMemory(profile);
@@ -196,7 +200,7 @@ export function useLocalCommands({
           return false;
       }
     },
-    [profile, t, setFastMode, onNewChat, onClear, addAgentMessage],
+    [profile, t, setFastMode, onNewChat, onClear, addAgentMessage, addStatusMessage],
   );
 
   return useMemo(

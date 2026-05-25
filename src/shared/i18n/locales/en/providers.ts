@@ -1,6 +1,22 @@
 export default {
   title: "Providers",
   subtitle: "Configure LLM providers, API keys, and credential pools",
+  tabs: {
+    model: "Model",
+    routing: "Routing",
+    apikeys: "API Keys",
+    tools: "Tools",
+    credentials: "Credentials",
+    oauth: "Subscriptions",
+  },
+  explorerTitle: "Provider Explorer",
+  selectProvider: "Select a provider",
+  baseUrlHint: "Leave default for official API, or enter a custom endpoint",
+  apiKeyHint: "Uses the saved key from API Keys tab if left empty",
+  checkModels: "Check Models",
+  cached: "cached",
+  colModel: "Model",
+  unknownHost: "Cannot reach the specified host — check the base URL",
   oauth: {
     sectionTitle: "Subscription / OAuth Plans",
     sectionHint:

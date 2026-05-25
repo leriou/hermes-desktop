@@ -1,19 +1,19 @@
 export default {
   title: "Models",
+  subtitle: "Your configured model library. Models here appear in the chat model selector.",
   searchPlaceholder: "Search models...",
   empty: "No models yet",
   noMatch: "No models match your search",
+  emptyHint:
+    "Use Providers > Model tab to discover and add models, or add manually below.",
+  addFromProviderHint: "To discover and add models from a provider, go to Providers > Model tab.",
   deleteConfirm: "Delete?",
   displayName: "Display Name",
   modelId: "Model ID",
   namePlaceholder: "e.g. Claude Sonnet 4",
   modelIdPlaceholder: "e.g. anthropic/claude-sonnet-4-20250514",
   baseUrlPlaceholder: "http://localhost:1234/v1",
-  subtitle:
-    "Manage your model library. These models will appear in the chat page model selector.",
   addModel: "Add Model",
-  emptyHint:
-    "After adding models here, you can use them in the chat page model selector. Models you configure in settings will also be automatically added here.",
   editModel: "Edit Model",
   update: "Update",
   deleteModelTitle: "Delete Model",
@@ -24,4 +24,13 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "Stored as an environment variable. Picks the matching env key based on the URL, or CUSTOM_API_KEY otherwise.",
+  tabs: {
+    myModels: "My Models",
+    templates: "Templates",
+  },
+  templates: {
+    subtitle: "Built-in model templates. Click to quickly add to your library.",
+    alreadyAdded: "Added",
+    quickAdd: "Add",
+  },
 } as const;

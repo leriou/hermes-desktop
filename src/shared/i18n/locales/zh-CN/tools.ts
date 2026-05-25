@@ -26,4 +26,11 @@ export default {
   http: "HTTP",
   stdio: "标准IO",
   disabled: "已禁用",
+  builtin: "内置",
+  plugin: "用户",
+  tabTools: "工具",
+  tabMcp: "MCP",
+  noTools: "未找到工具。",
+  noMcp: "未配置 MCP 服务器。",
+  noMcpHint: "通过 hermes mcp add <name> 添加 MCP 服务器",
 } as const;

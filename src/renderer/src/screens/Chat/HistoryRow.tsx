@@ -9,7 +9,47 @@ import type {
   ToolResultMessage,
 } from "./types";
 
-/* ── Shared primitive ─────────────────────────────────────────────────── */
+/* ── Tool category → icon mapping ──────────────────────────────────────── */
+
+interface ToolMeta {
+  icon: string;
+  label: string;
+}
+
+export function getToolMeta(name: string): ToolMeta {
+  const n = name.toLowerCase();
+  if (n === "terminal") return { icon: "\u{1F4BB}", label: "Terminal" };
+  if (n === "execute_code") return { icon: "\u{1F528}", label: "Code" };
+  if (n === "patch") return { icon: "\u{270F}\u{FE0F}", label: "Patch" };
+  if (n === "write_file") return { icon: "\u{1F4BE}", label: "Write" };
+  if (n === "read_file") return { icon: "\u{1F4C4}", label: "Read" };
+  if (n === "search_files") return { icon: "\u{1F50D}", label: "Search" };
+  if (n.includes("task_tree") || n.includes("task-tree"))
+    return { icon: "\u{1F333}", label: "Task Tree" };
+  if (n === "todo") return { icon: "\u{2611}", label: "Todo" };
+  if (n === "delegate_task") return { icon: "\u{1F465}", label: "Delegate" };
+  if (n === "memory") return { icon: "\u{1F9E0}", label: "Memory" };
+  if (n === "fact_store") return { icon: "\u{1F4CB}", label: "Fact Store" };
+  if (n.includes("byterover") || n.includes("brv_"))
+    return { icon: "\u{1F50E}", label: "ByteRover" };
+  if (n.includes("mcp_zread"))
+    return { icon: "\u{1F4DA}", label: "ZRead" };
+  if (n === "skill_view" || n === "skill_manage")
+    return { icon: "\u{1F9E9}", label: "Skill" };
+  if (n === "web_extract" || n === "web_search" || n.includes("browse"))
+    return { icon: "\u{1F310}", label: "Web" };
+  if (n === "process") return { icon: "\u{2699}", label: "Process" };
+  if (n === "relay_mcp") return { icon: "\u{1F517}", label: "Relay" };
+  if (n.includes("kanban")) return { icon: "\u{1F4CA}", label: "Kanban" };
+  if (n.includes("compress") || n.includes("compact"))
+    return { icon: "\u{1F4E6}", label: "Compress" };
+  if (n.includes("memory")) return { icon: "\u{1F9E0}", label: "Memory" };
+  if (n.includes("fact")) return { icon: "\u{1F4CB}", label: "Fact Store" };
+  if (n.includes("cron")) return { icon: "\u{23F0}", label: "Cron" };
+  return { icon: "\u{1F527}", label: name };
+}
+
+/* ── Shared collapsible primitive ─────────────────────────────────────── */
 
 interface CollapsibleSectionProps {
   variant: "reasoning" | "tool-call" | "tool-result";
@@ -86,52 +126,100 @@ export const ReasoningRow = memo(function ReasoningRow({
   );
 });
 
-/* ── Tool call ────────────────────────────────────────────────────────── */
+/* ── Compact Tool Row (merged call + result) ───────────────────────────── */
 
-function summariseArgs(args: string): string {
-  // Single-line snippet for the collapsed header — show the first ~80
-  // chars, collapse whitespace so multi-line JSON doesn't break layout.
-  const flat = args.replace(/\s+/g, " ").trim();
-  if (flat.length <= 80) return flat;
-  return flat.slice(0, 77) + "…";
+function summarise(text: string, maxLen = 120): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= maxLen) return flat;
+  return flat.slice(0, maxLen - 1) + "…";
 }
 
-export const ToolCallRow = memo(function ToolCallRow({
+export const ToolRow = memo(function ToolRow({
   msg,
+  verbose,
 }: {
   msg: ToolCallMessage;
+  verbose: boolean;
 }): React.JSX.Element {
-  const { t } = useI18n();
-  const summary = summariseArgs(msg.args);
+  const { icon, label } = getToolMeta(msg.name);
+  const hasResult = msg.result !== undefined;
+  const resultShort = hasResult ? summarise(msg.result!) : undefined;
+  const pending = !hasResult;
+
+  if (verbose) {
+    return (
+      <div className="chat-message chat-message-agent chat-message-history">
+        <HermesAvatar />
+        <CollapsibleSection
+          variant="tool-call"
+          defaultOpen={true}
+          header={
+            <span className="chat-history-label">
+              <span className="chat-tool-icon">{icon}</span>
+              <span className="chat-history-tool-name">{msg.name}</span>
+              {pending && <span className="chat-tool-pending">running…</span>}
+              {!pending && msg.success === false && (
+                <span className="chat-tool-fail">failed</span>
+              )}
+              {!pending && msg.success !== false && resultShort && (
+                <span className="chat-tool-result-short">{resultShort}</span>
+              )}
+            </span>
+          }
+        >
+          {msg.fallbackWarning && (
+            <div className="chat-fallback-warning">
+              ⚠ {msg.fallbackWarning}
+            </div>
+          )}
+          {msg.args && (
+            <div className="chat-tool-section">
+              <div className="chat-tool-section-label">Args</div>
+              <pre className="chat-history-pre chat-history-pre--code">
+                {msg.args}
+              </pre>
+            </div>
+          )}
+          {hasResult && (
+            <div className="chat-tool-section">
+              <div className="chat-tool-section-label">Result</div>
+              <pre className="chat-history-pre chat-history-pre--scroll">
+                {msg.result || "(empty)"}
+              </pre>
+            </div>
+          )}
+        </CollapsibleSection>
+      </div>
+    );
+  }
+
+  // Compact mode: one-line status bar
   return (
-    <div className="chat-message chat-message-agent chat-message-history">
-      <HermesAvatar />
-      <CollapsibleSection
-        variant="tool-call"
-        header={
-          <span className="chat-history-label">
-            <span className="chat-history-title">{t("chat.toolCall")}</span>
-            <span className="chat-history-tool-name">{msg.name}</span>
-            {summary && (
-              <span className="chat-history-tool-summary">{summary}</span>
-            )}
-          </span>
-        }
-      >
-        <pre className="chat-history-pre chat-history-pre--code">
-          {msg.args || "(no arguments)"}
-        </pre>
-      </CollapsibleSection>
-    </div>
+    <>
+      <div className={`chat-tool-row ${pending ? "chat-tool-row--pending" : msg.success === false ? "chat-tool-row--fail" : "chat-tool-row--ok"}`}>
+        <span className="chat-tool-icon">{icon}</span>
+        <span className="chat-tool-name">{label}</span>
+        {pending && <span className="chat-tool-pending">running…</span>}
+        {!pending && resultShort && (
+          <span className="chat-tool-result-inline">{resultShort}</span>
+        )}
+        {!pending && msg.success === false && (
+          <span className="chat-tool-fail">✗</span>
+        )}
+        {!pending && msg.success !== false && (
+          <span className="chat-tool-ok">✓</span>
+        )}
+      </div>
+      {msg.fallbackWarning && (
+        <div className="chat-fallback-warning">
+          ⚠ {msg.fallbackWarning}
+        </div>
+      )}
+    </>
   );
 });
 
-/* ── Tool result ──────────────────────────────────────────────────────── */
-
-function countLines(text: string): number {
-  if (!text) return 0;
-  return text.split("\n").length;
-}
+/* ── Legacy ToolResultRow (for old messages without merged data) ────── */
 
 export const ToolResultRow = memo(function ToolResultRow({
   msg,
@@ -139,7 +227,7 @@ export const ToolResultRow = memo(function ToolResultRow({
   msg: ToolResultMessage;
 }): React.JSX.Element {
   const { t } = useI18n();
-  const lines = countLines(msg.content);
+  const lines = (msg.content || "").split("\n").length;
   const hasAttachments = !!msg.attachments && msg.attachments.length > 0;
   return (
     <div className="chat-message chat-message-agent chat-message-history">

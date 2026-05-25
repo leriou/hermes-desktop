@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "fs";
 import { join } from "path";
-import Database from "better-sqlite3";
 import { profileHome, safeWriteFile } from "./utils";
+import { getSessionStatsFromRust } from "./rust-bridge";
 
 const ENTRY_DELIMITER = "\n§\n";
 const MEMORY_CHAR_LIMIT = 2200;
@@ -79,28 +79,9 @@ function getSessionStats(profile?: string): {
   totalSessions: number;
   totalMessages: number;
 } {
-  const home = profileHome(profile);
-  const dbPath = join(home, "state.db");
-  if (!existsSync(dbPath)) return { totalSessions: 0, totalMessages: 0 };
-
   try {
-    const db = new Database(dbPath, { readonly: true });
-    try {
-      const sessionRow = db
-        .prepare("SELECT COUNT(*) as count FROM sessions")
-        .get() as { count: number } | undefined;
-      const messageRow = db
-        .prepare("SELECT COUNT(*) as count FROM messages")
-        .get() as { count: number } | undefined;
-      return {
-        totalSessions: sessionRow?.count ?? 0,
-        totalMessages: messageRow?.count ?? 0,
-      };
-    } finally {
-      db.close();
-    }
-  } catch (err) {
-    console.error("[memory] getSessionStats failed:", err);
+    return getSessionStatsFromRust(profile);
+  } catch {
     return { totalSessions: 0, totalMessages: 0 };
   }
 }
@@ -202,5 +183,13 @@ export function writeUserProfile(
     };
   }
   writeFileSafe(userPath(profile), content);
+  return { success: true };
+}
+
+export function writeMemoryRaw(
+  content: string,
+  profile?: string,
+): { success: boolean; error?: string } {
+  writeFileSafe(memoryPath(profile), content);
   return { success: true };
 }

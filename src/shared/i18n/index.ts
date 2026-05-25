@@ -16,16 +16,18 @@ import toolsEn from "./locales/en/tools";
 import sessionsEn from "./locales/en/sessions";
 import modelsEn from "./locales/en/models";
 import providersEn from "./locales/en/providers";
-import officeEn from "./locales/en/office";
 import errorsEn from "./locales/en/errors";
 import schedulesEn from "./locales/en/schedules";
 import skillsEn from "./locales/en/skills";
 import gatewayEn from "./locales/en/gateway";
 import agentsEn from "./locales/en/agents";
 import soulEn from "./locales/en/soul";
+import personaEn from "./locales/en/persona";
+import pluginsEn from "./locales/en/plugins";
 import memoryEn from "./locales/en/memory";
 import installEn from "./locales/en/install";
 import constantsEn from "./locales/en/constants";
+import configEn from "./locales/en/config";
 import commonEs from "./locales/es/common";
 import navigationEs from "./locales/es/navigation";
 import welcomeEs from "./locales/es/welcome";
@@ -36,7 +38,6 @@ import toolsEs from "./locales/es/tools";
 import sessionsEs from "./locales/es/sessions";
 import modelsEs from "./locales/es/models";
 import providersEs from "./locales/es/providers";
-import officeEs from "./locales/es/office";
 import errorsEs from "./locales/es/errors";
 import schedulesEs from "./locales/es/schedules";
 import skillsEs from "./locales/es/skills";
@@ -46,6 +47,7 @@ import soulEs from "./locales/es/soul";
 import memoryEs from "./locales/es/memory";
 import installEs from "./locales/es/install";
 import constantsEs from "./locales/es/constants";
+import configEs from "./locales/es/config";
 import commonId from "./locales/id/common";
 import navigationId from "./locales/id/navigation";
 import welcomeId from "./locales/id/welcome";
@@ -56,7 +58,6 @@ import toolsId from "./locales/id/tools";
 import sessionsId from "./locales/id/sessions";
 import modelsId from "./locales/id/models";
 import providersId from "./locales/id/providers";
-import officeId from "./locales/id/office";
 import errorsId from "./locales/id/errors";
 import schedulesId from "./locales/id/schedules";
 import skillsId from "./locales/id/skills";
@@ -66,6 +67,7 @@ import soulId from "./locales/id/soul";
 import memoryId from "./locales/id/memory";
 import installId from "./locales/id/install";
 import constantsId from "./locales/id/constants";
+import configId from "./locales/id/config";
 import commonZh from "./locales/zh-CN/common";
 import navigationZh from "./locales/zh-CN/navigation";
 import welcomeZh from "./locales/zh-CN/welcome";
@@ -76,7 +78,6 @@ import toolsZh from "./locales/zh-CN/tools";
 import sessionsZh from "./locales/zh-CN/sessions";
 import modelsZh from "./locales/zh-CN/models";
 import providersZh from "./locales/zh-CN/providers";
-import officeZh from "./locales/zh-CN/office";
 import errorsZh from "./locales/zh-CN/errors";
 import schedulesZh from "./locales/zh-CN/schedules";
 import skillsZh from "./locales/zh-CN/skills";
@@ -86,6 +87,7 @@ import soulZh from "./locales/zh-CN/soul";
 import memoryZh from "./locales/zh-CN/memory";
 import installZh from "./locales/zh-CN/install";
 import constantsZh from "./locales/zh-CN/constants";
+import configZh from "./locales/zh-CN/config";
 import commonZhTw from "./locales/zh-TW/common";
 import navigationZhTw from "./locales/zh-TW/navigation";
 import welcomeZhTw from "./locales/zh-TW/welcome";
@@ -96,7 +98,6 @@ import toolsZhTw from "./locales/zh-TW/tools";
 import sessionsZhTw from "./locales/zh-TW/sessions";
 import modelsZhTw from "./locales/zh-TW/models";
 import providersZhTw from "./locales/zh-TW/providers";
-import officeZhTw from "./locales/zh-TW/office";
 import errorsZhTw from "./locales/zh-TW/errors";
 import schedulesZhTw from "./locales/zh-TW/schedules";
 import skillsZhTw from "./locales/zh-TW/skills";
@@ -106,6 +107,7 @@ import soulZhTw from "./locales/zh-TW/soul";
 import memoryZhTw from "./locales/zh-TW/memory";
 import installZhTw from "./locales/zh-TW/install";
 import constantsZhTw from "./locales/zh-TW/constants";
+import configZhTw from "./locales/zh-TW/config";
 import commonJa from "./locales/ja/common";
 import navigationJa from "./locales/ja/navigation";
 import welcomeJa from "./locales/ja/welcome";
@@ -116,7 +118,6 @@ import toolsJa from "./locales/ja/tools";
 import sessionsJa from "./locales/ja/sessions";
 import modelsJa from "./locales/ja/models";
 import providersJa from "./locales/ja/providers";
-import officeJa from "./locales/ja/office";
 import errorsJa from "./locales/ja/errors";
 import schedulesJa from "./locales/ja/schedules";
 import skillsJa from "./locales/ja/skills";
@@ -126,6 +127,7 @@ import soulJa from "./locales/ja/soul";
 import memoryJa from "./locales/ja/memory";
 import installJa from "./locales/ja/install";
 import constantsJa from "./locales/ja/constants";
+import configJa from "./locales/ja/config";
 import commonPt from "./locales/pt-BR/common";
 import navigationPt from "./locales/pt-BR/navigation";
 import welcomePt from "./locales/pt-BR/welcome";
@@ -136,7 +138,6 @@ import toolsPt from "./locales/pt-BR/tools";
 import sessionsPt from "./locales/pt-BR/sessions";
 import modelsPt from "./locales/pt-BR/models";
 import providersPt from "./locales/pt-BR/providers";
-import officePt from "./locales/pt-BR/office";
 import errorsPt from "./locales/pt-BR/errors";
 import schedulesPt from "./locales/pt-BR/schedules";
 import skillsPt from "./locales/pt-BR/skills";
@@ -146,6 +147,7 @@ import soulPt from "./locales/pt-BR/soul";
 import memoryPt from "./locales/pt-BR/memory";
 import installPt from "./locales/pt-BR/install";
 import constantsPt from "./locales/pt-BR/constants";
+import configPt from "./locales/pt-BR/config";
 import commonPtPt from "./locales/pt-PT/common";
 import navigationPtPt from "./locales/pt-PT/navigation";
 import welcomePtPt from "./locales/pt-PT/welcome";
@@ -156,7 +158,6 @@ import toolsPtPt from "./locales/pt-PT/tools";
 import sessionsPtPt from "./locales/pt-PT/sessions";
 import modelsPtPt from "./locales/pt-PT/models";
 import providersPtPt from "./locales/pt-PT/providers";
-import officePtPt from "./locales/pt-PT/office";
 import errorsPtPt from "./locales/pt-PT/errors";
 import schedulesPtPt from "./locales/pt-PT/schedules";
 import skillsPtPt from "./locales/pt-PT/skills";
@@ -166,6 +167,7 @@ import soulPtPt from "./locales/pt-PT/soul";
 import memoryPtPt from "./locales/pt-PT/memory";
 import installPtPt from "./locales/pt-PT/install";
 import constantsPtPt from "./locales/pt-PT/constants";
+import configPtPt from "./locales/pt-PT/config";
 
 export const resources = {
   en: {
@@ -180,16 +182,18 @@ export const resources = {
       sessions: sessionsEn,
       models: modelsEn,
       providers: providersEn,
-      office: officeEn,
       errors: errorsEn,
       schedules: schedulesEn,
       skills: skillsEn,
       gateway: gatewayEn,
       agents: agentsEn,
       soul: soulEn,
+      persona: personaEn,
+      plugins: pluginsEn,
       memory: memoryEn,
       install: installEn,
       constants: constantsEn,
+      config: configEn,
     },
   },
   es: {
@@ -204,16 +208,18 @@ export const resources = {
       sessions: sessionsEs,
       models: modelsEs,
       providers: providersEs,
-      office: officeEs,
       errors: errorsEs,
       schedules: schedulesEs,
       skills: skillsEs,
       gateway: gatewayEs,
       agents: agentsEs,
       soul: soulEs,
+      persona: personaEn,
+      plugins: pluginsEn,
       memory: memoryEs,
       install: installEs,
       constants: constantsEs,
+      config: configEs,
     },
   },
   id: {
@@ -228,16 +234,18 @@ export const resources = {
       sessions: sessionsId,
       models: modelsId,
       providers: providersId,
-      office: officeId,
       errors: errorsId,
       schedules: schedulesId,
       skills: skillsId,
       gateway: gatewayId,
       agents: agentsId,
       soul: soulId,
+      persona: personaEn,
+      plugins: pluginsEn,
       memory: memoryId,
       install: installId,
       constants: constantsId,
+      config: configId,
     },
   },
   "zh-CN": {
@@ -252,16 +260,18 @@ export const resources = {
       sessions: sessionsZh,
       models: modelsZh,
       providers: providersZh,
-      office: officeZh,
       errors: errorsZh,
       schedules: schedulesZh,
       skills: skillsZh,
       gateway: gatewayZh,
       agents: agentsZh,
       soul: soulZh,
+      persona: personaEn,
+      plugins: pluginsEn,
       memory: memoryZh,
       install: installZh,
       constants: constantsZh,
+      config: configZh,
     },
   },
   "zh-TW": {
@@ -276,16 +286,18 @@ export const resources = {
       sessions: sessionsZhTw,
       models: modelsZhTw,
       providers: providersZhTw,
-      office: officeZhTw,
       errors: errorsZhTw,
       schedules: schedulesZhTw,
       skills: skillsZhTw,
       gateway: gatewayZhTw,
       agents: agentsZhTw,
       soul: soulZhTw,
+      persona: personaEn,
+      plugins: pluginsEn,
       memory: memoryZhTw,
       install: installZhTw,
       constants: constantsZhTw,
+      config: configZhTw,
     },
   },
   "pt-BR": {
@@ -300,16 +312,18 @@ export const resources = {
       sessions: sessionsPt,
       models: modelsPt,
       providers: providersPt,
-      office: officePt,
       errors: errorsPt,
       schedules: schedulesPt,
       skills: skillsPt,
       gateway: gatewayPt,
       agents: agentsPt,
       soul: soulPt,
+      persona: personaEn,
+      plugins: pluginsEn,
       memory: memoryPt,
       install: installPt,
       constants: constantsPt,
+      config: configPt,
     },
   },
   "pt-PT": {
@@ -324,16 +338,18 @@ export const resources = {
       sessions: sessionsPtPt,
       models: modelsPtPt,
       providers: providersPtPt,
-      office: officePtPt,
       errors: errorsPtPt,
       schedules: schedulesPtPt,
       skills: skillsPtPt,
       gateway: gatewayPtPt,
       agents: agentsPtPt,
       soul: soulPtPt,
+      persona: personaEn,
+      plugins: pluginsEn,
       memory: memoryPtPt,
       install: installPtPt,
       constants: constantsPtPt,
+      config: configPtPt,
     },
   },
   ja: {
@@ -348,16 +364,18 @@ export const resources = {
       sessions: sessionsJa,
       models: modelsJa,
       providers: providersJa,
-      office: officeJa,
       errors: errorsJa,
       schedules: schedulesJa,
       skills: skillsJa,
       gateway: gatewayJa,
       agents: agentsJa,
       soul: soulJa,
+      persona: personaEn,
+      plugins: pluginsEn,
       memory: memoryJa,
       install: installJa,
       constants: constantsJa,
+      config: configJa,
     },
   },
 } satisfies Resource;
@@ -373,7 +391,7 @@ function readKey(node: unknown, path: string): string | undefined {
 
 let locale: AppLocale = DEFAULT_ACTIVE_LOCALE;
 
-export const sharedI18n = i18next.createInstance();
+export const sharedI18n: ReturnType<typeof i18next.createInstance> = i18next.createInstance();
 
 void sharedI18n.init({
   lng: locale,

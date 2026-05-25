@@ -37,3 +37,20 @@ release/
 # Local launcher scripts (user-specific, do not commit)
 /*.bat
 /*.ps1
+
+# Tool / agent artifacts
+.antigravitycli/
+.ccb/
+.ccb-requests/
+.codegraph/
+.codex/
+
+# Local build config
+electron-builder.local.yml
+
+# Archives
+*.zip
+
+# Rust / napi build artifacts
+packages/*/target/
+*.node

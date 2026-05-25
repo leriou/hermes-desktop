@@ -25,8 +25,8 @@ const { TEST_HOME } = vi.hoisted(() => {
 vi.mock("../src/main/installer", () => ({
   HERMES_HOME: TEST_HOME,
   HERMES_PYTHON: "/usr/bin/python3",
-  HERMES_REPO: "/dev/null",
-  hermesCliArgs: (args: string[] = []) => ["/dev/null", ...args],
+  HERMES_REPO: TEST_HOME,
+  hermesCliArgs: (args: string[]) => args,
   getEnhancedPath: () => process.env.PATH || "",
 }));
 
@@ -73,7 +73,7 @@ describe("setToolsetEnabled — platform_toolsets without cli subsection", () =>
     writeConfig("model:\n  default: gpt-4o\nplatform_toolsets:\n");
 
     const result = setToolsetEnabled("web", true);
-    expect(result).toBe(true);
+    expect(result.success).toBe(true);
 
     const after = readConfig();
     expect(after).toContain("cli:");
@@ -86,7 +86,7 @@ describe("setToolsetEnabled — platform_toolsets without cli subsection", () =>
     );
 
     const result = setToolsetEnabled("web", true);
-    expect(result).toBe(true);
+    expect(result.success).toBe(true);
 
     const after = readConfig();
     expect(after).toContain("cli:");
@@ -97,7 +97,7 @@ describe("setToolsetEnabled — platform_toolsets without cli subsection", () =>
     writeConfig("platform_toolsets:\n");
 
     const result = setToolsetEnabled("browser", true);
-    expect(result).toBe(true);
+    expect(result.success).toBe(true);
 
     const after = readConfig();
     expect(after).toContain("cli:");
@@ -116,7 +116,7 @@ describe("setToolsetEnabled — platform_toolsets without cli subsection", () =>
     );
 
     const result = setToolsetEnabled("terminal", true);
-    expect(result).toBe(true);
+    expect(result.success).toBe(true);
 
     const after = readConfig();
     expect(after).toContain("cli:");
@@ -159,7 +159,7 @@ describe("setToolsetEnabled — platform_toolsets without cli subsection", () =>
 describe("setToolsetEnabled — no config file", () => {
   it("returns false when config.yaml does not exist", () => {
     const result = setToolsetEnabled("web", true);
-    expect(result).toBe(false);
+    expect(result.success).toBe(false);
   });
 });
 
@@ -168,7 +168,7 @@ describe("setToolsetEnabled — no platform_toolsets section (C1)", () => {
     writeConfig("model:\n  default: gpt-4o\n");
 
     const result = setToolsetEnabled("vision", true);
-    expect(result).toBe(true);
+    expect(result.success).toBe(true);
 
     const after = readConfig();
     expect(after).toContain("platform_toolsets:");
@@ -261,7 +261,7 @@ describe("setToolsetEnabled — disable all (C2d)", () => {
     writeConfig(["platform_toolsets:", "  cli:", "      - web", ""].join("\n"));
 
     const result = setToolsetEnabled("web", false);
-    expect(result).toBe(true);
+    expect(result.success).toBe(true);
 
     const after = readConfig();
     expect(after).toContain("platform_toolsets:");

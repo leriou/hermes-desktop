@@ -5,6 +5,7 @@ export default {
   auto: "自動",
   commandsTitle: "コマンド",
   typeMessage: "メッセージを入力...（Shift+Enter で改行）",
+  answerClarify: "回答を入力...",
   quickAskTitle: "Quick Ask (/btw) — 会話コンテキストに影響しないサイド質問",
   send: "送信",
   custom: "カスタム",

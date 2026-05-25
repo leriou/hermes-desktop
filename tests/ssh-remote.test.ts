@@ -17,8 +17,8 @@ const sshConfig: SshConfig = {
   port: 22,
   username: "hermes",
   keyPath: "",
-  remotePort: 8642,
-  localPort: 18642,
+  remotePort: 8765,
+  localPort: 18765,
 };
 
 describe("ssh remote config writes", () => {

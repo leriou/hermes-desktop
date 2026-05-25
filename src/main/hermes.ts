@@ -24,7 +24,7 @@ import {
   startSshTunnel,
 } from "./ssh-tunnel";
 import { pidIsAliveAs, stripAnsi } from "./utils";
-import { readModels } from "./models";
+import { listModels as readModels } from "./models";
 import { HIDDEN_SUBPROCESS_OPTIONS } from "./process-options";
 import { type Attachment, escapeXmlAttr } from "../shared/attachments";
 

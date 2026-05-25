@@ -77,12 +77,6 @@ const hermesAPI = {
   runHermesUpdate: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("run-hermes-update"),
 
-  // OpenClaw migration
-  checkOpenClaw: (): Promise<{ found: boolean; path: string | null }> =>
-    ipcRenderer.invoke("check-openclaw"),
-  runClawMigrate: (): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke("run-claw-migrate"),
-
   // OAuth provider sign-in
   oauthLogin: (
     provider: string,
@@ -379,13 +373,47 @@ const hermesAPI = {
   getSessionMessages: (
     sessionId: string,
   ): Promise<
-    Array<{
-      id: number;
-      role: "user" | "assistant";
-      content: string;
-      timestamp: number;
-      attachments?: Attachment[];
-    }>
+    Array<
+      | {
+          kind: "user";
+          id: number;
+          content: string;
+          timestamp: number;
+          attachments?: Attachment[];
+        }
+      | {
+          kind: "assistant";
+          id: number;
+          content: string;
+          timestamp: number;
+          attachments?: Attachment[];
+        }
+      | {
+          kind: "reasoning";
+          id: number;
+          assistantId: number;
+          text: string;
+          timestamp: number;
+        }
+      | {
+          kind: "tool_call";
+          id: number;
+          assistantId: number;
+          callId: string;
+          name: string;
+          args: string;
+          timestamp: number;
+        }
+      | {
+          kind: "tool_result";
+          id: number;
+          callId: string;
+          name: string;
+          content: string;
+          timestamp: number;
+          attachments?: Attachment[];
+        }
+    >
   > => ipcRenderer.invoke("get-session-messages", sessionId),
 
   // Profiles
@@ -445,6 +473,11 @@ const hermesAPI = {
     profile?: string,
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("write-user-profile", content, profile),
+  writeMemory: (
+    content: string,
+    profile?: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("write-memory-raw", content, profile),
 
   // Soul
   readSoul: (profile?: string): Promise<string> =>
@@ -458,13 +491,13 @@ const hermesAPI = {
   getToolsets: (
     profile?: string,
   ): Promise<
-    Array<{ key: string; label: string; description: string; enabled: boolean }>
+    Array<{ key: string; label: string; description: string; enabled: boolean; source: string }>
   > => ipcRenderer.invoke("get-toolsets", profile),
   setToolsetEnabled: (
     key: string,
     enabled: boolean,
     profile?: string,
-  ): Promise<boolean> =>
+  ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("set-toolset-enabled", key, enabled, profile),
 
   // Skills
@@ -495,8 +528,28 @@ const hermesAPI = {
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("uninstall-skill", name, profile),
 
+  // Plugins
+  getPlugins: (
+    profile?: string,
+  ): Promise<
+    Array<{
+      name: string;
+      description: string;
+      enabled: boolean;
+      version: string;
+      source: string;
+    }>
+  > => ipcRenderer.invoke("get-plugins", profile),
+  setPluginEnabled: (
+    name: string,
+    enabled: boolean,
+    profile?: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("set-plugin-enabled", name, enabled, profile),
+
   // Session cache (fast local cache with generated titles)
   listCachedSessions: (
+    _profile?: string,
     limit?: number,
     offset?: number,
   ): Promise<
@@ -567,11 +620,32 @@ const hermesAPI = {
     }>
   > => ipcRenderer.invoke("list-models"),
 
+  listTemplates: (): Promise<
+    Array<{
+      name: string;
+      provider: string;
+      model: string;
+      baseUrl: string;
+      tags?: string[];
+    }>
+  > => ipcRenderer.invoke("list-templates"),
+
+  getModelAliases: (): Promise<
+    Array<{
+      name: string;
+      model: string;
+      provider: string;
+      baseUrl: string;
+      contextLength?: number;
+    }>
+  > => ipcRenderer.invoke("get-model-aliases"),
+
   addModel: (
     name: string,
     provider: string,
     model: string,
     baseUrl: string,
+    alias?: string,
   ): Promise<{
     id: string;
     name: string;
@@ -579,80 +653,13 @@ const hermesAPI = {
     model: string;
     baseUrl: string;
     createdAt: number;
-  }> => ipcRenderer.invoke("add-model", name, provider, model, baseUrl),
+  }> => ipcRenderer.invoke("add-model", name, provider, model, baseUrl, alias),
 
   removeModel: (id: string): Promise<boolean> =>
     ipcRenderer.invoke("remove-model", id),
 
   updateModel: (id: string, fields: Record<string, string>): Promise<boolean> =>
     ipcRenderer.invoke("update-model", id, fields),
-
-  // Claw3D
-  claw3dStatus: (): Promise<{
-    cloned: boolean;
-    installed: boolean;
-    devServerRunning: boolean;
-    adapterRunning: boolean;
-    port: number;
-    portInUse: boolean;
-    wsUrl: string;
-    running: boolean;
-    error: string;
-    remoteUrl?: string | null;
-    remoteSource?: "ssh" | null;
-  }> => ipcRenderer.invoke("claw3d-status"),
-
-  claw3dSetup: (): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke("claw3d-setup"),
-
-  onClaw3dSetupProgress: (
-    callback: (progress: {
-      step: number;
-      totalSteps: number;
-      title: string;
-      detail: string;
-      log: string;
-    }) => void,
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      progress: unknown,
-    ): void =>
-      callback(
-        progress as {
-          step: number;
-          totalSteps: number;
-          title: string;
-          detail: string;
-          log: string;
-        },
-      );
-    ipcRenderer.on("claw3d-setup-progress", handler);
-    return () => ipcRenderer.removeListener("claw3d-setup-progress", handler);
-  },
-
-  claw3dGetPort: (): Promise<number> => ipcRenderer.invoke("claw3d-get-port"),
-  claw3dSetPort: (port: number): Promise<boolean> =>
-    ipcRenderer.invoke("claw3d-set-port", port),
-  claw3dGetWsUrl: (): Promise<string> =>
-    ipcRenderer.invoke("claw3d-get-ws-url"),
-  claw3dSetWsUrl: (url: string): Promise<boolean> =>
-    ipcRenderer.invoke("claw3d-set-ws-url", url),
-
-  claw3dStartAll: (
-    profile?: string,
-  ): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke("claw3d-start-all", profile),
-  claw3dStopAll: (): Promise<boolean> => ipcRenderer.invoke("claw3d-stop-all"),
-  claw3dGetLogs: (): Promise<string> => ipcRenderer.invoke("claw3d-get-logs"),
-
-  claw3dStartDev: (): Promise<boolean> =>
-    ipcRenderer.invoke("claw3d-start-dev"),
-  claw3dStopDev: (): Promise<boolean> => ipcRenderer.invoke("claw3d-stop-dev"),
-  claw3dStartAdapter: (): Promise<boolean> =>
-    ipcRenderer.invoke("claw3d-start-adapter"),
-  claw3dStopAdapter: (): Promise<boolean> =>
-    ipcRenderer.invoke("claw3d-stop-adapter"),
 
   // Updates
   checkForUpdates: (): Promise<string | null> =>
@@ -747,6 +754,24 @@ const hermesAPI = {
       profile,
     ),
 
+  updateCronJob: (
+    jobId: string,
+    schedule?: string,
+    prompt?: string,
+    name?: string,
+    deliver?: string,
+    profile?: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(
+      "update-cron-job",
+      jobId,
+      schedule,
+      prompt,
+      name,
+      deliver,
+      profile,
+    ),
+
   removeCronJob: (
     jobId: string,
     profile?: string,
@@ -770,6 +795,23 @@ const hermesAPI = {
     profile?: string,
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("trigger-cron-job", jobId, profile),
+
+  listCronHistory: (
+    profile?: string,
+  ): Promise<
+    Array<{
+      jobId: string;
+      jobName: string;
+      runAt: string;
+      status: "ok" | "fail" | "empty";
+      size: number;
+      path: string;
+    }>
+  > => ipcRenderer.invoke("list-cron-history", profile),
+
+  readCronOutput: (
+    path: string,
+  ): Promise<string> => ipcRenderer.invoke("read-cron-output", path),
 
   // Kanban
   kanbanListBoards: (includeArchived?: boolean, profile?: string) =>
@@ -812,6 +854,8 @@ const hermesAPI = {
   ) => ipcRenderer.invoke("kanban-create-task", input, profile),
   selectFolder: (): Promise<string | null> =>
     ipcRenderer.invoke("select-folder"),
+  selectHermesFolder: (): Promise<string | null> =>
+    ipcRenderer.invoke("select-hermes-folder"),
   kanbanAssignTask: (
     taskId: string,
     assignee: string | null,
@@ -833,8 +877,6 @@ const hermesAPI = {
     ipcRenderer.invoke("kanban-comment-task", taskId, body, profile),
   kanbanDispatchOnce: (dryRun?: boolean, profile?: string) =>
     ipcRenderer.invoke("kanban-dispatch-once", dryRun, profile),
-  kanbanListClaw3dHqTasks: () =>
-    ipcRenderer.invoke("kanban-list-claw3d-hq-tasks"),
 
   // Shell
   openExternal: (url: string): Promise<void> =>
@@ -881,6 +923,109 @@ const hermesAPI = {
     lines?: number,
   ): Promise<{ content: string; path: string }> =>
     ipcRenderer.invoke("read-logs", logFile, lines),
+
+  // Routing / Fallback config
+  getRoutingConfig: (
+    profile?: string,
+  ): Promise<{
+    defaultModel: string;
+    defaultProvider: string;
+    defaultBaseUrl: string;
+    fallbacks: Array<{ model: string; provider: string }>;
+  }> => ipcRenderer.invoke("get-routing-config", profile),
+
+  setRoutingConfig: (
+    data: {
+      defaultModel?: string;
+      defaultProvider?: string;
+      defaultBaseUrl?: string;
+      fallbacks?: Array<{ model: string; provider: string }>;
+    },
+    profile?: string,
+  ): Promise<boolean> =>
+    ipcRenderer.invoke("set-routing-config", data, profile),
+
+  // Config YAML editor
+  readConfigYaml: (
+    profile?: string,
+  ): Promise<{ content: string; path: string }> =>
+    ipcRenderer.invoke("read-config-yaml", profile),
+  writeConfigYaml: (content: string, profile?: string): Promise<boolean> =>
+    ipcRenderer.invoke("write-config-yaml", content, profile),
+
+  // TUI Gateway Enhanced Features
+  tuiSlashExec: (sessionId: string, command: string): Promise<any> =>
+    ipcRenderer.invoke("tui-slash-exec", sessionId, command),
+  tuiCommandDispatch: (sessionId: string, name: string, arg?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-command-dispatch", sessionId, name, arg),
+  tuiCompress: (sessionId: string, focusTopic?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-compress", sessionId, focusTopic),
+  tuiSetGoal: (sessionId: string, goal: string): Promise<any> =>
+    ipcRenderer.invoke("tui-set-goal", sessionId, goal),
+  tuiSetModel: (sessionId: string, model: string): Promise<any> =>
+    ipcRenderer.invoke("tui-set-model", sessionId, model),
+  tuiSteer: (sessionId: string, text: string): Promise<any> =>
+    ipcRenderer.invoke("tui-steer", sessionId, text),
+  tuiCreateSession: (model?: string): Promise<{ session_id: string }> =>
+    ipcRenderer.invoke("tui-create-session", model),
+  tuiResumeSession: (sessionId: string): Promise<any> =>
+    ipcRenderer.invoke("tui-resume-session", sessionId),
+  tuiSessionHistory: (sessionId: string): Promise<any> =>
+    ipcRenderer.invoke("tui-session-history", sessionId),
+  tuiSubmitPrompt: (sessionId: string, text: string): Promise<void> =>
+    ipcRenderer.invoke("tui-submit-prompt", sessionId, text),
+  tuiInterrupt: (sessionId: string): Promise<void> =>
+    ipcRenderer.invoke("tui-interrupt", sessionId),
+  tuiUndo: (sessionId: string): Promise<void> =>
+    ipcRenderer.invoke("tui-undo", sessionId),
+
+  // TUI Gateway — tools, approval, session status, completion
+  tuiToolsList: (sessionId?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-tools-list", sessionId),
+
+  tuiToolsShow: (name?: string, sessionId?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-tools-show", name, sessionId),
+
+  tuiToolsConfigure: (name: string, enabled: boolean, sessionId?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-tools-configure", name, enabled, sessionId),
+
+  tuiApprovalRespond: (sessionId: string, response: string, all?: boolean): Promise<any> =>
+    ipcRenderer.invoke("tui-approval-respond", sessionId, response, all),
+
+  tuiClarifyRespond: (sessionId: string, answer: string, requestId?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-clarify-respond", sessionId, answer, requestId),
+
+  tuiSessionTitle: (sessionId: string): Promise<any> =>
+    ipcRenderer.invoke("tui-session-title", sessionId),
+
+  tuiSessionStatus: (sessionId: string): Promise<any> =>
+    ipcRenderer.invoke("tui-session-status", sessionId),
+
+  tuiSessionUsage: (sessionId: string): Promise<any> =>
+    ipcRenderer.invoke("tui-session-usage", sessionId),
+
+  tuiSessionBranch: (sessionId: string, name?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-session-branch", sessionId, name),
+
+  tuiCompleteSlash: (prefix: string): Promise<any> =>
+    ipcRenderer.invoke("tui-complete-slash", prefix),
+
+  tuiCommandsCatalog: (): Promise<any> =>
+    ipcRenderer.invoke("tui-commands-catalog"),
+
+  voiceTts: (text: string): Promise<any> =>
+    ipcRenderer.invoke("voice-tts", text),
+
+  onTuiEvent: (
+    callback: (params: { type: string; payload: any; sid?: string }) => void,
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      params: any,
+    ): void => callback(params);
+    ipcRenderer.on("tui-event", handler);
+    return () => ipcRenderer.removeListener("tui-event", handler);
+  },
 };
 
 if (process.contextIsolated) {

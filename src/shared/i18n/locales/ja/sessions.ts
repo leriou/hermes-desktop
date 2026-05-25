@@ -13,4 +13,9 @@ export default {
   emptyHint: "チャットを始めて最初のセッションを作りましょう",
   messages: "件",
   messageSingular: "件",
+  filterAll: "すべて",
+  filterType: "タイプ:",
+  filterMsgCount: "メッセージ:",
+  filterClear: "クリア",
+  parts: "パート",
 } as const;

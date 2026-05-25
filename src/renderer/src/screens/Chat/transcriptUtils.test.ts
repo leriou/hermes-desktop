@@ -38,4 +38,23 @@ describe("buildChatTranscript (issue #298)", () => {
     expect(buildChatTranscript([msg("agent", "x")], "text")).toBe("Hermes: x");
     expect(buildChatTranscript([msg("user", "x")], "text")).toBe("You: x");
   });
+
+  it("omits compress continuation labels and system status chips", () => {
+    const out = buildChatTranscript(
+      [
+        msg("user", "first"),
+        msg("user", "Message #2"),
+        {
+          id: "status",
+          kind: "system_status",
+          role: "agent",
+          tone: "success",
+          title: "Session compressed",
+        },
+        msg("agent", "continued"),
+      ],
+      "text",
+    );
+    expect(out).toBe("You: first\n\nHermes: continued");
+  });
 });

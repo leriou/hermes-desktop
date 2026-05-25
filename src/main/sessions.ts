@@ -1,9 +1,14 @@
-import Database from "better-sqlite3";
-import { existsSync } from "fs";
-import { activeStateDbPath } from "./utils";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
+import { join } from "path";
+import { profileHome, getActiveProfileNameSync } from "./utils";
 import type { Attachment } from "../shared/attachments";
 import { isImageMime } from "../shared/attachments";
 import { removeSessionFromCache } from "./session-cache";
+import {
+  listSessionsFromRust,
+  searchSessionsFromRust,
+  deleteSessionFromRust,
+} from "./rust-bridge";
 
 // Sentinel prefix used by hermes-agent's hermes_state.py to mark
 // JSON-encoded multimodal content in the messages.content column.
@@ -66,7 +71,7 @@ export type HistoryItem =
       assistantId: number;
       callId: string;
       name: string;
-      args: string; // pretty-printed JSON when possible, otherwise raw
+      args: string;
       timestamp: number;
     }
   | {
@@ -84,13 +89,6 @@ interface DecodedContent {
   attachments: Attachment[];
 }
 
-/**
- * Decode the agent's `messages.content` cell.  Plain strings are returned
- * verbatim; values with the agent's JSON-prefix sentinel are unpacked into
- * a text portion (concatenated `{type:"text"}` parts) plus an attachment
- * list (reconstituted from `{type:"image_url"}` parts).  Unknown or
- * malformed shapes fall through to the raw string.
- */
 export function decodeContent(raw: string, messageId: number): DecodedContent {
   if (!raw || !raw.startsWith(CONTENT_JSON_PREFIX)) {
     return { text: raw || "", attachments: [] };
@@ -168,44 +166,10 @@ export interface SearchResult {
   snippet: string;
 }
 
-function getDb(readonly = true): Database.Database | null {
-  // Open the active profile's session DB — named profiles keep their
-  // sessions under ~/.hermes/profiles/<name>/state.db (issue #311).
-  const dbPath = activeStateDbPath();
-  if (!existsSync(dbPath)) return null;
-  return new Database(dbPath, readonly ? { readonly: true } : {});
-}
-
 export function listSessions(limit = 30, offset = 0): SessionSummary[] {
-  const db = getDb();
-  if (!db) return [];
-
   try {
-    // Simple query without correlated subquery — titles come from session cache
-    const rows = db
-      .prepare(
-        `SELECT
-          s.id,
-          s.source,
-          s.started_at,
-          s.ended_at,
-          s.message_count,
-          s.model,
-          s.title
-        FROM sessions s
-        ORDER BY s.started_at DESC
-        LIMIT ? OFFSET ?`,
-      )
-      .all(limit, offset) as Array<{
-      id: string;
-      source: string;
-      started_at: number;
-      ended_at: number | null;
-      message_count: number;
-      model: string;
-      title: string | null;
-    }>;
-
+    const profile = getActiveProfileNameSync();
+    const rows = listSessionsFromRust(profile, limit, offset);
     return rows.map((r) => ({
       id: r.id,
       source: r.source,
@@ -216,75 +180,17 @@ export function listSessions(limit = 30, offset = 0): SessionSummary[] {
       title: r.title,
       preview: "",
     }));
-  } finally {
-    db.close();
+  } catch {
+    return [];
   }
 }
 
 export function searchSessions(query: string, limit = 20): SearchResult[] {
-  const db = getDb();
-  if (!db) return [];
-
   try {
-    // Check if FTS table exists
-    const tableCheck = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='messages_fts'",
-      )
-      .get() as { name: string } | undefined;
-
-    if (!tableCheck) return [];
-
-    // Sanitize query for FTS5: wrap each word with quotes for safety, add * for prefix
-    const sanitized = query
-      .trim()
-      .split(/\s+/)
-      .filter((w) => w.length > 0)
-      .map((w) => `"${w.replace(/"/g, "")}"*`)
-      .join(" ");
-
-    if (!sanitized) return [];
-
-    const rows = db
-      .prepare(
-        `SELECT DISTINCT
-          m.session_id,
-          s.title,
-          s.started_at,
-          s.source,
-          s.message_count,
-          s.model,
-          snippet(messages_fts, 0, '<<', '>>', '...', 40) as snippet
-        FROM messages_fts
-        JOIN messages m ON m.id = messages_fts.rowid
-        JOIN sessions s ON s.id = m.session_id
-        WHERE messages_fts MATCH ?
-        ORDER BY rank
-        LIMIT ?`,
-      )
-      .all(sanitized, limit) as Array<{
-      session_id: string;
-      title: string | null;
-      started_at: number;
-      source: string;
-      message_count: number;
-      model: string;
-      snippet: string;
-    }>;
-
-    return rows.map((r) => ({
-      sessionId: r.session_id,
-      title: r.title,
-      startedAt: r.started_at,
-      source: r.source,
-      messageCount: r.message_count,
-      model: r.model || "",
-      snippet: r.snippet || "",
-    }));
+    const profile = getActiveProfileNameSync();
+    return searchSessionsFromRust(profile, query, limit);
   } catch {
     return [];
-  } finally {
-    db.close();
   }
 }
 
@@ -292,11 +198,6 @@ export function searchSessions(query: string, limit = 20): SearchResult[] {
  * Try hard to extract human-readable reasoning text from one of the three
  * provider-specific columns the agent stores it in. Returns "" when nothing
  * usable is present.
- *
- * Priority: `reasoning` (plain text from most providers) >
- *           `reasoning_content` (legacy mirror) >
- *           `reasoning_details` (Anthropic / OpenRouter signed-block JSON;
- *            we flatten its `text` fields when present, otherwise drop it).
  */
 export function pickReasoning(row: {
   reasoning: string | null;
@@ -330,13 +231,8 @@ export function pickReasoning(row: {
 }
 
 /**
- * Parse the assistant row's `tool_calls` JSON. Each entry from the agent
- * looks like `{id, call_id, type:"function", function:{name, arguments}}`.
- * `arguments` is itself a JSON-encoded string the agent sent to the model.
- * We pretty-print it for display when it parses, leave it raw otherwise.
- *
- * Returns `[]` on any parse failure — the caller silently skips bad rows
- * so a malformed tool_calls cell never blocks history rendering.
+ * Parse the assistant row's `tool_calls` JSON.
+ * Returns `[]` on any parse failure.
  */
 export function parseToolCalls(
   raw: string | null,
@@ -375,7 +271,7 @@ export function parseToolCalls(
 /**
  * Row shape as returned by the widened SELECT inside getSessionMessages,
  * exported so the unit tests can build fixture rows without going through
- * sqlite (better-sqlite3 is an Electron-only native module).
+ * sqlite.
  */
 export interface RawMessageRow {
   id: number;
@@ -471,41 +367,124 @@ export function expandRowsToHistory(rows: RawMessageRow[]): HistoryItem[] {
   return items;
 }
 
+const MAX_MESSAGES = 100;
+const MAX_TOOL_CONTENT = 8000;
+
 export function getSessionMessages(sessionId: string): HistoryItem[] {
-  const db = getDb();
-  if (!db) return [];
+  const home = profileHome(getActiveProfileNameSync());
+  const dbPath = join(home, "state.db");
+  const desktopDir = join(home, "desktop", "messages");
+  const sessionsDir = join(home, "sessions");
 
   try {
-    const rows = db
-      .prepare(
-        `SELECT id, role, content, timestamp,
-                tool_call_id, tool_calls, tool_name,
-                reasoning, reasoning_content, reasoning_details
-         FROM messages
-         WHERE session_id = ? AND role IN ('user', 'assistant', 'tool')
-         ORDER BY timestamp, id`,
-      )
-      .all(sessionId) as RawMessageRow[];
-
-    return expandRowsToHistory(rows);
-  } finally {
-    db.close();
+    const { getSessionMessagesJson } = require("@hermes/core") as typeof import("@hermes/core");
+    const jsonStr = getSessionMessagesJson(dbPath, desktopDir, sessionsDir, sessionId);
+    const items: HistoryItem[] = JSON.parse(jsonStr);
+    // Limit in main process to avoid sending huge payloads through IPC
+    const sliced = items.length > MAX_MESSAGES
+      ? items.slice(items.length - MAX_MESSAGES)
+      : items;
+    return sliced.map((it) => {
+      if (it.kind === "tool_result") {
+        const c = it.content || "";
+        if (c.length > MAX_TOOL_CONTENT) {
+          return { ...it, content: c.slice(0, MAX_TOOL_CONTENT) + `\n\n... (${c.length} chars total)` };
+        }
+      }
+      return it;
+    });
+  } catch {
+    return [];
   }
 }
 
 export function deleteSession(sessionId: string): void {
-  const db = getDb(false);
-  if (!db) return;
+  const profile = getActiveProfileNameSync();
+  deleteSessionFromRust(profile, sessionId);
+  removeSessionFromCache(sessionId);
+}
+
+interface PersistedMessage {
+  role: string;
+  content: string;
+  tool_call_id?: string;
+  tool_name?: string;
+  ts: number;
+}
+
+function desktopMessagesDir(): string {
+  return join(profileHome(getActiveProfileNameSync()), "desktop", "messages");
+}
+
+export function persistMessage(
+  sid: string,
+  role: string,
+  content: string,
+  meta?: { tool_call_id?: string; tool_name?: string },
+): void {
+  const dir = desktopMessagesDir();
+  try {
+    const { persistMessageJson } = require("@hermes/core") as typeof import("@hermes/core");
+    mkdirSync(dir, { recursive: true });
+    persistMessageJson(dir, sid, role, content, meta?.tool_call_id, meta?.tool_name);
+  } catch {
+    const filePath = join(dir, `${sid}.json`);
+    let msgs: PersistedMessage[] = [];
+    if (existsSync(filePath)) {
+      try { msgs = JSON.parse(readFileSync(filePath, "utf-8")); } catch { msgs = []; }
+    }
+    msgs.push({
+      role,
+      content,
+      tool_call_id: meta?.tool_call_id,
+      tool_name: meta?.tool_name,
+      ts: Date.now(),
+    });
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(filePath, JSON.stringify(msgs));
+  }
+}
+
+export function loadPersistedMessages(sid: string): PersistedMessage[] {
+  const filePath = join(desktopMessagesDir(), `${sid}.json`);
+  if (!existsSync(filePath)) return [];
+  try { return JSON.parse(readFileSync(filePath, "utf-8")); } catch { return []; }
+}
+
+export function migratePersistedMessages(fromSid: string, toSid: string): void {
+  if (!fromSid || !toSid || fromSid === toSid) return;
+
+  const dir = desktopMessagesDir();
+  const fromPath = join(dir, `${fromSid}.json`);
+  const toPath = join(dir, `${toSid}.json`);
+
+  if (!existsSync(fromPath) || existsSync(toPath)) return;
 
   try {
-    const tx = db.transaction((id: string) => {
-      db.prepare("DELETE FROM messages WHERE session_id = ?").run(id);
-      db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
-    });
-    tx(sessionId);
-  } finally {
-    db.close();
+    mkdirSync(dir, { recursive: true });
+    renameSync(fromPath, toPath);
+    return;
+  } catch {
+    /* fall through */
   }
 
-  removeSessionFromCache(sessionId);
+  const old = loadPersistedMessages(fromSid);
+  if (old.length === 0) return;
+
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(toPath, JSON.stringify(old));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadSessionJsonLog(sid: string): Record<string, unknown>[] {
+  const home = profileHome(getActiveProfileNameSync());
+  const filePath = join(home, "sessions", `session_${sid}.json`);
+  if (!existsSync(filePath)) return [];
+  try {
+    const raw = JSON.parse(readFileSync(filePath, "utf-8"));
+    return raw?.messages ?? [];
+  } catch { return []; }
 }

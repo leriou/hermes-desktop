@@ -6,13 +6,107 @@ import App from "./App";
 import { I18nProvider } from "./components/I18nProvider";
 import { initAnalytics } from "./utils/analytics";
 
-// Initialize analytics (privacy-first, only if user consented and key is configured)
-initAnalytics();
+function setupTauriContextMenu(): void {
+  document.addEventListener("contextmenu", (e) => {
+    if (!(window as any).__TAURI_INTERNALS__) return;
+    e.preventDefault();
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <I18nProvider>
-      <App />
-    </I18nProvider>
-  </StrictMode>,
-);
+    const target = e.target as HTMLElement;
+    const isEditable = (target as HTMLInputElement).isContentEditable ||
+      ["INPUT", "TEXTAREA"].includes(target.tagName);
+
+    if (isEditable) {
+      showContextMenu(e.x, e.y, [
+        { label: "Cut", action: () => document.execCommand("cut") },
+        { label: "Copy", action: () => document.execCommand("copy") },
+        { label: "Paste", action: () => document.execCommand("paste") },
+        { type: "separator" },
+        { label: "Select All", action: () => document.execCommand("selectAll") },
+        { type: "separator" },
+        { label: "Copy entire chat (text)", action: () => window.dispatchEvent(new CustomEvent("hermes-copy-chat", { detail: "text" })) },
+        { label: "Copy entire chat (Markdown)", action: () => window.dispatchEvent(new CustomEvent("hermes-copy-chat", { detail: "markdown" })) },
+      ]);
+    } else {
+      showContextMenu(e.x, e.y, [
+        { label: "Copy", action: () => document.execCommand("copy") },
+        { type: "separator" },
+        {
+          label: "Select All",
+          action: () => {
+            const bubble = document.elementFromPoint(e.x, e.y)?.closest(".chat-bubble");
+            if (bubble) {
+              const selection = window.getSelection();
+              selection?.removeAllRanges();
+              selection?.selectAllChildren(bubble as Node);
+            } else {
+              document.execCommand("selectAll");
+            }
+          },
+        },
+        { type: "separator" },
+        { label: "Copy entire chat (text)", action: () => window.dispatchEvent(new CustomEvent("hermes-copy-chat", { detail: "text" })) },
+        { label: "Copy entire chat (Markdown)", action: () => window.dispatchEvent(new CustomEvent("hermes-copy-chat", { detail: "markdown" })) },
+      ]);
+    }
+  });
+}
+
+type MenuItem = { label: string; action: () => void } | { type: "separator" };
+
+function showContextMenu(x: number, y: number, items: MenuItem[]): void {
+  const existing = document.getElementById("tauri-ctx-menu");
+  if (existing) existing.remove();
+
+  const menu = document.createElement("div");
+  menu.id = "tauri-ctx-menu";
+  menu.style.cssText = "position:fixed;z-index:99999;background:var(--color-bg-secondary,#2a2a2a);border:1px solid var(--color-border,#444);border-radius:6px;padding:4px 0;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-size:13px;color:var(--color-text,#e0e0e0);font-family:-apple-system,BlinkMacSystemFont,sans-serif;";
+
+  const close = () => menu.remove();
+  document.addEventListener("click", close, { once: true });
+  document.addEventListener("contextmenu", close, { once: true });
+
+  for (const item of items) {
+    if ("type" in item && item.type === "separator") {
+      const sep = document.createElement("div");
+      sep.style.cssText = "height:1px;background:var(--color-border,#444);margin:4px 0;";
+      menu.appendChild(sep);
+    } else {
+      const row = document.createElement("div");
+      const menuItem = item as { label: string; action: () => void };
+      row.textContent = menuItem.label;
+      row.style.cssText = "padding:4px 12px;cursor:pointer;white-space:nowrap;";
+      row.addEventListener("mouseenter", () => { row.style.background = "var(--color-hover,#3a3a3a)"; });
+      row.addEventListener("mouseleave", () => { row.style.background = "transparent"; });
+      row.addEventListener("click", () => { close(); menuItem.action(); });
+      menu.appendChild(row);
+    }
+  }
+
+  document.body.appendChild(menu);
+  const maxX = window.innerWidth - menu.offsetWidth - 4;
+  const maxY = window.innerHeight - menu.offsetHeight - 4;
+  menu.style.left = `${Math.min(x, maxX)}px`;
+  menu.style.top = `${Math.min(y, maxY)}px`;
+}
+
+async function boot(): Promise<void> {
+  // Inject the Tauri adapter before React renders so that
+  // window.hermesAPI is available when App's useEffect fires.
+  if ((window as any).__TAURI_INTERNALS__) {
+    const { hermesAPI } = await import("./lib/hermes-tauri");
+    (window as any).hermesAPI = hermesAPI;
+    setupTauriContextMenu();
+  }
+
+  initAnalytics();
+
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <I18nProvider>
+        <App />
+      </I18nProvider>
+    </StrictMode>,
+  );
+}
+
+boot();

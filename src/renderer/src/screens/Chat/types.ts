@@ -11,10 +11,13 @@ import type { Attachment } from "../../../../shared/attachments";
  */
 export interface ChatBubbleMessage {
   id: string;
+  sessionId?: string;
   kind?: "user" | "assistant"; // optional for backward compat; absent ⇒ user/assistant by role
   role: "user" | "agent";
   content: string;
   attachments?: Attachment[];
+  model?: string;
+  timestamp?: number;
 }
 
 /**
@@ -32,15 +35,21 @@ export interface ReasoningMessage {
 
 export interface ToolCallMessage {
   id: string;
+  sessionId?: string;
   kind: "tool_call";
   role: "agent";
   callId: string;
   name: string;
   args: string;
+  /** Filled by tool.complete — merges result into the same row */
+  result?: string;
+  success?: boolean;
+  fallbackWarning?: string;
 }
 
 export interface ToolResultMessage {
   id: string;
+  sessionId?: string;
   kind: "tool_result";
   role: "agent";
   callId: string;
@@ -49,11 +58,31 @@ export interface ToolResultMessage {
   attachments?: Attachment[];
 }
 
+export interface ToolGroupMessage {
+  kind: "tool_group";
+  id: string;
+  role: "agent";
+  toolName: string;
+  calls: ToolCallMessage[];
+}
+
+export interface SystemStatusMessage {
+  id: string;
+  kind: "system_status";
+  role: "agent";
+  tone: "info" | "success" | "warning" | "error";
+  title: string;
+  content?: string;
+  timestamp?: number;
+}
+
 export type ChatMessage =
   | ChatBubbleMessage
   | ReasoningMessage
   | ToolCallMessage
-  | ToolResultMessage;
+  | ToolResultMessage
+  | ToolGroupMessage
+  | SystemStatusMessage;
 
 export interface ModelGroup {
   provider: string;
@@ -66,9 +95,29 @@ export interface ModelGroup {
   }[];
 }
 
+export interface ApprovalRequest {
+  command: string;
+  description: string;
+  patternKey: string;
+  patternKeys: string[];
+}
+
+export interface ClarifyRequest {
+  requestId: string;
+  question: string;
+  choices?: string[];
+}
+
 export interface UsageState {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
   cost?: number;
+  calls?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  reasoning?: number;
+  contextUsed?: number;
+  contextMax?: number;
+  contextPercent?: number;
 }

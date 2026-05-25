@@ -8,17 +8,15 @@ import { spawn } from "child_process";
 import { homedir } from "os";
 import { join } from "path";
 import type { SshConfig } from "./ssh-tunnel";
-import type { KanbanTask } from "./kanban";
+import yaml from "js-yaml";
+import type { SavedModel } from "./models";
 import { buildSshControlOptions } from "./ssh-options";
 import type { InstalledSkill, SkillSearchResult } from "./skills";
 import type { MemoryInfo } from "./memory";
 import type { SessionSummary, SearchResult } from "./sessions";
 import type { CachedSession } from "./session-cache";
-import type { ToolsetInfo } from "./tools";
-import type { SavedModel } from "./models";
+import type { ToolsetInfo, ToolsetToggleResult } from "./tools";
 import type { MemoryProviderInfo } from "./installer";
-import { t } from "../shared/i18n";
-import { getAppLocale } from "./locale";
 import { HIDDEN_SUBPROCESS_OPTIONS } from "./process-options";
 
 // ── SSH exec core ────────────────────────────────────────────────────────────
@@ -506,202 +504,81 @@ export async function sshResetSoul(
 
 // ── Tools ────────────────────────────────────────────────────────────────────
 
-const TOOLSET_DEFS = [
-  {
-    key: "web",
-    labelKey: "tools.web.label",
-    descriptionKey: "tools.web.description",
-  },
-  {
-    key: "browser",
-    labelKey: "tools.browser.label",
-    descriptionKey: "tools.browser.description",
-  },
-  {
-    key: "terminal",
-    labelKey: "tools.terminal.label",
-    descriptionKey: "tools.terminal.description",
-  },
-  {
-    key: "file",
-    labelKey: "tools.file.label",
-    descriptionKey: "tools.file.description",
-  },
-  {
-    key: "code_execution",
-    labelKey: "tools.code_execution.label",
-    descriptionKey: "tools.code_execution.description",
-  },
-  {
-    key: "vision",
-    labelKey: "tools.vision.label",
-    descriptionKey: "tools.vision.description",
-  },
-  {
-    key: "image_gen",
-    labelKey: "tools.image_gen.label",
-    descriptionKey: "tools.image_gen.description",
-  },
-  {
-    key: "tts",
-    labelKey: "tools.tts.label",
-    descriptionKey: "tools.tts.description",
-  },
-  {
-    key: "skills",
-    labelKey: "tools.skills.label",
-    descriptionKey: "tools.skills.description",
-  },
-  {
-    key: "memory",
-    labelKey: "tools.memory.label",
-    descriptionKey: "tools.memory.description",
-  },
-  {
-    key: "session_search",
-    labelKey: "tools.session_search.label",
-    descriptionKey: "tools.session_search.description",
-  },
-  {
-    key: "clarify",
-    labelKey: "tools.clarify.label",
-    descriptionKey: "tools.clarify.description",
-  },
-  {
-    key: "delegation",
-    labelKey: "tools.delegation.label",
-    descriptionKey: "tools.delegation.description",
-  },
-];
-
-function parseEnabledToolsets(content: string): Set<string> {
-  const enabled = new Set<string>();
-  let inPlatformToolsets = false;
-  let inCli = false;
-  for (const line of content.split("\n")) {
-    const trimmed = line.trimEnd();
-    if (/^\s*platform_toolsets\s*:/.test(trimmed)) {
-      inPlatformToolsets = true;
-      inCli = false;
-      continue;
-    }
-    if (inPlatformToolsets && /^\s+cli\s*:/.test(trimmed)) {
-      inCli = true;
-      continue;
-    }
-    if (inPlatformToolsets && /^\S/.test(trimmed) && !/^\s*$/.test(trimmed)) {
-      inPlatformToolsets = false;
-      inCli = false;
-      continue;
-    }
-    if (inCli && /^\s{4}\S/.test(trimmed) && !/^\s{4,}-/.test(trimmed)) {
-      inCli = false;
-      continue;
-    }
-    if (inCli) {
-      const m = trimmed.match(/^\s+-\s+["']?(\w+)["']?/);
-      if (m) enabled.add(m[1]);
-    }
-  }
-  return enabled;
-}
-
-function localizeToolDefs(
-  enabled: boolean | ((key: string) => boolean),
-): ToolsetInfo[] {
-  const locale = getAppLocale();
-  return TOOLSET_DEFS.map((d) => ({
-    key: d.key,
-    label: t(d.labelKey, locale),
-    description: t(d.descriptionKey, locale),
-    enabled: typeof enabled === "function" ? enabled(d.key) : enabled,
-  }));
-}
-
-function remoteConfigPath(profile?: string): string {
-  if (profile && profile !== "default")
-    return `$HOME/.hermes/profiles/${profile}/config.yaml`;
-  return `$HOME/.hermes/config.yaml`;
-}
-
 export async function sshGetToolsets(
   config: SshConfig,
-  profile?: string,
+  _profile?: string,
 ): Promise<ToolsetInfo[]> {
-  const content = await sshReadFile(config, remoteConfigPath(profile));
-  if (!content) return localizeToolDefs(true);
-  const enabled = parseEnabledToolsets(content);
-  if (enabled.size === 0 && !content.includes("platform_toolsets"))
-    return localizeToolDefs(true);
-  return localizeToolDefs((key) => enabled.has(key));
+  try {
+    const output = await sshExec(config, "hermes tools list 2>/dev/null", undefined, 15000);
+    if (!output || !output.trim()) return [];
+
+    const tools: ToolsetInfo[] = [];
+    let source = "built-in";
+
+    for (const line of output.split("\n")) {
+      const trimmed = line.trim();
+
+      if (trimmed.endsWith(":") && !trimmed.startsWith("✓") && !trimmed.startsWith("✗")) {
+        const lower = trimmed.toLowerCase();
+        if (lower.includes("plugin")) source = "plugin";
+        else if (lower.includes("mcp")) source = "mcp";
+        else source = "built-in";
+        continue;
+      }
+
+      const match = trimmed.match(/^[✓✗]\s+(enabled|disabled)\s+(\S+)\s+(.*)/);
+      if (match) {
+        const enabled = match[1] === "enabled";
+        const key = match[2];
+        const desc = match[3]
+          .replace(/[\p{Emoji}\p{Emoji_Modifier_Base}\p{Emoji_Component}\u{200D}\u{FE0F}\u{200B}]+/gu, "")
+          .replace(/^\s+/, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        tools.push({ key, label: key, description: desc, enabled, source });
+        continue;
+      }
+
+      const mcpMatch = trimmed.match(/^(\S+)\s+(all tools enabled|enabled|disabled|\S+)/);
+      if (source === "mcp" && mcpMatch) {
+        const key = mcpMatch[1];
+        const status = mcpMatch[2];
+        tools.push({
+          key,
+          label: key,
+          description: status,
+          enabled: status.includes("enabled"),
+          source: "mcp",
+        });
+      }
+    }
+
+    return tools;
+  } catch {
+    return [];
+  }
 }
 
 export async function sshSetToolsetEnabled(
   config: SshConfig,
   key: string,
   enabled: boolean,
-  profile?: string,
-): Promise<boolean> {
+  _profile?: string,
+): Promise<ToolsetToggleResult> {
   try {
-    const configPath = remoteConfigPath(profile);
-    const content = await sshReadFile(config, configPath);
-    if (!content) return false;
-
-    const current = parseEnabledToolsets(content);
-    if (enabled) current.add(key);
-    else current.delete(key);
-
-    const toolsetLines = Array.from(current)
-      .sort()
-      .map((t) => `      - ${t}`)
-      .join("\n");
-    const newSection = `  cli:\n${toolsetLines}`;
-
-    let newContent: string;
-    if (content.includes("platform_toolsets")) {
-      const lines = content.split("\n");
-      const result: string[] = [];
-      let inPT = false,
-        inCli = false,
-        inserted = false;
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const trimmed = line.trimEnd();
-        if (/^\s*platform_toolsets\s*:/.test(trimmed)) {
-          inPT = true;
-          result.push(line);
-          continue;
-        }
-        if (inPT && /^\s+cli\s*:/.test(trimmed)) {
-          inCli = true;
-          result.push(newSection);
-          inserted = true;
-          continue;
-        }
-        if (inCli) {
-          if (/^\s+-\s/.test(trimmed)) continue;
-          inCli = false;
-          result.push(line);
-          continue;
-        }
-        if (inPT && /^\S/.test(trimmed) && trimmed !== "") {
-          inPT = false;
-          if (!inserted) {
-            result.push(newSection);
-          }
-        }
-        result.push(line);
-      }
-      newContent = result.join("\n");
-    } else {
-      newContent =
-        content.trimEnd() + "\n\nplatform_toolsets:\n" + newSection + "\n";
-    }
-
-    await sshWriteFile(config, configPath, newContent);
-    return true;
-  } catch {
-    return false;
+    const action = enabled ? "enable" : "disable";
+    await sshExec(
+      config,
+      `hermes tools ${action} ${shellQuote(key)} 2>&1`,
+      undefined,
+      15000,
+    );
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: (err as Error).message || "Failed to toggle tool.",
+    };
   }
 }
 
@@ -1616,124 +1493,6 @@ export async function sshRunKanban<T = unknown>(
   }
 }
 
-// ── Claw3D HQ board (read-only) ───────────────────────────────────────────────
-//
-// Claw3D ("hermes-office") maintains its own headquarters task board independent
-// of `hermes kanban`. It stores tasks at
-// `<state-dir>/claw3d/task-manager/tasks.json`, where <state-dir> resolves to
-// `~/.openclaw` (new) or `~/.clawdbot` / `~/.moltbot` (legacy) — see
-// hermes-office/src/lib/clawdbot/paths.ts. We surface it as a virtual,
-// read-only second board in the desktop's Kanban tab so the Claw3D HQ cards
-// are visible alongside the agent dispatcher's own board.
-
-interface Claw3dSharedTaskRecord {
-  id: string;
-  title: string;
-  description?: string;
-  status?: string;
-  source?: string;
-  assignedAgentId?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-  channel?: string | null;
-  notes?: unknown;
-  isArchived?: boolean;
-}
-
-// Claw3D's TaskBoardStatus → desktop kanban column. Claw3D has no "triage" or
-// "ready" semantics, so `review` (awaiting attention) lands in "ready" and
-// `in_progress` maps to "running". Everything else is straight-through.
-const CLAW3D_STATUS_MAP: Record<string, KanbanTask["status"]> = {
-  todo: "todo",
-  in_progress: "running",
-  blocked: "blocked",
-  review: "ready",
-  done: "done",
-};
-
-function parseIsoToEpochSeconds(value: string | undefined): number | null {
-  if (!value) return null;
-  const ms = Date.parse(value);
-  return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
-}
-
-function mapClaw3dTaskToKanbanTask(raw: Claw3dSharedTaskRecord): KanbanTask {
-  const status = (raw.status && CLAW3D_STATUS_MAP[raw.status]) || "todo";
-  const createdAt = parseIsoToEpochSeconds(raw.createdAt);
-  return {
-    id: raw.id,
-    title: raw.title,
-    body: raw.description?.trim() || null,
-    assignee: raw.assignedAgentId?.trim() || null,
-    status,
-    priority: 0,
-    tenant: null,
-    workspace_kind: "scratch",
-    workspace_path: null,
-    created_by: raw.source || null,
-    created_at: createdAt,
-    started_at: null,
-    completed_at:
-      status === "done" ? parseIsoToEpochSeconds(raw.updatedAt) : null,
-    result: null,
-    skills: [],
-    max_retries: null,
-  };
-}
-
-// Candidate state dirs mirror hermes-office's resolveStateDir() precedence:
-// new `.openclaw` first, then legacy `.clawdbot` / `.moltbot`.
-const CLAW3D_TASKS_PATHS = [
-  "~/.openclaw/claw3d/task-manager/tasks.json",
-  "~/.clawdbot/claw3d/task-manager/tasks.json",
-  "~/.moltbot/claw3d/task-manager/tasks.json",
-];
-
-export interface SshClaw3dHqResult {
-  success: boolean;
-  tasks?: KanbanTask[];
-  error?: string;
-  source?: string; // resolved remote path
-}
-
-export async function sshListClaw3dHqTasks(
-  config: SshConfig,
-): Promise<SshClaw3dHqResult> {
-  for (const remotePath of CLAW3D_TASKS_PATHS) {
-    let raw = "";
-    try {
-      raw = await sshReadFile(config, remotePath);
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
-    }
-    if (!raw.trim()) continue;
-    try {
-      const parsed = JSON.parse(raw) as { tasks?: unknown };
-      const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
-      const mapped = tasks
-        .filter(
-          (t): t is Claw3dSharedTaskRecord =>
-            Boolean(t) &&
-            typeof t === "object" &&
-            typeof (t as Claw3dSharedTaskRecord).id === "string" &&
-            typeof (t as Claw3dSharedTaskRecord).title === "string",
-        )
-        .filter((t) => !t.isArchived)
-        .map(mapClaw3dTaskToKanbanTask);
-      return { success: true, tasks: mapped, source: remotePath };
-    } catch (err) {
-      return {
-        success: false,
-        error: `Failed to parse Claw3D tasks.json: ${(err as Error).message}`,
-      };
-    }
-  }
-  // No file found at any candidate path — that's fine, just means the user
-  // hasn't run Claw3D's HQ board yet. Return empty rather than erroring so
-  // the renderer can still show an empty HQ board placeholder.
-  return { success: true, tasks: [] };
-}
-
 // ── Logs ──────────────────────────────────────────────────────────────────────
 
 export async function sshReadLogs(
@@ -1989,40 +1748,79 @@ print(json.dumps(result))
 
 // ── Models library ─────────────────────────────────────────────────────────────
 
-export async function sshListModels(config: SshConfig): Promise<SavedModel[]> {
+async function sshReadYaml(config: SshConfig): Promise<Record<string, any>> {
   try {
-    const raw = await sshReadFile(config, "$HOME/.hermes/models.json");
-    if (raw.trim()) return JSON.parse(raw);
+    const raw = await sshReadFile(config, "$HOME/.hermes/config.yaml");
+    if (raw.trim()) return (yaml.load(raw) as Record<string, any>) || {};
   } catch {
-    // no models.json on remote yet
+    // no config.yaml on remote yet
   }
-  return [];
+  return {};
 }
 
-export async function sshSaveModels(
-  config: SshConfig,
-  models: SavedModel[],
-): Promise<void> {
-  await sshWriteFile(
-    config,
-    "$HOME/.hermes/models.json",
-    JSON.stringify(models, null, 2),
-  );
+async function sshWriteYaml(config: SshConfig, root: Record<string, any>): Promise<void> {
+  await sshWriteFile(config, "$HOME/.hermes/config.yaml", yaml.dump(root, { lineWidth: -1, noRefs: true }));
 }
 
-// Mirror the local CRUD helpers in models.ts against the remote
-// ~/.hermes/models.json. Each operation does a full read/mutate/write so the
-// SSH cost is the same as a manual edit — there is no remote API to call
-// instead, and the file is small (a few KB at most).
+function buildSshAliasMap(root: Record<string, any>): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  const aliases = root.model_aliases || {};
+  for (const [aliasName, aliasVal] of Object.entries(aliases)) {
+    const a = aliasVal as Record<string, any>;
+    const modelId = a.model || "";
+    const baseUrl = a.base_url || "";
+    if (!modelId) continue;
+    const key = `${baseUrl}::${modelId}`;
+    const list = map.get(key) || [];
+    list.push(aliasName);
+    map.set(key, list);
+  }
+  return map;
+}
 
-function randomId(): string {
-  // RFC4122-ish v4 UUID without pulling in crypto.randomUUID, which is fine
-  // here because IDs only need to be unique within models.json.
-  const hex = (n: number): string =>
-    Math.floor(Math.random() * 16 ** n)
-      .toString(16)
-      .padStart(n, "0");
-  return `${hex(8)}-${hex(4)}-4${hex(3)}-${(8 + Math.floor(Math.random() * 4)).toString(16)}${hex(3)}-${hex(12)}`;
+function findSshAliases(aliasMap: Map<string, string[]>, modelId: string, baseUrl: string): string[] {
+  const key = `${baseUrl}::${modelId}`;
+  return aliasMap.get(key) || [];
+}
+
+export async function sshListModels(config: SshConfig): Promise<SavedModel[]> {
+  const root = await sshReadYaml(config);
+  const models: SavedModel[] = [];
+  const aliasMap = buildSshAliasMap(root);
+
+  const modelSec = root.model || {};
+  const defaultModel = modelSec.default || "";
+  const defaultProvider = modelSec.provider || "";
+  const defaultBaseUrl = modelSec.base_url || "";
+  if (defaultModel) {
+    models.push({
+      id: `default:${defaultModel}`,
+      name: defaultModel,
+      provider: defaultProvider,
+      model: defaultModel,
+      baseUrl: defaultBaseUrl,
+      aliases: findSshAliases(aliasMap, defaultModel, defaultBaseUrl),
+    });
+  }
+
+  const providers = root.providers || {};
+  for (const [provName, provVal] of Object.entries(providers)) {
+    const prov = provVal as Record<string, any>;
+    const baseUrl = prov.base_url || "";
+    const provModels = prov.models || {};
+    for (const modelId of Object.keys(provModels)) {
+      models.push({
+        id: `${provName}:${modelId}`,
+        name: modelId,
+        provider: `custom:${provName}`,
+        model: modelId,
+        baseUrl,
+        aliases: findSshAliases(aliasMap, modelId, baseUrl),
+      });
+    }
+  }
+
+  return models;
 }
 
 export async function sshAddModel(
@@ -2031,33 +1829,70 @@ export async function sshAddModel(
   provider: string,
   model: string,
   baseUrl: string,
+  alias?: string,
 ): Promise<SavedModel> {
-  const models = await sshListModels(config);
-  const existing = models.find(
-    (m) => m.model === model && m.provider === provider,
-  );
-  if (existing) return existing;
-  const entry: SavedModel = {
-    id: randomId(),
+  const root = await sshReadYaml(config);
+  const provName = provider.startsWith("custom:") ? provider.slice(7) : provider;
+  const modelId = model || name;
+
+  if (!root.providers) root.providers = {};
+  if (!root.providers[provName]) {
+    root.providers[provName] = { base_url: baseUrl, models: {} };
+  }
+  const prov = root.providers[provName];
+  if (baseUrl) prov.base_url = baseUrl;
+  if (!prov.models) prov.models = {};
+
+  const alreadyExisted = !!prov.models[modelId];
+
+  if (!alreadyExisted) {
+    prov.models[modelId] = {};
+  }
+
+  if (alias && alias.trim()) {
+    if (!root.model_aliases) root.model_aliases = {};
+    root.model_aliases[alias.trim()] = {
+      model: modelId,
+      base_url: baseUrl || prov.base_url || "",
+      context_length: 200000,
+    };
+  }
+
+  await sshWriteYaml(config, root);
+  return {
+    id: `${provName}:${modelId}`,
     name,
-    provider,
-    model,
-    baseUrl: baseUrl || "",
-    createdAt: Date.now(),
+    provider: `custom:${provName}`,
+    model: modelId,
+    baseUrl,
+    aliases: alias ? [alias.trim()] : [],
   };
-  await sshSaveModels(config, [...models, entry]);
-  return entry;
 }
 
 export async function sshRemoveModel(
   config: SshConfig,
   id: string,
 ): Promise<boolean> {
-  const models = await sshListModels(config);
-  const filtered = models.filter((m) => m.id !== id);
-  if (filtered.length === models.length) return false;
-  await sshSaveModels(config, filtered);
-  return true;
+  const root = await sshReadYaml(config);
+
+  if (id.startsWith("default:")) {
+    const modelId = id.slice(8);
+    if (root.model?.default === modelId) {
+      delete root.model.default;
+      await sshWriteYaml(config, root);
+      return true;
+    }
+    return false;
+  }
+
+  const [provName, modelId] = id.split(":", 2);
+  if (!provName || !modelId) return false;
+  if (root.providers?.[provName]?.models?.[modelId] !== undefined) {
+    delete root.providers[provName].models[modelId];
+    await sshWriteYaml(config, root);
+    return true;
+  }
+  return false;
 }
 
 export async function sshUpdateModel(
@@ -2065,10 +1900,29 @@ export async function sshUpdateModel(
   id: string,
   fields: Partial<Pick<SavedModel, "name" | "provider" | "model" | "baseUrl">>,
 ): Promise<boolean> {
-  const models = await sshListModels(config);
-  const idx = models.findIndex((m) => m.id === id);
-  if (idx === -1) return false;
-  models[idx] = { ...models[idx], ...fields };
-  await sshSaveModels(config, models);
+  const root = await sshReadYaml(config);
+
+  if (id.startsWith("default:")) {
+    if (!root.model) root.model = {};
+    if (fields.model) root.model.default = fields.model;
+    if (fields.baseUrl) root.model.base_url = fields.baseUrl;
+    await sshWriteYaml(config, root);
+    return true;
+  }
+
+  const [provName, oldModelId] = id.split(":", 2);
+  if (!provName || !oldModelId) return false;
+  if (!root.providers?.[provName]) return false;
+
+  const prov = root.providers[provName];
+  if (fields.baseUrl) prov.base_url = fields.baseUrl;
+
+  if (fields.model && fields.model !== oldModelId && prov.models) {
+    const conf = prov.models[oldModelId];
+    delete prov.models[oldModelId];
+    prov.models[fields.model] = conf || {};
+  }
+
+  await sshWriteYaml(config, root);
   return true;
 }

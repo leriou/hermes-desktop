@@ -1,6 +1,22 @@
 export default {
   title: "提供商",
   subtitle: "配置 LLM 提供商、API 密钥和凭据池",
+  tabs: {
+    model: "模型",
+    routing: "路由",
+    apikeys: "API 密钥",
+    tools: "工具",
+    credentials: "凭据",
+    oauth: "订阅",
+  },
+  explorerTitle: "提供商浏览器",
+  selectProvider: "选择提供商",
+  baseUrlHint: "使用官方 API 请保持默认,或输入自定义接口地址",
+  apiKeyHint: "留空则使用 API 密钥标签页中已保存的密钥",
+  checkModels: "检查模型",
+  cached: "缓存",
+  colModel: "模型",
+  unknownHost: "无法连接到指定主机 — 请检查基础 URL",
   oauth: {
     sectionTitle: "订阅 / OAuth 套餐",
     sectionHint: "使用提供商订阅而非 API 密钥登录。授权在浏览器中完成。",

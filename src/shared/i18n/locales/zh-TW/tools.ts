@@ -29,4 +29,11 @@ export default {
   http: "HTTP",
   stdio: "標準 I/O",
   disabled: "已停用",
+  builtin: "Built-in",
+  plugin: "User Plugin",
+  tabTools: "工具",
+  tabMcp: "MCP",
+  noTools: "未找到工具。",
+  noMcp: "未配置 MCP 伺服器。",
+  noMcpHint: "透過 hermes mcp add <name> 新增 MCP 伺服器",
 } as const;

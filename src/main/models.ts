@@ -1,11 +1,9 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { randomUUID } from "crypto";
 import { HERMES_HOME } from "./installer";
-import { safeWriteFile, profilePaths } from "./utils";
-import DEFAULT_MODELS from "./default-models";
-
-const MODELS_FILE = join(HERMES_HOME, "models.json");
+import { safeWriteFile } from "./utils";
+import DEFAULT_MODELS, { type DefaultModel } from "./default-models";
+import { yamlToJson, jsonToYaml } from "./rust-bridge";
 
 export interface SavedModel {
   id: string;
@@ -13,137 +11,95 @@ export interface SavedModel {
   provider: string;
   model: string;
   baseUrl: string;
-  apiMode?: string | null;
-  createdAt: number;
-}
-
-export function readModels(): SavedModel[] {
-  try {
-    if (!existsSync(MODELS_FILE)) return [];
-    return JSON.parse(readFileSync(MODELS_FILE, "utf-8"));
-  } catch {
-    return [];
-  }
-}
-
-function writeModels(models: SavedModel[]): void {
-  safeWriteFile(MODELS_FILE, JSON.stringify(models, null, 2));
-}
-
-interface CustomProviderEntry {
-  name: string;
-  provider: string;
-  model: string;
-  baseUrl: string;
-  apiKey?: string;
+  aliases?: string[];
   apiMode?: string;
 }
 
-function loadCustomProviders(profile?: string): CustomProviderEntry[] {
-  const { configFile } = profilePaths(profile);
-  if (!existsSync(configFile)) return [];
-  const content = readFileSync(configFile, "utf-8");
-  const result: CustomProviderEntry[] = [];
-  const lines = content.split("\n");
-  let inCustom = false;
-  let current: CustomProviderEntry | null = null;
-  for (const line of lines) {
-    if (/^\s*custom_providers\s*:/.test(line)) {
-      inCustom = true;
-      continue;
-    }
-    if (inCustom) {
-      if (/^\s*-\s*name\s*:/.test(line)) {
-        if (current && current.model && current.baseUrl) result.push(current);
-        const m = line.match(/name\s*:\s*["']?([^"'\n#]+)["']?/);
-        current = {
-          name: m ? m[1].trim() : "Custom",
-          provider: "custom",
-          model: "",
-          baseUrl: "",
-        };
-      } else if (current) {
-        const bm = line.match(/base_url\s*:\s*["']?([^"'\n#]+)["']?/);
-        if (bm) current.baseUrl = bm[1].trim();
-        const mm = line.match(/^\s*model\s*:\s*["']?([^"'\n#]+)["']?/);
-        if (mm) current.model = mm[1].trim();
-        const am = line.match(/api_key\s*:\s*["']?([^"'\n#]+)["']?/);
-        if (am) current.apiKey = am[1].trim();
-        const apim = line.match(/api_mode\s*:\s*["']?([^"'\n#]+)["']?/);
-        if (apim) current.apiMode = apim[1].trim();
-      }
-      if (
-        /^[a-z]/.test(line) &&
-        !/^\s/.test(line) &&
-        !/^\s*-\s*name/.test(line)
-      ) {
-        if (current && current.model && current.baseUrl) result.push(current);
-        inCustom = false;
-        current = null;
-      }
-    }
-  }
-  if (current && current.model && current.baseUrl) result.push(current);
-  return result;
+function configFile(): string {
+  return join(HERMES_HOME, "config.yaml");
 }
 
-function seedDefaults(profile?: string): SavedModel[] {
-  const models: SavedModel[] = DEFAULT_MODELS.map((m) => ({
-    id: randomUUID(),
-    name: m.name,
-    provider: m.provider,
-    model: m.model,
-    baseUrl: m.baseUrl,
-    createdAt: Date.now(),
-  }));
+function readYaml(): Record<string, any> {
+  const path = configFile();
+  if (!existsSync(path)) return {};
   try {
-    const { envFile } = profilePaths(profile);
-    const cpModels = loadCustomProviders(profile);
-    for (const cp of cpModels) {
-      models.push({
-        id: randomUUID(),
-        name: cp.name,
-        provider: cp.provider,
-        model: cp.model,
-        baseUrl: cp.baseUrl,
-        apiMode: cp.apiMode || null,
-        createdAt: Date.now(),
-      });
-      if (cp.apiKey) {
-        try {
-          let envContent = existsSync(envFile)
-            ? readFileSync(envFile, "utf-8")
-            : "";
-          const envKey =
-            "CUSTOM_PROVIDER_" +
-            cp.name.replace(/[^A-Za-z0-9]/g, "_").toUpperCase() +
-            "_KEY";
-          const keyRegex = new RegExp(
-            "^" + envKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=.*$",
-            "m",
-          );
-          if (!keyRegex.test(envContent)) {
-            envContent =
-              envContent.trimEnd() + "\n" + envKey + "=" + cp.apiKey + "\n";
-            safeWriteFile(envFile, envContent);
-          }
-        } catch {
-          /* best-effort */
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Failed to load custom providers:", e);
+    return yamlToJson(readFileSync(path, "utf-8")) || {};
+  } catch {
+    return {};
   }
-  writeModels(models);
-  return models;
+}
+
+function writeYaml(root: Record<string, any>): void {
+  const path = configFile();
+  const content = jsonToYaml(root);
+  if (content) safeWriteFile(path, content);
+}
+
+function buildAliasMap(root: Record<string, any>): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  const aliases = root.model_aliases || {};
+  for (const [aliasName, aliasVal] of Object.entries(aliases)) {
+    const a = aliasVal as Record<string, any>;
+    const modelId = a.model || "";
+    const baseUrl = a.base_url || "";
+    if (!modelId) continue;
+    const key = `${baseUrl}::${modelId}`;
+    const list = map.get(key) || [];
+    list.push(aliasName);
+    map.set(key, list);
+  }
+  return map;
+}
+
+function findAliasesForModel(aliasMap: Map<string, string[]>, modelId: string, baseUrl: string): string[] {
+  const key = `${baseUrl}::${modelId}`;
+  return aliasMap.get(key) || [];
 }
 
 export function listModels(): SavedModel[] {
-  if (!existsSync(MODELS_FILE)) {
-    return seedDefaults();
+  const root = readYaml();
+  const models: SavedModel[] = [];
+  const aliasMap = buildAliasMap(root);
+
+  // 1. Default model from model.default / model.provider
+  const modelSec = root.model || {};
+  const defaultModel = modelSec.default || "";
+  const defaultProvider = modelSec.provider || "";
+  const defaultBaseUrl = modelSec.base_url || "";
+  if (defaultModel) {
+    models.push({
+      id: `default:${defaultModel}`,
+      name: defaultModel,
+      provider: defaultProvider,
+      model: defaultModel,
+      baseUrl: defaultBaseUrl,
+      aliases: findAliasesForModel(aliasMap, defaultModel, defaultBaseUrl),
+    });
   }
-  return readModels();
+
+  // 2. All providers and their models
+  const providers = root.providers || {};
+  for (const [provName, provVal] of Object.entries(providers)) {
+    const prov = provVal as Record<string, any>;
+    const baseUrl = prov.base_url || "";
+    const provModels = prov.models || {};
+    for (const modelId of Object.keys(provModels)) {
+      models.push({
+        id: `${provName}:${modelId}`,
+        name: modelId,
+        provider: `custom:${provName}`,
+        model: modelId,
+        baseUrl,
+        aliases: findAliasesForModel(aliasMap, modelId, baseUrl),
+      });
+    }
+  }
+
+  return models;
+}
+
+export function listTemplates(): DefaultModel[] {
+  return DEFAULT_MODELS;
 }
 
 export function addModel(
@@ -151,44 +107,100 @@ export function addModel(
   provider: string,
   model: string,
   baseUrl: string,
+  alias?: string,
 ): SavedModel {
-  const models = readModels();
+  const root = readYaml();
 
-  // Dedup: if same model ID + provider exists, return existing
-  const existing = models.find(
-    (m) => m.model === model && m.provider === provider,
-  );
-  if (existing) return existing;
+  const provName = provider.startsWith("custom:")
+    ? provider.slice(7)
+    : provider;
+  const modelId = model || name;
 
-  const entry: SavedModel = {
-    id: randomUUID(),
+  if (!root.providers) root.providers = {};
+  if (!root.providers[provName]) {
+    root.providers[provName] = { base_url: baseUrl, models: {} };
+  }
+  const prov = root.providers[provName];
+  if (baseUrl) prov.base_url = baseUrl;
+  if (!prov.models) prov.models = {};
+
+  if (!prov.models[modelId]) {
+    prov.models[modelId] = {};
+  }
+
+  // Add alias if provided
+  if (alias && alias.trim()) {
+    if (!root.model_aliases) root.model_aliases = {};
+    root.model_aliases[alias.trim()] = {
+      model: modelId,
+      base_url: baseUrl || prov.base_url || "",
+      context_length: 200000,
+    };
+  }
+
+  writeYaml(root);
+
+  return {
+    id: `${provName}:${modelId}`,
     name,
-    provider,
-    model,
-    baseUrl: baseUrl || "",
-    createdAt: Date.now(),
+    provider: `custom:${provName}`,
+    model: modelId,
+    baseUrl,
+    aliases: alias ? [alias.trim()] : [],
   };
-  models.push(entry);
-  writeModels(models);
-  return entry;
 }
 
 export function removeModel(id: string): boolean {
-  const models = readModels();
-  const filtered = models.filter((m) => m.id !== id);
-  if (filtered.length === models.length) return false;
-  writeModels(filtered);
-  return true;
+  const root = readYaml();
+
+  if (id.startsWith("default:")) {
+    const modelId = id.slice(8);
+    if (root.model?.default === modelId) {
+      delete root.model.default;
+      writeYaml(root);
+      return true;
+    }
+    return false;
+  }
+
+  const [provName, modelId] = id.split(":", 2);
+  if (!provName || !modelId) return false;
+
+  if (root.providers?.[provName]?.models?.[modelId] !== undefined) {
+    delete root.providers[provName].models[modelId];
+    writeYaml(root);
+    return true;
+  }
+  return false;
 }
 
 export function updateModel(
   id: string,
   fields: Partial<Pick<SavedModel, "name" | "provider" | "model" | "baseUrl">>,
 ): boolean {
-  const models = readModels();
-  const idx = models.findIndex((m) => m.id === id);
-  if (idx === -1) return false;
-  models[idx] = { ...models[idx], ...fields };
-  writeModels(models);
+  const root = readYaml();
+
+  if (id.startsWith("default:")) {
+    if (!root.model) root.model = {};
+    if (fields.model) root.model.default = fields.model;
+    if (fields.baseUrl) root.model.base_url = fields.baseUrl;
+    writeYaml(root);
+    return true;
+  }
+
+  const [provName, oldModelId] = id.split(":", 2);
+  if (!provName || !oldModelId) return false;
+  if (!root.providers?.[provName]) return false;
+
+  const prov = root.providers[provName];
+  if (fields.baseUrl) prov.base_url = fields.baseUrl;
+
+  if (fields.model && fields.model !== oldModelId && prov.models) {
+    const conf = prov.models[oldModelId];
+    delete prov.models[oldModelId];
+    prov.models[fields.model] = conf || {};
+  }
+
+  writeYaml(root);
   return true;
 }

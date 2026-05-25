@@ -13,4 +13,9 @@ export default {
   emptyHint: "Empieza a chatear para crear tu primera sesión",
   messages: "msg",
   messageSingular: "msg",
+  filterAll: "Todo",
+  filterType: "Tipo:",
+  filterMsgCount: "Mensajes:",
+  filterClear: "Limpiar",
+  parts: "partes",
 } as const;

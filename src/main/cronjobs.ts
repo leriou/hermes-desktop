@@ -173,6 +173,47 @@ function runCronCommand(
   });
 }
 
+export async function updateCronJob(
+  jobId: string,
+  schedule?: string,
+  prompt?: string,
+  name?: string,
+  deliver?: string,
+  profile?: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!jobId) return { success: false, error: "Missing job ID" };
+
+  if (isRemoteMode()) {
+    try {
+      const body: Record<string, string> = {};
+      if (schedule != null) body.schedule = schedule;
+      if (prompt != null) body.prompt = prompt;
+      if (name != null) body.name = name;
+      if (deliver != null) body.deliver = deliver;
+      const res = await remoteFetch(`/api/jobs/${encodeURIComponent(jobId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) return { success: false, error: await remoteJsonError(res) };
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  }
+
+  const args = ["edit", jobId];
+  if (schedule) args.push("--schedule", schedule);
+  if (name) args.push("--name", name);
+  if (deliver) args.push("--deliver", deliver);
+  if (prompt) {
+    args.push("--");
+    args.push(prompt);
+  }
+  const result = await runCronCommand(args, profile);
+  return { success: result.success, error: result.error };
+}
+
 export async function createCronJob(
   schedule: string,
   prompt?: string,

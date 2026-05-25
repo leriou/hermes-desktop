@@ -13,13 +13,13 @@ Thanks for your interest in contributing to Hermes Desktop! Whether it's a bug f
 2. **Install dependencies:**
 
    ```bash
-   npm install
+   bun install
    ```
 
 3. **Start the app in development mode:**
 
    ```bash
-   npm run dev
+   bun run dev
    ```
 
 ## Making Changes
@@ -35,11 +35,11 @@ Thanks for your interest in contributing to Hermes Desktop! Whether it's a bug f
 3. Run checks before submitting:
 
    ```bash
-   npm run lint
-   npm run typecheck
+   bun run lint
+   bun run typecheck
    ```
 
-4. Test your changes locally with `npm run dev` to make sure everything works as expected.
+4. Test your changes locally with `bun run dev` to make sure everything works as expected.
 
 ## Submitting a Pull Request
 
@@ -89,8 +89,8 @@ build/                   Packaging resources
 ## Code Style
 
 - The project uses TypeScript, React, and Electron.
-- Run `npm run lint` to check for lint errors.
-- Run `npm run typecheck` to verify type safety.
+- Run `bun run lint` to check for lint errors.
+- Run `bun run typecheck` to verify type safety.
 - Follow existing patterns and conventions in the codebase.
 
 ## Community

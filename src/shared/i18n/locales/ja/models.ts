@@ -24,4 +24,13 @@ export default {
   apiKeyLabel: "API キー",
   apiKeyHint:
     "環境変数として保存されます。URL に基づいて該当する環境変数キーが選ばれ、なければ CUSTOM_API_KEY が使われます。",
+  tabs: {
+    myModels: "My Models",
+    templates: "Templates",
+  },
+  templates: {
+    subtitle: "Built-in model templates. Click to quickly add to your library.",
+    alreadyAdded: "Added",
+    quickAdd: "Add",
+  },
 } as const;

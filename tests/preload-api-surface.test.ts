@@ -8,6 +8,10 @@ const preloadTypes = readFileSync(
   join(ROOT, "src/preload/index.d.ts"),
   "utf-8",
 );
+const apiTypesSrc = readFileSync(
+  join(ROOT, "src/shared/api-types.ts"),
+  "utf-8",
+);
 
 /**
  * Extract method names from the hermesAPI object in preload/index.ts.
@@ -24,24 +28,26 @@ function extractPreloadMethods(src: string): string[] {
 }
 
 /**
- * Extract method names from the HermesAPI interface in index.d.ts.
+ * Extract method names from the HermesAPI interface.
+ * Looks in both preload/index.d.ts and shared/api-types.ts.
  */
-function extractTypeMethods(src: string): string[] {
+function extractTypeMethods(srcs: string[]): string[] {
   const methods: string[] = [];
-  // Match lines inside `interface HermesAPI { ... }`
-  const interfaceMatch = src.match(/interface\s+HermesAPI\s*\{([\s\S]*?)^\}/m);
-  if (!interfaceMatch) return [];
-  const body = interfaceMatch[1];
-  const re = /^\s{2}(\w+)\s*[:(]/gm;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    methods.push(m[1]);
+  for (const src of srcs) {
+    const interfaceMatch = src.match(/interface\s+HermesAPI\s*\{([\s\S]*?)^\}/m);
+    if (!interfaceMatch) continue;
+    const body = interfaceMatch[1];
+    const re = /^\s{2}(\w+)\s*[:(]/gm;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(body)) !== null) {
+      methods.push(m[1]);
+    }
   }
   return [...new Set(methods)];
 }
 
 const preloadMethods = extractPreloadMethods(preloadSrc);
-const typeMethods = extractTypeMethods(preloadTypes);
+const typeMethods = extractTypeMethods([preloadTypes, apiTypesSrc]);
 
 describe("Preload API Surface", () => {
   it("preload exposes methods", () => {
@@ -91,6 +97,13 @@ describe("New APIs from v0.8/v0.9 features", () => {
   it("has memory provider discovery API", () => {
     expect(preloadMethods).toContain("discoverMemoryProviders");
     expect(typeMethods).toContain("discoverMemoryProviders");
+  });
+
+  it("has TUI command dispatch APIs", () => {
+    expect(preloadMethods).toContain("tuiCommandDispatch");
+    expect(preloadMethods).toContain("tuiSteer");
+    expect(typeMethods).toContain("tuiCommandDispatch");
+    expect(typeMethods).toContain("tuiSteer");
   });
 });
 
@@ -164,9 +177,6 @@ describe("Legacy APIs preserved (backward compat)", () => {
     // Credential pool
     "getCredentialPool",
     "setCredentialPool",
-    // Claw3D
-    "claw3dStatus",
-    "claw3dSetup",
     // Cron
     "listCronJobs",
     "createCronJob",

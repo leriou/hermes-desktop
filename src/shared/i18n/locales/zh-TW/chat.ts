@@ -5,6 +5,7 @@ export default {
   auto: "自動",
   commandsTitle: "命令",
   typeMessage: "輸入訊息...（Shift+Enter 換行）",
+  answerClarify: "輸入你的回答...",
   quickAskTitle: "快速提問（/btw），不會影響目前對話上下文的旁支問題",
   send: "傳送",
   custom: "自訂",

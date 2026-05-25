@@ -10,26 +10,16 @@ import { captureScreenView } from "./utils/analytics";
 
 type Screen = "splash" | "welcome" | "installing" | "setup" | "main";
 
-// Minimum time the splash stays visible so the brand animation plays
-// through. Tracks the splash logo fade-in duration in main.css.
-const SPLASH_MIN_MS = 1300;
-
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>("splash");
   const [installError, setInstallError] = useState<string | null>(null);
   const [connectionMode, setConnectionMode] = useState<
     "local" | "remote" | "ssh"
   >("local");
-  // Soft warning: install files exist but the deep `verifyInstall` probe
-  // failed (e.g. slow Python startup, restricted network). We surface this
-  // as a dismissible banner instead of bouncing the user back to Welcome,
-  // which previously trapped restricted-network users in a reinstall
-  // loop on every launch (#130).
   const [verifyWarning, setVerifyWarning] = useState(false);
-  const isMac = window.electron?.process?.platform === "darwin";
-
+  const isMac = window.electron?.process?.platform === "darwin" ||
+    ((window as any).__TAURI_INTERNALS__ && navigator.userAgent.includes("Macintosh"));
   const runInstallCheck = useCallback(async () => {
-    const startedAt = Date.now();
     let next: Screen = "welcome";
     let error: string | null = null;
     let isRemote = false;
@@ -40,7 +30,6 @@ function App(): React.JSX.Element {
       setConnectionMode(conn.mode);
 
       if (conn.mode === "ssh" && conn.ssh) {
-        // Start (or ensure) the SSH tunnel, then go straight to main
         try {
           await window.hermesAPI.startSshTunnel();
           next = "main";
@@ -71,26 +60,11 @@ function App(): React.JSX.Element {
     }
 
     if (error) setInstallError(error);
-
-    const elapsed = Date.now() - startedAt;
-    const wait = Math.max(0, SPLASH_MIN_MS - elapsed);
-    if (wait > 0) {
-      await new Promise((r) => setTimeout(r, wait));
-    }
     setScreen(next);
 
-    // Lazy deep-verify in the background after the UI is up. If the
-    // install is broken, surface the warning then — don't block startup.
-    //
-    // Skip for remote-mode connections: verifyInstall() probes the LOCAL
-    // Python + script paths (HERMES_PYTHON / HERMES_SCRIPT in installer.ts),
-    // which don't exist on machines that only use a remote backend. Without
-    // this guard the user is bounced back to Welcome with an "installBroken"
-    // error immediately after a successful remote connect. (#47, #41, #30)
+    // Background deep-verify after UI is up. Non-blocking.
     if ((next === "main" || next === "setup") && !isRemote) {
       window.hermesAPI.verifyInstall().then((ok) => {
-        // Files exist (checkInstall passed) but the probe failed. Surface
-        // a soft warning instead of bouncing to Welcome — see #130.
         if (!ok) setVerifyWarning(true);
       });
     }
@@ -100,13 +74,12 @@ function App(): React.JSX.Element {
     runInstallCheck();
   }, [runInstallCheck]);
 
-  // Track screen views for analytics
   useEffect(() => {
     captureScreenView(screen);
   }, [screen]);
 
   const handleSplashFinished = useCallback(() => {
-    /* splash transition is driven by the install check, not a timer */
+    /* splash transition is driven by the install check */
   }, []);
 
   function handleInstallComplete(): void {
@@ -192,7 +165,7 @@ function App(): React.JSX.Element {
     <ThemeProvider>
       <ErrorBoundary>
         <div className="app">
-          {isMac && <div className="drag-region" />}
+          {isMac && <div className="drag-region" data-tauri-drag-region />}
           <div className="app-content">{renderScreen()}</div>
         </div>
       </ErrorBoundary>

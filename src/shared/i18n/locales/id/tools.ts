@@ -69,4 +69,11 @@ export default {
   http: "HTTP",
   stdio: "stdio",
   disabled: "nonaktif",
+  builtin: "Built-in",
+  plugin: "User Plugin",
+  tabTools: "Alat",
+  tabMcp: "MCP",
+  noTools: "Tidak ada alat ditemukan.",
+  noMcp: "Tidak ada server MCP yang dikonfigurasi.",
+  noMcpHint: "Tambahkan server MCP via: hermes mcp add <name>",
 } as const;

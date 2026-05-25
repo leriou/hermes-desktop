@@ -80,7 +80,7 @@ function Welcome({
       return;
     }
     const port = parseInt(sshPort, 10) || 22;
-    const remotePort = parseInt(sshRemotePort, 10) || 8642;
+    const remotePort = parseInt(sshRemotePort, 10) || 8765;
     setSshTesting(true);
     setSshError(null);
     try {
@@ -98,12 +98,12 @@ function Welcome({
           user,
           sshKeyPath.trim(),
           remotePort,
-          18642,
+          18765,
         );
         onRecheck();
       } else {
         setSshError(
-          "Could not connect via SSH or reach Hermes on the remote. Make sure:\n• SSH key is correct (or default ~/.ssh/id_rsa works)\n• Hermes gateway is running on the remote\n• The remote port is correct (default 8642)",
+          "Could not connect via SSH or reach Hermes on the remote. Make sure:\n• SSH key is correct (or default ~/.ssh/id_rsa works)\n• Hermes gateway is running on the remote\n• The remote port is correct (default 8765)",
         );
       }
     } catch (e) {
@@ -131,7 +131,7 @@ function Welcome({
           <input
             type="url"
             className="welcome-remote-input"
-            placeholder="http://192.168.1.100:8642"
+            placeholder="http://192.168.1.100:8765"
             value={remoteUrl}
             onChange={(e) => setRemoteUrl(e.target.value)}
             onKeyDown={(e) => {
@@ -258,13 +258,13 @@ function Welcome({
           <label className="welcome-remote-label" style={{ marginTop: 12 }}>
             Remote Hermes Port{" "}
             <span style={{ fontWeight: 400, opacity: 0.6 }}>
-              (default 8642)
+              (default 8765)
             </span>
           </label>
           <input
             type="number"
             className="welcome-remote-input"
-            placeholder="8642"
+            placeholder="8765"
             value={sshRemotePort}
             onChange={(e) => setSshRemotePort(e.target.value)}
           />

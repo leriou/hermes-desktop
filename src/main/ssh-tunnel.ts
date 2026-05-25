@@ -129,7 +129,7 @@ function buildSshArgs(config: SshConfig, localPort: number): string[] {
 export async function startSshTunnel(config: SshConfig): Promise<void> {
   stopSshTunnel();
 
-  const localPort = await findFreePort(config.localPort || 18642);
+  const localPort = await findFreePort(config.localPort || 18765);
   activeConfig = { ...config, localPort };
   tunnelRunning = false;
 

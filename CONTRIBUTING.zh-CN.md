@@ -13,13 +13,13 @@
 2. **安装依赖：**
 
    ```bash
-   npm install
+   bun install
    ```
 
 3. **以开发模式启动应用：**
 
    ```bash
-   npm run dev
+   bun run dev
    ```
 
 ## 修改代码
@@ -35,11 +35,11 @@
 3. 提交前先运行检查：
 
    ```bash
-   npm run lint
-   npm run typecheck
+   bun run lint
+   bun run typecheck
    ```
 
-4. 使用 `npm run dev` 在本地测试改动，确保行为符合预期。
+4. 使用 `bun run dev` 在本地测试改动，确保行为符合预期。
 
 ## 提交 Pull Request
 
@@ -89,8 +89,8 @@ build/                   打包配置资源
 ## 代码风格
 
 - 项目使用 TypeScript、React 和 Electron。
-- 运行 `npm run lint` 检查 lint 错误。
-- 运行 `npm run typecheck` 验证类型安全。
+- 运行 `bun run lint` 检查 lint 错误。
+- 运行 `bun run typecheck` 验证类型安全。
 - 尽量遵循当前仓库现有模式和约定。
 
 ## 社区

@@ -25,4 +25,13 @@ export default {
   apiKeyLabel: "Chave da API",
   apiKeyHint:
     "Armazenada como uma variável de ambiente. Escolhe a chave correspondente com base no URL ou CUSTOM_API_KEY caso contrário.",
+  tabs: {
+    myModels: "My Models",
+    templates: "Templates",
+  },
+  templates: {
+    subtitle: "Built-in model templates. Click to quickly add to your library.",
+    alreadyAdded: "Added",
+    quickAdd: "Add",
+  },
 } as const;

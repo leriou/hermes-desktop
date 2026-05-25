@@ -69,4 +69,11 @@ export default {
   http: "HTTP",
   stdio: "stdio",
   disabled: "desativado",
+  builtin: "Built-in",
+  plugin: "User Plugin",
+  tabTools: "Ferramentas",
+  tabMcp: "MCP",
+  noTools: "Nenhuma ferramenta encontrada.",
+  noMcp: "Nenhum servidor MCP configurado.",
+  noMcpHint: "Adicione servidores MCP via: hermes mcp add <name>",
 } as const;

@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ChatMessage } from "../types";
 
-/**
- * Auto-scroll behavior for the chat messages container.
- *
- * - Tracks whether the user has manually scrolled up; pauses auto-scroll in that case.
- * - Re-engages auto-scroll when a new user message is sent.
- * - Exposes the container ref and a bottom sentinel ref to be placed in JSX.
- */
-export function useChatScroll(messages: ChatMessage[]): {
+export function useChatScroll(messages: ChatMessage[], isLoading: boolean): {
   containerRef: React.RefObject<HTMLDivElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
 } {
@@ -16,13 +9,19 @@ export function useChatScroll(messages: ChatMessage[]): {
   const bottomRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
   const prevMessageCountRef = useRef(messages.length);
+  const streamingRafRef = useRef<number>(0);
 
-  const scrollToBottom = useCallback((force?: boolean) => {
+  const scrollToBottom = useCallback((force?: boolean, instant?: boolean) => {
     if (!force && userScrolledUpRef.current) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+    const el = containerRef.current;
+    if (!el) return;
+    if (instant || isLoading) {
+      el.scrollTop = el.scrollHeight;
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isLoading]);
 
-  // Track manual scroll position
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -49,6 +48,31 @@ export function useChatScroll(messages: ChatMessage[]): {
       scrollToBottom();
     }
   }, [messages, scrollToBottom]);
+
+  // During streaming, sync scroll via rAF for smooth tracking
+  useEffect(() => {
+    if (!isLoading) {
+      if (streamingRafRef.current) {
+        cancelAnimationFrame(streamingRafRef.current);
+        streamingRafRef.current = 0;
+      }
+      return;
+    }
+    function tick(): void {
+      const el = containerRef.current;
+      if (el && !userScrolledUpRef.current) {
+        el.scrollTop = el.scrollHeight;
+      }
+      streamingRafRef.current = requestAnimationFrame(tick);
+    }
+    streamingRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (streamingRafRef.current) {
+        cancelAnimationFrame(streamingRafRef.current);
+        streamingRafRef.current = 0;
+      }
+    };
+  }, [isLoading]);
 
   return { containerRef, bottomRef };
 }

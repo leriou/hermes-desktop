@@ -9,7 +9,7 @@ export const PROFILE_NAME_ERROR =
 
 /**
  * Strip ANSI escape codes from terminal output.
- * Used by hermes.ts, claw3d.ts, and installer.ts when processing
+ * Used by hermes.ts and installer.ts when processing
  * child process output for display in the renderer.
  */
 // eslint-disable-next-line no-control-regex

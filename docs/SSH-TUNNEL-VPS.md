@@ -52,7 +52,7 @@ On the **remote machine** (where Hermes Agent runs):
   (more on this below).
 - Your desktop's public key authorized for that user
   (`~/.ssh/authorized_keys`).
-- The Hermes API listening on `127.0.0.1:8642` (the default — it does
+- The Hermes API listening on `127.0.0.1:8765` (the default — it does
   **not** need to be exposed publicly; the SSH tunnel forwards it).
 
 ## Which user account should the desktop SSH in as?
@@ -122,7 +122,7 @@ exposing SSH to it.
 ### 1. Verify SSH works exactly as the desktop will call it
 
 The desktop spawns `ssh` with these flags (see `src/main/ssh-tunnel.ts`):
-`-N -L <localPort>:127.0.0.1:8642 -i <keyPath> -o BatchMode=yes
+`-N -L <localPort>:127.0.0.1:8765 -i <keyPath> -o BatchMode=yes
 -o StrictHostKeyChecking=accept-new`. The critical one is
 `BatchMode=yes` — **any password or passphrase prompt will fail closed
 with no useful error message**. From your desktop, run:
@@ -130,7 +130,7 @@ with no useful error message**. From your desktop, run:
 ```bash
 ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
     -i ~/.ssh/id_ed25519 -p 22 hermes@your.vps.example.com \
-    'curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8642/health'
+    'curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/health'
 ```
 
 You should see `200`. If you see `Permission denied (publickey)`, the
@@ -151,7 +151,7 @@ Open **Settings → Connection** and select **SSH Tunnel**. Fill in:
 | SSH Port           | `22` (or your sshd port)                                                                            |
 | Username           | the user whose `~/.hermes` is the real one (`hermes` in Case B)                                     |
 | Private Key Path   | absolute path, e.g. `~/.ssh/id_ed25519` on macOS/Linux or `C:\Users\you\.ssh\id_ed25519` on Windows |
-| Remote Hermes Port | `8642` (default)                                                                                    |
+| Remote Hermes Port | `8765` (default)                                                                                    |
 
 Click **Test SSH Connection**. Expected result: "SSH tunnel connected!".
 Then **Save** and restart the app.
@@ -165,15 +165,15 @@ desktop machine — not on the VPS):
 ```json
 {
   "connectionMode": "ssh",
-  "remoteUrl": "http://your.vps.example.com:8642",
+  "remoteUrl": "http://your.vps.example.com:8765",
   "remoteApiKey": "",
   "sshConfig": {
     "host": "your.vps.example.com",
     "port": 22,
     "username": "hermes",
     "keyPath": "/Users/you/.ssh/id_ed25519",
-    "remotePort": 8642,
-    "localPort": 18642
+    "remotePort": 8765,
+    "localPort": 18765
   }
 }
 ```

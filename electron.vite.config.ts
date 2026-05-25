@@ -28,5 +28,9 @@ export default defineConfig({
       },
     },
     plugins: [tailwindcss(), react()],
+    server: {
+      port: 19642,
+      strictPort: true,
+    },
   },
 });

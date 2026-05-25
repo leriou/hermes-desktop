@@ -1,13 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 const ROOT = join(__dirname, "..");
-const indexSrc = readFileSync(join(ROOT, "src/main/index.ts"), "utf-8");
 const preloadSrc = readFileSync(join(ROOT, "src/preload/index.ts"), "utf-8");
 
 /**
- * Extract all IPC channel names registered in main/index.ts.
+ * Extract all IPC channel names from a source string.
  */
 function extractIpcHandleChannels(src: string): string[] {
   const channels: string[] = [];
@@ -15,6 +14,23 @@ function extractIpcHandleChannels(src: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(src)) !== null) {
     channels.push(m[1]);
+  }
+  return [...new Set(channels)];
+}
+
+/**
+ * Collect IPC handlers from index.ts + all ipc/register-*.ts modules.
+ */
+function collectAllMainChannels(): string[] {
+  const channels: string[] = [];
+  // index.ts (setupUpdater)
+  channels.push(...extractIpcHandleChannels(readFileSync(join(ROOT, "src/main/index.ts"), "utf-8")));
+  // ipc/ modules
+  const ipcDir = join(ROOT, "src/main/ipc");
+  for (const f of readdirSync(ipcDir)) {
+    if (f.startsWith("register-") && f.endsWith(".ts")) {
+      channels.push(...extractIpcHandleChannels(readFileSync(join(ipcDir, f), "utf-8")));
+    }
   }
   return [...new Set(channels)];
 }
@@ -32,7 +48,7 @@ function extractPreloadInvokeChannels(src: string): string[] {
   return [...new Set(channels)];
 }
 
-const mainChannels = extractIpcHandleChannels(indexSrc);
+const mainChannels = collectAllMainChannels();
 const preloadChannels = extractPreloadInvokeChannels(preloadSrc);
 
 describe("IPC Handler ↔ Preload Consistency", () => {
@@ -45,7 +61,11 @@ describe("IPC Handler ↔ Preload Consistency", () => {
   });
 
   it("every preload invoke has a matching main handler", () => {
-    const missing = preloadChannels.filter((ch) => !mainChannels.includes(ch));
+    // Routed through TUI gateway, not direct IPC
+    const tuiRouted = ["send-message", "abort-chat"];
+    const missing = preloadChannels.filter(
+      (ch) => !mainChannels.includes(ch) && !tuiRouted.includes(ch),
+    );
     expect(missing).toEqual([]);
   });
 
@@ -93,8 +113,6 @@ describe("Legacy IPC handlers preserved", () => {
     "set-config",
     "get-model-config",
     "set-model-config",
-    "send-message",
-    "abort-chat",
     "start-gateway",
     "stop-gateway",
     "gateway-status",

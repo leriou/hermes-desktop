@@ -83,8 +83,8 @@ vi.mock("../src/main/config", () => ({
       port: 22,
       username: "",
       keyPath: "",
-      remotePort: 8642,
-      localPort: 18642,
+      remotePort: 8765,
+      localPort: 18765,
     },
   }),
 }));

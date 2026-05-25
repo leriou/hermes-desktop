@@ -5,6 +5,7 @@ export default {
   auto: "Otomatis",
   commandsTitle: "Perintah",
   typeMessage: "Ketik pesan... (Shift+Enter untuk baris baru)",
+  answerClarify: "Ketik jawaban Anda...",
   quickAskTitle:
     "Tanya Cepat (/btw) - pertanyaan sampingan yang tidak memengaruhi konteks percakapan",
   send: "Kirim",

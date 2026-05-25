@@ -65,4 +65,11 @@ export default {
   http: "HTTP",
   stdio: "stdio",
   disabled: "無効",
+  builtin: "Built-in",
+  plugin: "User Plugin",
+  tabTools: "ツール",
+  tabMcp: "MCP",
+  noTools: "ツールが見つかりません。",
+  noMcp: "MCP サーバが未構成です。",
+  noMcpHint: "hermes mcp add <name> で追加",
 } as const;

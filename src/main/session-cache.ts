@@ -3,12 +3,15 @@ import { join } from "path";
 import {
   profileHome,
   getActiveProfileNameSync,
-  activeStateDbPath,
   safeWriteFile,
 } from "./utils";
-import Database from "better-sqlite3";
 import { t } from "../shared/i18n";
 import { getAppLocale } from "./locale";
+import {
+  syncSessionIdsFromRust,
+  getFirstUserMessageFromRust,
+  refreshMessageCountsFromRust,
+} from "./rust-bridge";
 
 /**
  * The session cache lives alongside its own profile's data so profiles
@@ -87,40 +90,18 @@ function writeCache(data: CacheData): void {
   }
 }
 
-function getDb(): Database.Database | null {
-  const dbPath = activeStateDbPath();
-  if (!existsSync(dbPath)) return null;
-  return new Database(dbPath, { readonly: true });
-}
-
 // Sync from hermes DB to local cache — only fetches new/updated sessions
 export function syncSessionCache(): CachedSession[] {
   const cache = readCache();
-  const db = getDb();
-  if (!db) return cache.sessions;
+  const profile = getActiveProfileNameSync();
 
   try {
-    // Fetch sessions newer than last sync, or all if first sync
-    const rows = db
-      .prepare(
-        `SELECT s.id, s.started_at, s.source, s.message_count, s.model, s.title
-         FROM sessions s
-         WHERE s.started_at > ?
-         ORDER BY s.started_at DESC`,
-      )
-      .all(cache.lastSync > 0 ? cache.lastSync - 300 : 0) as Array<{
-      id: string;
-      started_at: number;
-      source: string;
-      message_count: number;
-      model: string;
-      title: string | null;
-    }>;
+    const rows = syncSessionIdsFromRust(
+      profile,
+      cache.lastSync > 0 ? cache.lastSync - 300 : 0,
+    );
 
-    // Index existing sessions by id once so the per-row update below is
-    // O(1) instead of O(N). Without this, syncing N existing sessions
-    // against N new rows is O(N²) and visibly slows app startup once a
-    // user has accumulated thousands of sessions (issue #16).
+    // Index existing sessions by id for O(1) lookups
     const existingById = new Map<string, CachedSession>();
     for (const s of cache.sessions) existingById.set(s.id, s);
     const newSessions: CachedSession[] = [];
@@ -130,8 +111,7 @@ export function syncSessionCache(): CachedSession[] {
       refreshedIds.add(row.id);
       const existing = existingById.get(row.id);
       if (existing) {
-        // Update existing entry (message count may have changed)
-        existing.messageCount = row.message_count;
+        existing.messageCount = row.messageCount;
         continue;
       }
 
@@ -139,15 +119,9 @@ export function syncSessionCache(): CachedSession[] {
       let title = row.title || "";
       if (!title) {
         try {
-          const msg = db
-            .prepare(
-              `SELECT content FROM messages
-               WHERE session_id = ? AND role = 'user' AND content IS NOT NULL
-               ORDER BY timestamp, id LIMIT 1`,
-            )
-            .get(row.id) as { content: string } | undefined;
+          const msg = getFirstUserMessageFromRust(profile, row.id);
           title = msg
-            ? generateTitle(msg.content)
+            ? generateTitle(msg)
             : t("sessions.newConversation", getAppLocale());
         } catch {
           title = t("sessions.newConversation", getAppLocale());
@@ -157,42 +131,21 @@ export function syncSessionCache(): CachedSession[] {
       newSessions.push({
         id: row.id,
         title,
-        startedAt: row.started_at,
+        startedAt: row.startedAt,
         source: row.source,
-        messageCount: row.message_count,
+        messageCount: row.messageCount,
         model: row.model || "",
       });
     }
 
-    // Phase 2: refresh message_count for cached sessions that weren't
-    // returned by the lastSync-windowed query above. Without this, an
-    // old session that's still accumulating messages keeps the stale
-    // count it had at first sync — the renderer reads from the cache,
-    // so the UI reports e.g. 15 messages when the conversation actually
-    // has 200+. Issue #226. Cheap (single column, no joins, batched IN
-    // clause), and skipped entirely on a first sync since cache.sessions
-    // is empty.
+    // Refresh message_count for cached sessions not covered above
     const staleIds = cache.sessions
       .map((s) => s.id)
       .filter((id) => !refreshedIds.has(id));
     if (staleIds.length > 0) {
-      // SQLite caps prepared-statement parameters; chunk well under
-      // SQLITE_MAX_VARIABLE_NUMBER (default 999 on older builds) for
-      // portability across the better-sqlite3 versions hermes ships.
-      const CHUNK = 500;
-      const countsById = new Map<string, number>();
-      for (let i = 0; i < staleIds.length; i += CHUNK) {
-        const chunk = staleIds.slice(i, i + CHUNK);
-        const placeholders = chunk.map(() => "?").join(", ");
-        const refreshed = db
-          .prepare(
-            `SELECT id, message_count FROM sessions WHERE id IN (${placeholders})`,
-          )
-          .all(...chunk) as Array<{ id: string; message_count: number }>;
-        for (const r of refreshed) countsById.set(r.id, r.message_count);
-      }
+      const countsById = refreshMessageCountsFromRust(profile, staleIds);
       for (const s of cache.sessions) {
-        const fresh = countsById.get(s.id);
+        const fresh = countsById[s.id];
         if (fresh !== undefined && fresh !== s.messageCount) {
           s.messageCount = fresh;
         }
@@ -201,7 +154,6 @@ export function syncSessionCache(): CachedSession[] {
 
     // Merge: new sessions first (most recent), then existing
     const allSessions = [...newSessions, ...cache.sessions];
-    // Sort by startedAt descending
     allSessions.sort((a, b) => b.startedAt - a.startedAt);
 
     const updated: CacheData = {
@@ -212,8 +164,6 @@ export function syncSessionCache(): CachedSession[] {
     return updated.sessions;
   } catch {
     return cache.sessions;
-  } finally {
-    db.close();
   }
 }
 
