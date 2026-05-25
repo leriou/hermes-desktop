@@ -146,7 +146,14 @@ export function useChatActions({
         return;
       }
 
-      if (isLoadingRef.current) return;
+      if (isLoadingRef.current) {
+        // Interrupt current response, then submit new prompt
+        const sid = hermesSessionIdRef.current;
+        if (sid) {
+          await window.hermesAPI.tuiInterrupt(sid);
+          setIsLoading(false);
+        }
+      }
 
       setIsLoading(true);
       abortRequestedRef.current = false;

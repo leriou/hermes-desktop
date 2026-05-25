@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ReasoningRow, ToolResultRow } from "./HistoryRow";
+import { SubagentRow } from "./SubagentRow";
 import { ToolGroupRow } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { mergeContinuationLabels } from "./sessionDisplay";
@@ -176,6 +177,14 @@ export const MessageList = memo(function MessageList({
             <ToolGroupRow
               key={msg.id}
               msg={msg as ToolGroupMessage}
+            />
+          );
+        }
+        if (k === "subagent") {
+          return (
+            <SubagentRow
+              key={msg.id}
+              msg={msg as Extract<ChatMessage, { kind: "subagent" }>}
             />
           );
         }

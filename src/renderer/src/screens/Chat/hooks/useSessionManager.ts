@@ -11,6 +11,7 @@ export interface SessionState {
   usage: import("../types").UsageState | null;
   toolProgress: string | null;
   streamingText: string;
+  streamingReasoning: string;
   pendingApproval: ApprovalRequest | null;
   pendingClarify: ClarifyRequest | null;
   pendingModelSwitch: string | null;
@@ -29,6 +30,7 @@ function emptySession(): SessionState {
     usage: null,
     toolProgress: null,
     streamingText: "",
+    streamingReasoning: "",
     pendingApproval: null,
     pendingClarify: null,
     pendingModelSwitch: null,
@@ -209,7 +211,7 @@ export function useSessionManager() {
         ? "content" in lastMsg
           ? (lastMsg.content || "").slice(-60)
           : "text" in lastMsg
-            ? lastMsg.text.slice(-60)
+            ? (lastMsg.text || "").slice(-60)
             : ""
         : "";
       const preview = streamingPreview || msgPreview;

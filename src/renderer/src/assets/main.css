@@ -2121,6 +2121,46 @@ body {
   user-select: none;
 }
 
+/* Subagent row */
+.chat-subagent-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg-secondary, rgba(0,0,0,0.05));
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+.chat-subagent-icon {
+  font-size: 14px;
+}
+.chat-subagent-goal {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-subagent-spinner {
+  flex-shrink: 0;
+  color: var(--warning);
+  animation: session-spin 1s linear infinite;
+}
+.chat-subagent-ok {
+  flex-shrink: 0;
+  color: var(--success);
+}
+.chat-subagent-fail {
+  flex-shrink: 0;
+  color: var(--error);
+}
+.chat-subagent-duration {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* StreamingMarkdown — lightweight markdown for streaming phase */
 .sm-streaming {
   word-break: break-word;

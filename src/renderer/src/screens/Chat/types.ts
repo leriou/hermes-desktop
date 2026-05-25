@@ -45,6 +45,12 @@ export interface ToolCallMessage {
   result?: string;
   success?: boolean;
   fallbackWarning?: string;
+  /** Updated by tool.progress events */
+  progress?: string;
+  /** Filled by tool.complete — seconds */
+  durationS?: number;
+  /** Filled by tool.complete — unified diff for file edits */
+  inlineDiff?: string;
 }
 
 export interface ToolResultMessage {
@@ -76,13 +82,25 @@ export interface SystemStatusMessage {
   timestamp?: number;
 }
 
+export interface SubagentMessage {
+  id: string;
+  kind: "subagent";
+  role: "agent";
+  agentId: string;
+  goal: string;
+  status: "running" | "completed" | "failed";
+  text?: string;
+  durationS?: number;
+}
+
 export type ChatMessage =
   | ChatBubbleMessage
   | ReasoningMessage
   | ToolCallMessage
   | ToolResultMessage
   | ToolGroupMessage
-  | SystemStatusMessage;
+  | SystemStatusMessage
+  | SubagentMessage;
 
 export interface ModelGroup {
   provider: string;

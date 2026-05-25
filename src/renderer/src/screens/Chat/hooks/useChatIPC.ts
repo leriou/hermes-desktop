@@ -274,7 +274,7 @@ export function useChatIPC({
               const idx = prev.findIndex((m) => m.kind === "tool_call" && "callId" in m && m.callId === payload.tool_id);
               if (idx !== -1) {
                 const existing = prev[idx] as import("../types").ToolCallMessage;
-                return [...prev.slice(0, idx), { ...existing, result: resultText, success: payload.success !== false }, ...prev.slice(idx + 1)];
+                return [...prev.slice(0, idx), { ...existing, result: resultText, success: payload.success !== false, durationS: payload.duration_s, inlineDiff: payload.inline_diff }, ...prev.slice(idx + 1)];
               }
               return [...prev, { id: `tool-result-${payload.tool_id}`, sessionId: sid ?? currentRuntimeSid ?? currentDbSid ?? undefined, kind: "tool_result" as const, role: "agent" as const, callId: payload.tool_id, name: payload.name || "", content: resultText }];
             });
@@ -283,6 +283,14 @@ export function useChatIPC({
 
         case "tool.progress":
           cb.setToolProgress(`${payload.name} ${payload.preview || ""}`);
+          if (payload.tool_id) {
+            cb.setMessages((prev) => {
+              const idx = prev.findIndex((m) => m.kind === "tool_call" && "callId" in m && m.callId === payload.tool_id);
+              if (idx === -1) return prev;
+              const existing = prev[idx] as import("../types").ToolCallMessage;
+              return [...prev.slice(0, idx), { ...existing, progress: payload.preview || payload.name || "" }, ...prev.slice(idx + 1)];
+            });
+          }
           break;
 
         case "approval.request":
@@ -324,6 +332,11 @@ export function useChatIPC({
         case "status.update":
           if (payload?.text) cb.onStatusUpdate?.({ kind: payload.kind, text: payload.text });
           if (payload.kind === "process" && payload.text) cb.setToolProgress(payload.text);
+          break;
+
+        case "thinking.delta":
+        case "reasoning.delta":
+          // Accumulate reasoning for display (not persisted in this hook)
           break;
       }
     });

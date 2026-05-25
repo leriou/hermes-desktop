@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ChatMessage, ToolCallMessage, UsageState } from "../types";
+import type { ChatMessage, ReasoningMessage, SubagentMessage, ToolCallMessage, UsageState } from "../types";
 import type { SessionState } from "./useSessionManager";
 import { shortModelName } from "../sessionDisplay";
 
@@ -19,7 +19,7 @@ interface UseChatInboxArgs {
 }
 
 const FLUSH_MS = 80;
-const LIVE_EVENT_TYPES = new Set(["message.start", "message.delta", "tool.start"]);
+const LIVE_EVENT_TYPES = new Set(["message.start", "message.delta", "tool.start", "thinking.delta", "reasoning.delta"]);
 
 function usageFromPayload(usage: any): UsageState {
   return {
@@ -136,7 +136,7 @@ export function useChatInbox({
 
       switch (event.type) {
         case "message.start":
-          updateTab(tabId, { isLoading: true, toolProgress: null });
+          updateTab(tabId, { isLoading: true, toolProgress: null, streamingReasoning: "" });
           break;
 
         case "message.delta": {
@@ -157,6 +157,26 @@ export function useChatInbox({
             flushTimersRef.current.delete(tabId);
           }
           pendingChunksRef.current.delete(tabId);
+          // Flush reasoning into a ReasoningMessage before replacing content
+          const reasoningText = state?.streamingReasoning ?? "";
+          if (reasoningText) {
+            updateTab(tabId, { streamingReasoning: "" });
+            updateTabMessages(tabId, (prev) => {
+              const reasoningMsg: ReasoningMessage = {
+                id: `reasoning-${Date.now()}`,
+                kind: "reasoning",
+                role: "agent",
+                text: reasoningText,
+              };
+              // Insert before the last agent message
+              for (let i = prev.length - 1; i >= 0; i--) {
+                if (prev[i].role === "agent" && "content" in prev[i]) {
+                  return [...prev.slice(0, i), reasoningMsg, ...prev.slice(i)];
+                }
+              }
+              return [...prev, reasoningMsg];
+            });
+          }
           // Replace last agent message with gateway's final text
           const finalText = payload.text;
           const hadStreaming = !!(state?.streamingText);
@@ -274,7 +294,7 @@ export function useChatInbox({
                 const existing = prev[idx] as ToolCallMessage;
                 return [
                   ...prev.slice(0, idx),
-                  { ...existing, result: resultText, success: payload.success !== false },
+                  { ...existing, result: resultText, success: payload.success !== false, durationS: payload.duration_s, inlineDiff: payload.inline_diff },
                   ...prev.slice(idx + 1),
                 ];
               }
@@ -299,6 +319,20 @@ export function useChatInbox({
 
         case "tool.progress":
           updateTab(tabId, { toolProgress: `${payload.name} ${payload.preview || ""}` });
+          if (payload.tool_id) {
+            updateTabMessages(tabId, (prev) => {
+              const idx = prev.findIndex(
+                (m) => m.kind === "tool_call" && "callId" in m && m.callId === payload.tool_id,
+              );
+              if (idx === -1) return prev;
+              const existing = prev[idx] as ToolCallMessage;
+              return [
+                ...prev.slice(0, idx),
+                { ...existing, progress: payload.preview || payload.name || "" },
+                ...prev.slice(idx + 1),
+              ];
+            });
+          }
           break;
 
         case "approval.request":
@@ -398,6 +432,57 @@ export function useChatInbox({
             }
           }
           break;
+
+        // ── Reasoning / Thinking ──────────────────────────────────────
+        case "thinking.delta":
+        case "reasoning.delta": {
+          const text = payload.text || "";
+          if (text) {
+            updateTab(tabId, {
+              streamingReasoning: `${state?.streamingReasoning ?? ""}${text}`,
+            });
+          }
+          break;
+        }
+
+        // ── Subagent tracking ─────────────────────────────────────────
+        case "subagent.start": {
+          const agentId = payload.agent_id || `sub-${Date.now()}`;
+          updateTabMessages(tabId, (prev) => [
+            ...prev,
+            {
+              id: `subagent-${agentId}`,
+              kind: "subagent" as const,
+              role: "agent" as const,
+              agentId,
+              goal: payload.goal || "Subagent task",
+              status: "running" as const,
+            } satisfies SubagentMessage,
+          ]);
+          break;
+        }
+
+        case "subagent.complete": {
+          const agentId = payload.agent_id;
+          if (!agentId) break;
+          updateTabMessages(tabId, (prev) => {
+            const idx = prev.findIndex(
+              (m) => m.kind === "subagent" && "agentId" in m && m.agentId === agentId,
+            );
+            if (idx === -1) return prev;
+            const existing = prev[idx] as SubagentMessage;
+            return [
+              ...prev.slice(0, idx),
+              {
+                ...existing,
+                status: payload.success === false ? ("failed" as const) : ("completed" as const),
+                durationS: payload.duration_s,
+              },
+              ...prev.slice(idx + 1),
+            ];
+          });
+          break;
+        }
       }
     });
 
