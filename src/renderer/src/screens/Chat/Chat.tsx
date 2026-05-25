@@ -31,6 +31,8 @@ interface ChatProps {
   toolProgress?: string | null;
   pendingApproval?: import("./types").ApprovalRequest | null;
   pendingClarify?: import("./types").ClarifyRequest | null;
+  pendingSudo?: import("./types").SudoRequest | null;
+  pendingSecret?: import("./types").SecretRequest | null;
   profile?: string;
   visible?: boolean;
   onSessionStarted?: () => void;
@@ -45,6 +47,8 @@ interface ChatProps {
     toolProgress?: string | null;
     pendingApproval?: import("./types").ApprovalRequest | null;
     pendingClarify?: import("./types").ClarifyRequest | null;
+    pendingSudo?: import("./types").SudoRequest | null;
+    pendingSecret?: import("./types").SecretRequest | null;
     usage?: import("./types").UsageState | null;
     streamingText?: string;
   }) => void;
@@ -62,6 +66,8 @@ function Chat({
   toolProgress = null,
   pendingApproval = null,
   pendingClarify = null,
+  pendingSudo = null,
+  pendingSecret = null,
   profile,
   visible = true,
   onSessionStarted,
@@ -399,6 +405,8 @@ function Chat({
       toolProgress: null,
       pendingApproval: null,
       pendingClarify: null,
+      pendingSudo: null,
+      pendingSecret: null,
       streamingText: "",
       isLoading: false,
     });
@@ -592,6 +600,28 @@ function Chat({
     [modelConfig, session.hermesSessionId, sessionId, addStatusMessage, executeGatewayCommand],
   );
 
+  const handleSudoRespond = useCallback(async (password: string) => {
+    const sid = session.hermesSessionId ?? sessionId;
+    if (!sid) return;
+    try {
+      await window.hermesAPI.tuiSudoRespond(sid, password, pendingSudo?.requestId);
+      onSessionStateChange?.({ pendingSudo: null });
+    } catch (err) {
+      addStatusMessage("Sudo failed", (err as Error).message || String(err), "error");
+    }
+  }, [session.hermesSessionId, sessionId, pendingSudo, onSessionStateChange, addStatusMessage]);
+
+  const handleSecretRespond = useCallback(async (value: string) => {
+    const sid = session.hermesSessionId ?? sessionId;
+    if (!sid) return;
+    try {
+      await window.hermesAPI.tuiSecretRespond(sid, value, pendingSecret?.requestId);
+      onSessionStateChange?.({ pendingSecret: null });
+    } catch (err) {
+      addStatusMessage("Secret input failed", (err as Error).message || String(err), "error");
+    }
+  }, [session.hermesSessionId, sessionId, pendingSecret, onSessionStateChange, addStatusMessage]);
+
   const handleTuiCompress = useCallback(async () => {
     const id = session.hermesSessionId ?? sessionId;
     if (!id) return;
@@ -653,8 +683,12 @@ function Chat({
             isLoading={isLoading}
             toolProgress={toolProgress}
             pendingApproval={pendingApproval}
+            pendingSudo={pendingSudo}
+            pendingSecret={pendingSecret}
             onApprove={actions.handleApprove}
             onDeny={actions.handleDeny}
+            onSudoRespond={handleSudoRespond}
+            onSecretRespond={handleSecretRespond}
             streamingText={streamingText}
           />
         )}

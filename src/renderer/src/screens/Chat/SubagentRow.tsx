@@ -15,7 +15,14 @@ export const SubagentRow = memo(function SubagentRow({
       <div className="chat-subagent-row">
         <span className="chat-subagent-icon">🤖</span>
         <span className="chat-subagent-goal">{msg.goal}</span>
-        {isRunning && <Loader2 size={12} className="chat-subagent-spinner" />}
+        {isRunning && (
+          <>
+            {msg.progressHint && (
+              <span className="chat-subagent-progress">{msg.progressHint}</span>
+            )}
+            <Loader2 size={12} className="chat-subagent-spinner" />
+          </>
+        )}
         {!isRunning && !isFailed && (
           <>
             <CheckCircle2 size={12} className="chat-subagent-ok" />

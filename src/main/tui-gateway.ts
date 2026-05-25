@@ -251,6 +251,14 @@ class TuiGateway extends EventEmitter {
     return this.call("clarify.respond", { session_id: sessionId, answer: response, request_id: requestId });
   }
 
+  async sudoRespond(sessionId: string, password: string, requestId?: string) {
+    return this.call("sudo.respond", { session_id: sessionId, password, request_id: requestId });
+  }
+
+  async secretRespond(sessionId: string, value: string, requestId?: string) {
+    return this.call("secret.respond", { session_id: sessionId, value, request_id: requestId });
+  }
+
   async sessionStatus(sessionId: string) {
     return this.call("session.status", { session_id: sessionId });
   }

@@ -182,6 +182,20 @@ export function registerChatIPC(mainWindow: BrowserWindow | null): void {
     },
   );
 
+  ipcMain.handle(
+    "tui-sudo-respond",
+    (_event, sessionId: string, password: string, requestId?: string) => {
+      return tuiGateway.sudoRespond(sessionId, password, requestId);
+    },
+  );
+
+  ipcMain.handle(
+    "tui-secret-respond",
+    (_event, sessionId: string, value: string, requestId?: string) => {
+      return tuiGateway.secretRespond(sessionId, value, requestId);
+    },
+  );
+
   ipcMain.handle("tui-session-title", (_event, sessionId: string) => {
     return tuiGateway.call("session.title", { session_id: sessionId });
   });

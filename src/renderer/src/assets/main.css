@@ -2160,6 +2160,14 @@ body {
   color: var(--text-muted);
   white-space: nowrap;
 }
+.chat-subagent-progress {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
 
 /* StreamingMarkdown — lightweight markdown for streaming phase */
 .sm-streaming {
@@ -2330,6 +2338,59 @@ body {
 }
 
 .chat-clarify-choice:hover {
+  background: var(--bg-hover);
+}
+
+.chat-sudo-bar,
+.chat-secret-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.chat-sudo-bar .chat-prompt-icon,
+.chat-secret-bar .chat-prompt-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+}
+.chat-sudo-bar .chat-prompt-label,
+.chat-secret-bar .chat-prompt-label {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.chat-sudo-bar input,
+.chat-secret-bar input {
+  flex: 1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+}
+.chat-sudo-bar input:focus,
+.chat-secret-bar input:focus {
+  border-color: var(--primary);
+}
+.chat-sudo-bar button,
+.chat-secret-bar button {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: background var(--transition);
+}
+.chat-sudo-bar button:hover,
+.chat-secret-bar button:hover {
   background: var(--bg-hover);
 }
 

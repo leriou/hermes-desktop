@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ChatMessage, ReasoningMessage, SubagentMessage, ToolCallMessage, UsageState } from "../types";
+import type { ChatMessage, ReasoningMessage, SubagentMessage, ToolCallMessage, UsageState, SudoRequest, SecretRequest } from "../types";
 import type { SessionState } from "./useSessionManager";
 import { shortModelName } from "../sessionDisplay";
 
@@ -161,7 +161,7 @@ export function useChatInbox({
           pendingChunksRef.current.delete(tabId);
 
           const finalText = payload.text;
-          const reasoningText = state?.streamingReasoning ?? "";
+          const reasoningText = payload.reasoning || state?.streamingReasoning || "";
           const hadStreaming = !!(state?.streamingText) || !!pendingChunk;
           // Compute fallback text: already-flushed streamingText + unflushed pending chunk
           const fallbackText = `${state?.streamingText ?? ""}${pendingChunk}`;
@@ -217,6 +217,8 @@ export function useChatInbox({
             toolProgress: null,
             pendingApproval: null,
             pendingClarify: null,
+            pendingSudo: null,
+            pendingSecret: null,
             ...(event.sid ? { hermesSessionId: event.sid } : {}),
             ...(payload.usage ? { usage: usageFromPayload(payload.usage) } : {}),
             ...(model ? { model } : {}),
@@ -270,12 +272,12 @@ export function useChatInbox({
           updateTab(tabId, { toolProgress: null });
           if (payload.tool_id) {
             const current = sessionsRef.current.get(tabId);
-            let resultText = payload.result
-              ? typeof payload.result === "string"
-                ? payload.result
-                : JSON.stringify(payload.result, null, 2)
-              : payload.success === false
-                ? "Failed"
+            let resultText = payload.result_text
+              ? typeof payload.result_text === "string"
+                ? payload.result_text
+                : JSON.stringify(payload.result_text, null, 2)
+              : payload.error
+                ? payload.error
                 : "";
             if (resultText.length > 8000) {
               resultText = resultText.slice(0, 8000) + `\n\n... (${resultText.length} chars total)`;
@@ -350,6 +352,24 @@ export function useChatInbox({
           });
           break;
 
+        case "sudo.request":
+          updateTab(tabId, {
+            pendingSudo: {
+              requestId: payload.request_id || "",
+            },
+          });
+          break;
+
+        case "secret.request":
+          updateTab(tabId, {
+            pendingSecret: {
+              requestId: payload.request_id || "",
+              envVar: payload.env_var || "",
+              prompt: payload.prompt || "",
+            },
+          });
+          break;
+
         case "error":
           commitStreaming(tabId, runtimeSid);
           updateTabMessages(tabId, (prev) => [
@@ -362,7 +382,7 @@ export function useChatInbox({
               timestamp: Date.now(),
             },
           ]);
-          updateTab(tabId, { isLoading: false, toolProgress: null, streamingReasoning: "" });
+          updateTab(tabId, { isLoading: false, toolProgress: null, streamingReasoning: "", pendingSudo: null, pendingSecret: null });
           break;
 
         case "session.info":
@@ -470,8 +490,30 @@ export function useChatInbox({
               {
                 ...existing,
                 status: payload.success === false ? ("failed" as const) : ("completed" as const),
-                durationS: payload.duration_s,
+                durationS: payload.duration_seconds ?? payload.duration_s,
               },
+              ...prev.slice(idx + 1),
+            ];
+          });
+          break;
+        }
+
+        case "subagent.progress": {
+          const agentId = payload.subagent_id || payload.agent_id;
+          if (!agentId) break;
+          updateTabMessages(tabId, (prev) => {
+            const idx = prev.findIndex(
+              (m) => m.kind === "subagent" && "agentId" in m && m.agentId === agentId,
+            );
+            if (idx === -1) return prev;
+            const existing = prev[idx] as SubagentMessage;
+            const parts: string[] = [];
+            if (payload.iteration != null) parts.push(`#${payload.iteration}`);
+            if (payload.tool_name) parts.push(payload.tool_name);
+            if (payload.tool_preview) parts.push(payload.tool_preview);
+            return [
+              ...prev.slice(0, idx),
+              { ...existing, progressHint: parts.join(" · ") || undefined },
               ...prev.slice(idx + 1),
             ];
           });

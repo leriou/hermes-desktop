@@ -1,270 +1,152 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { join } from "path";
-import { mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from "fs";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
 /**
- * Tests for setToolsetEnabled / getToolsets — the YAML line-by-line
- * state machine that reads/writes platform_toolsets.cli in config.yaml.
+ * Tests for setToolsetEnabled / getToolsets / parseToolsetsOutput.
  *
- * Regression target: when platform_toolsets: exists but has no cli:
- * subsection, and that section is the last top-level block in the file,
- * setToolsetEnabled silently returns true without writing the cli:
- * block.  The stale file means toolsets appear disabled on every read.
+ * setToolsetEnabled delegates to tuiGateway.toolConfigure (async).
+ * parseToolsetsOutput is a pure function that parses CLI output.
  */
 
-const { TEST_HOME } = vi.hoisted(() => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const path = require("path");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const os = require("os");
-  return {
-    TEST_HOME: path.join(os.tmpdir(), `hermes-toolset-test-${Date.now()}`),
-  };
-});
+const { mockToolConfigure } = vi.hoisted(() => ({
+  mockToolConfigure: vi.fn(),
+}));
+
+vi.mock("../src/main/tui-gateway", () => ({
+  tuiGateway: { toolConfigure: mockToolConfigure },
+}));
 
 vi.mock("../src/main/installer", () => ({
-  HERMES_HOME: TEST_HOME,
+  HERMES_HOME: "/tmp/hermes-test",
   HERMES_PYTHON: "/usr/bin/python3",
-  HERMES_REPO: TEST_HOME,
+  HERMES_REPO: "/tmp/hermes-test",
   hermesCliArgs: (args: string[]) => args,
   getEnhancedPath: () => process.env.PATH || "",
 }));
 
-vi.mock("../src/main/utils", () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const actual =
-    vi.importActual<typeof import("../src/main/utils")>("../src/main/utils");
-  return actual;
-});
-
-vi.mock("../src/shared/i18n", () => ({
-  t: (key: string) => key.split(".").pop() || key,
+vi.mock("../src/main/process-options", () => ({
+  HIDDEN_SUBPROCESS_OPTIONS: {},
 }));
 
-vi.mock("../src/main/locale", () => ({
-  getAppLocale: () => "en",
+vi.mock("../src/main/utils", () => ({
+  stripAnsi: (s: string) => s,
 }));
 
-import { setToolsetEnabled, getToolsets } from "../src/main/tools";
+import {
+  setToolsetEnabled,
+  getToolsets,
+  parseToolsetsOutput,
+} from "../src/main/tools";
 
-const CONFIG_FILE = join(TEST_HOME, "config.yaml");
+// ---------------------------------------------------------------------------
+// setToolsetEnabled
+// ---------------------------------------------------------------------------
 
-beforeEach(() => {
-  mkdirSync(TEST_HOME, { recursive: true });
-});
+describe("setToolsetEnabled", () => {
+  beforeEach(() => {
+    mockToolConfigure.mockReset();
+  });
 
-afterEach(() => {
-  vi.resetModules();
-  if (existsSync(TEST_HOME)) {
-    rmSync(TEST_HOME, { recursive: true, force: true });
-  }
-});
-
-function writeConfig(content: string): void {
-  writeFileSync(CONFIG_FILE, content);
-}
-
-function readConfig(): string {
-  return readFileSync(CONFIG_FILE, "utf-8");
-}
-
-describe("setToolsetEnabled — platform_toolsets without cli subsection", () => {
-  it("writes cli subsection when platform_toolsets block exists but has no cli (last block)", () => {
-    writeConfig("model:\n  default: gpt-4o\nplatform_toolsets:\n");
-
-    const result = setToolsetEnabled("web", true);
+  it("calls tuiGateway.toolConfigure with enable action", async () => {
+    mockToolConfigure.mockResolvedValue({});
+    const result = await setToolsetEnabled("web", true);
     expect(result.success).toBe(true);
-
-    const after = readConfig();
-    expect(after).toContain("cli:");
-    expect(after).toContain("      - web");
+    expect(mockToolConfigure).toHaveBeenCalledWith("web", true);
   });
 
-  it("writes cli subsection when platform_toolsets block has sibling keys but no cli (last block)", () => {
-    writeConfig(
-      "model:\n  default: gpt-4o\nplatform_toolsets:\n  other_key: value\n",
-    );
-
-    const result = setToolsetEnabled("web", true);
+  it("calls tuiGateway.toolConfigure with disable action", async () => {
+    mockToolConfigure.mockResolvedValue({});
+    const result = await setToolsetEnabled("terminal", false);
     expect(result.success).toBe(true);
-
-    const after = readConfig();
-    expect(after).toContain("cli:");
-    expect(after).toContain("      - web");
+    expect(mockToolConfigure).toHaveBeenCalledWith("terminal", false);
   });
 
-  it("writes cli subsection when platform_toolsets is the ONLY top-level block", () => {
-    writeConfig("platform_toolsets:\n");
-
-    const result = setToolsetEnabled("browser", true);
-    expect(result.success).toBe(true);
-
-    const after = readConfig();
-    expect(after).toContain("cli:");
-    expect(after).toContain("      - browser");
-  });
-
-  it("preserves existing non-cli siblings when inserting cli", () => {
-    writeConfig(
-      [
-        "model:",
-        "  default: gpt-4o",
-        "platform_toolsets:",
-        "  some_config: true",
-        "",
-      ].join("\n"),
-    );
-
-    const result = setToolsetEnabled("terminal", true);
-    expect(result.success).toBe(true);
-
-    const after = readConfig();
-    expect(after).toContain("cli:");
-    expect(after).toContain("      - terminal");
-    expect(after).toContain("some_config: true");
-  });
-
-  it("reads back the enabled toolset after writing (round-trip)", () => {
-    writeConfig("model:\n  default: gpt-4o\nplatform_toolsets:\n");
-
-    setToolsetEnabled("web", true);
-    setToolsetEnabled("file", true);
-
-    // Reimport so getToolsets reads the freshly-written file (no cache pollution)
-    const toolsets = getToolsets();
-    const webTs = toolsets.find((t) => t.key === "web");
-    const fileTs = toolsets.find((t) => t.key === "file");
-    const memTs = toolsets.find((t) => t.key === "memory");
-
-    expect(webTs?.enabled).toBe(true);
-    expect(fileTs?.enabled).toBe(true);
-    expect(memTs?.enabled).toBe(false);
-  });
-
-  it("round-trips disable after enable when cli was initially missing", () => {
-    writeConfig("model:\n  default: gpt-4o\nplatform_toolsets:\n");
-
-    // Enable → should create cli section
-    setToolsetEnabled("web", true);
-    let toolsets = getToolsets();
-    expect(toolsets.find((t) => t.key === "web")?.enabled).toBe(true);
-
-    // Disable → should remove web from cli
-    setToolsetEnabled("web", false);
-    toolsets = getToolsets();
-    expect(toolsets.find((t) => t.key === "web")?.enabled).toBe(false);
-  });
-});
-
-describe("setToolsetEnabled — no config file", () => {
-  it("returns false when config.yaml does not exist", () => {
-    const result = setToolsetEnabled("web", true);
+  it("returns { success: false } when toolConfigure throws", async () => {
+    mockToolConfigure.mockRejectedValue(new Error("gateway offline"));
+    const result = await setToolsetEnabled("web", true);
     expect(result.success).toBe(false);
+    expect(result.error).toContain("gateway offline");
+  });
+
+  it("returns fallback error message for non-Error throws", async () => {
+    mockToolConfigure.mockRejectedValue("string error");
+    const result = await setToolsetEnabled("web", true);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Failed to toggle tool.");
   });
 });
 
-describe("setToolsetEnabled — no platform_toolsets section (C1)", () => {
-  it("appends platform_toolsets.cli when the key is totally absent", () => {
-    writeConfig("model:\n  default: gpt-4o\n");
+// ---------------------------------------------------------------------------
+// getToolsets (error path — CLI not available in test env)
+// ---------------------------------------------------------------------------
 
-    const result = setToolsetEnabled("vision", true);
-    expect(result.success).toBe(true);
-
-    const after = readConfig();
-    expect(after).toContain("platform_toolsets:");
-    expect(after).toContain("  cli:");
-    expect(after).toContain("      - vision");
-    expect(after).toContain("model:");
-    expect(after).toContain("default: gpt-4o");
-  });
-
-  it("appends only once on repeated calls", () => {
-    writeConfig("model:\n  default: gpt-4o\n");
-
-    setToolsetEnabled("web", true);
-    setToolsetEnabled("vision", true);
-
-    const after = readConfig();
-    const n = after.split("platform_toolsets:").length - 1;
-    expect(n).toBe(1);
-  });
-
-  it("reads back the appended toolset (round-trip)", () => {
-    writeConfig("model:\n  default: gpt-4o\n");
-
-    setToolsetEnabled("memory", true);
-
-    const toolsets = getToolsets();
-    expect(toolsets.find((t) => t.key === "memory")?.enabled).toBe(true);
+describe("getToolsets", () => {
+  it("returns empty array when hermes CLI is not available", () => {
+    const tools = getToolsets();
+    expect(Array.isArray(tools)).toBe(true);
+    expect(tools).toEqual([]);
   });
 });
 
-describe("setToolsetEnabled — existing cli subsection (C2a)", () => {
-  it("replaces in-place when enabling a new toolset alongside existing ones", () => {
-    writeConfig(
-      [
-        "model:",
-        "  default: gpt-4o",
-        "platform_toolsets:",
-        "  cli:",
-        "      - web",
-        "      - terminal",
-        "",
-      ].join("\n"),
+// ---------------------------------------------------------------------------
+// parseToolsetsOutput — pure function, no mocking needed
+// ---------------------------------------------------------------------------
+
+describe("parseToolsetsOutput", () => {
+  it("parses built-in toolsets with enabled/disabled status", () => {
+    const output =
+      "Built-in toolsets (cli):\n" +
+      "✓ enabled  web  🔍 Web Search & Scraping\n" +
+      "✗ disabled  terminal  💻 Terminal\n";
+
+    const tools = parseToolsetsOutput(output);
+    expect(tools).toHaveLength(2);
+    expect(tools[0]).toMatchObject({ key: "web", enabled: true, source: "built-in" });
+    expect(tools[1]).toMatchObject({ key: "terminal", enabled: false, source: "built-in" });
+  });
+
+  it("strips emoji from descriptions", () => {
+    const tools = parseToolsetsOutput(
+      "Built-in toolsets (cli):\n✓ enabled  web  🔍 Web Search & Scraping\n",
     );
-
-    setToolsetEnabled("vision", true);
-
-    const after = readConfig();
-    expect(after).toContain("      - web");
-    expect(after).toContain("      - terminal");
-    expect(after).toContain("      - vision");
+    expect(tools[0]?.description).toBe("Web Search & Scraping");
   });
 
-  it("removes a toolset from the list when disabling an existing one", () => {
-    writeConfig(
-      [
-        "model:",
-        "  default: gpt-4o",
-        "platform_toolsets:",
-        "  cli:",
-        "      - web",
-        "      - terminal",
-        "      - vision",
-        "",
-      ].join("\n"),
-    );
+  it("parses plugin toolsets from separate section", () => {
+    const output =
+      "Built-in toolsets (cli):\n" +
+      "✓ enabled  web  🔍 Web Search\n" +
+      "Plugin toolsets (cli):\n" +
+      "✓ enabled  my-plugin  My custom plugin\n";
 
-    setToolsetEnabled("terminal", false);
-
-    const after = readConfig();
-    expect(after).toContain("      - web");
-    expect(after).toContain("      - vision");
-    expect(after).not.toContain("      - terminal");
+    const tools = parseToolsetsOutput(output);
+    const plugin = tools.find((t) => t.key === "my-plugin");
+    expect(plugin).toMatchObject({ key: "my-plugin", source: "plugin", enabled: true });
   });
 
-  it("round-trips enable after disable on an existing cli list", () => {
-    writeConfig(["platform_toolsets:", "  cli:", "      - web", ""].join("\n"));
+  it("parses MCP server entries", () => {
+    const output =
+      "MCP servers:\n" +
+      "byterover  all tools enabled\n" +
+      "other-server  disabled\n";
 
-    setToolsetEnabled("web", false);
-    let toolsets = getToolsets();
-    expect(toolsets.find((t) => t.key === "web")?.enabled).toBe(false);
-
-    setToolsetEnabled("web", true);
-    toolsets = getToolsets();
-    expect(toolsets.find((t) => t.key === "web")?.enabled).toBe(true);
+    const tools = parseToolsetsOutput(output);
+    expect(tools).toHaveLength(2);
+    expect(tools[0]).toMatchObject({ key: "byterover", enabled: true, source: "mcp" });
+    expect(tools[1]).toMatchObject({ key: "other-server", enabled: false, source: "mcp" });
   });
-});
 
-describe("setToolsetEnabled — disable all (C2d)", () => {
-  it("handles empty cli list gracefully when last toolset is disabled", () => {
-    writeConfig(["platform_toolsets:", "  cli:", "      - web", ""].join("\n"));
+  it("returns empty array for empty input", () => {
+    expect(parseToolsetsOutput("")).toEqual([]);
+  });
 
-    const result = setToolsetEnabled("web", false);
-    expect(result.success).toBe(true);
-
-    const after = readConfig();
-    expect(after).toContain("platform_toolsets:");
-    expect(after).toContain("  cli:");
+  it("ignores lines that don't match any pattern", () => {
+    const output =
+      "Some header\n" +
+      "Random text\n" +
+      "Built-in toolsets (cli):\n" +
+      "✓ enabled  web  Web Search\n";
+    const tools = parseToolsetsOutput(output);
+    expect(tools).toHaveLength(1);
+    expect(tools[0].key).toBe("web");
   });
 });

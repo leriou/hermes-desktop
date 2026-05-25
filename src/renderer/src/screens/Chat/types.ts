@@ -91,6 +91,7 @@ export interface SubagentMessage {
   status: "running" | "completed" | "failed";
   text?: string;
   durationS?: number;
+  progressHint?: string;
 }
 
 export type ChatMessage =
@@ -124,6 +125,16 @@ export interface ClarifyRequest {
   requestId: string;
   question: string;
   choices?: string[];
+}
+
+export interface SudoRequest {
+  requestId: string;
+}
+
+export interface SecretRequest {
+  requestId: string;
+  envVar: string;
+  prompt: string;
 }
 
 export interface UsageState {

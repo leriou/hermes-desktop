@@ -41,6 +41,53 @@ const CLI_ENV = {
 // 任何人不许再改这个实现方式。
 // ═══════════════════════════════════════════════════════════════════════
 
+export function parseToolsetsOutput(text: string): ToolsetInfo[] {
+  if (!text) return [];
+
+  const tools: ToolsetInfo[] = [];
+  let source = "built-in";
+
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+
+    if (trimmed.endsWith(":") && !trimmed.startsWith("✓") && !trimmed.startsWith("✗")) {
+      const lower = trimmed.toLowerCase();
+      if (lower.includes("plugin")) source = "plugin";
+      else if (lower.includes("mcp")) source = "mcp";
+      else source = "built-in";
+      continue;
+    }
+
+    const match = trimmed.match(/^[✓✗]\s+(enabled|disabled)\s+(\S+)\s+(.*)/);
+    if (match) {
+      const enabled = match[1] === "enabled";
+      const key = match[2];
+      const desc = match[3]
+        .replace(/[\p{Emoji}\p{Emoji_Modifier_Base}\p{Emoji_Component}\u{200D}\u{FE0F}\u{200B}]+/gu, "")
+        .replace(/^\s+/, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      tools.push({ key, label: key, description: desc, enabled, source });
+      continue;
+    }
+
+    const mcpMatch = trimmed.match(/^(\S+)\s+(all tools enabled|enabled|disabled|\S+)/);
+    if (source === "mcp" && mcpMatch) {
+      const key = mcpMatch[1];
+      const status = mcpMatch[2];
+      tools.push({
+        key,
+        label: key,
+        description: status,
+        enabled: status.includes("enabled"),
+        source: "mcp",
+      });
+    }
+  }
+
+  return tools;
+}
+
 export function getToolsets(_profile?: string): ToolsetInfo[] {
   try {
     const output = execFileSync(
@@ -55,54 +102,7 @@ export function getToolsets(_profile?: string): ToolsetInfo[] {
       },
     );
 
-    const text = stripAnsi(output.toString());
-    if (!text) return [];
-
-    const tools: ToolsetInfo[] = [];
-    let source = "built-in";
-
-    for (const line of text.split("\n")) {
-      const trimmed = line.trim();
-
-      // 识别分类标题行："Built-in toolsets (cli):" / "Plugin toolsets (cli):" / "MCP servers:"
-      if (trimmed.endsWith(":") && !trimmed.startsWith("✓") && !trimmed.startsWith("✗")) {
-        const lower = trimmed.toLowerCase();
-        if (lower.includes("plugin")) source = "plugin";
-        else if (lower.includes("mcp")) source = "mcp";
-        else source = "built-in";
-        continue;
-      }
-
-      // 内置/插件工具行: "✓ enabled  web  🔍 Web Search & Scraping"
-      const match = trimmed.match(/^[✓✗]\s+(enabled|disabled)\s+(\S+)\s+(.*)/);
-      if (match) {
-        const enabled = match[1] === "enabled";
-        const key = match[2];
-        const desc = match[3]
-          .replace(/[\p{Emoji}\p{Emoji_Modifier_Base}\p{Emoji_Component}\u{200D}\u{FE0F}\u{200B}]+/gu, "")
-          .replace(/^\s+/, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        tools.push({ key, label: key, description: desc, enabled, source });
-        continue;
-      }
-
-      // MCP 服务行: "byterover  all tools enabled"
-      const mcpMatch = trimmed.match(/^(\S+)\s+(all tools enabled|enabled|disabled|\S+)/);
-      if (source === "mcp" && mcpMatch) {
-        const key = mcpMatch[1];
-        const status = mcpMatch[2];
-        tools.push({
-          key,
-          label: key,
-          description: status,
-          enabled: status.includes("enabled"),
-          source: "mcp",
-        });
-      }
-    }
-
-    return tools;
+    return parseToolsetsOutput(stripAnsi(output.toString()));
   } catch (err) {
     console.error("Failed to get toolsets:", err);
     return [];

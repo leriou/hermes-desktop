@@ -1,11 +1,11 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ReasoningRow, ToolResultRow } from "./HistoryRow";
 import { SubagentRow } from "./SubagentRow";
 import { ToolGroupRow } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { mergeContinuationLabels } from "./sessionDisplay";
-import type { ApprovalRequest, ChatMessage, SystemStatusMessage, ToolCallMessage, ToolGroupMessage } from "./types";
+import type { ApprovalRequest, ChatMessage, SudoRequest, SecretRequest, SystemStatusMessage, ToolCallMessage, ToolGroupMessage } from "./types";
 
 const LIGHTWEIGHT_THRESHOLD = 15;
 const LIGHTWEIGHT_FROM_END = 8;
@@ -15,8 +15,12 @@ interface MessageListProps {
   isLoading: boolean;
   toolProgress: string | null;
   pendingApproval?: ApprovalRequest | null;
+  pendingSudo?: SudoRequest | null;
+  pendingSecret?: SecretRequest | null;
   onApprove: () => void;
   onDeny: () => void;
+  onSudoRespond: (password: string) => void;
+  onSecretRespond: (value: string) => void;
   streamingText?: string;
 }
 
@@ -128,13 +132,63 @@ function SystemStatusRow({ msg }: { msg: SystemStatusMessage }): React.JSX.Eleme
   );
 }
 
+function SudoPromptBar({ onSubmit }: { onSubmit: (password: string) => void }): React.JSX.Element {
+  const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const handleSubmit = useCallback(() => {
+    if (value) { onSubmit(value); setValue(""); }
+  }, [value, onSubmit]);
+  return (
+    <div className="chat-sudo-bar">
+      <span className="chat-prompt-icon">🔑</span>
+      <span className="chat-prompt-label">Sudo password required</span>
+      <input
+        ref={inputRef}
+        type="password"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+        placeholder="Password"
+        autoFocus
+      />
+      <button onClick={handleSubmit}>Submit</button>
+    </div>
+  );
+}
+
+function SecretPromptBar({ req, onSubmit }: { req: SecretRequest; onSubmit: (value: string) => void }): React.JSX.Element {
+  const [value, setValue] = useState("");
+  const handleSubmit = useCallback(() => {
+    if (value) { onSubmit(value); setValue(""); }
+  }, [value, onSubmit]);
+  return (
+    <div className="chat-secret-bar">
+      <span className="chat-prompt-icon">🔐</span>
+      <span className="chat-prompt-label">{req.prompt || req.envVar}</span>
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+        placeholder={req.envVar}
+        autoFocus
+      />
+      <button onClick={handleSubmit}>Submit</button>
+    </div>
+  );
+}
+
 export const MessageList = memo(function MessageList({
   messages,
   isLoading,
   toolProgress,
   pendingApproval,
+  pendingSudo,
+  pendingSecret,
   onApprove,
   onDeny,
+  onSudoRespond,
+  onSecretRespond,
   streamingText,
 }: MessageListProps): React.JSX.Element {
   const processed = useMemo(
@@ -247,6 +301,14 @@ export const MessageList = memo(function MessageList({
             </button>
           </div>
         </div>
+      )}
+
+      {pendingSudo && !isLoading && (
+        <SudoPromptBar onSubmit={onSudoRespond} />
+      )}
+
+      {pendingSecret && !isLoading && (
+        <SecretPromptBar req={pendingSecret} onSubmit={onSecretRespond} />
       )}
     </>
   );

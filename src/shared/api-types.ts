@@ -512,6 +512,8 @@ export interface HermesAPI {
   tuiToolsConfigure: (name: string, enabled: boolean, sessionId?: string) => Promise<any>;
   tuiApprovalRespond: (sessionId: string, response: string, all?: boolean) => Promise<any>;
   tuiClarifyRespond: (sessionId: string, answer: string, requestId?: string) => Promise<any>;
+  tuiSudoRespond: (sessionId: string, password: string, requestId?: string) => Promise<any>;
+  tuiSecretRespond: (sessionId: string, value: string, requestId?: string) => Promise<any>;
   tuiSessionTitle: (sessionId: string) => Promise<{ title: string; session_key: string }>;
   tuiSessionStatus: (sessionId: string) => Promise<any>;
   tuiSessionUsage: (sessionId: string) => Promise<any>;

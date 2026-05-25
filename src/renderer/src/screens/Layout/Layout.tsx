@@ -554,6 +554,8 @@ function Layout({
                     toolProgress={tab.toolProgress}
                     pendingApproval={tab.pendingApproval}
                     pendingClarify={tab.pendingClarify}
+                    pendingSudo={tab.pendingSudo}
+                    pendingSecret={tab.pendingSecret}
                     profile={activeProfile}
                     visible={visible}
                     onNewChat={handleNewChat}
@@ -568,6 +570,8 @@ function Layout({
                         ...(patch.toolProgress !== undefined ? { toolProgress: patch.toolProgress } : {}),
                         ...(patch.pendingApproval !== undefined ? { pendingApproval: patch.pendingApproval } : {}),
                         ...(patch.pendingClarify !== undefined ? { pendingClarify: patch.pendingClarify } : {}),
+                        ...(patch.pendingSudo !== undefined ? { pendingSudo: patch.pendingSudo } : {}),
+                        ...(patch.pendingSecret !== undefined ? { pendingSecret: patch.pendingSecret } : {}),
                         ...(patch.usage !== undefined ? { usage: patch.usage } : {}),
                         ...(patch.streamingText !== undefined ? { streamingText: patch.streamingText } : {}),
                       });

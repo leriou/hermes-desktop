@@ -995,6 +995,12 @@ const hermesAPI = {
   tuiClarifyRespond: (sessionId: string, answer: string, requestId?: string): Promise<any> =>
     ipcRenderer.invoke("tui-clarify-respond", sessionId, answer, requestId),
 
+  tuiSudoRespond: (sessionId: string, password: string, requestId?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-sudo-respond", sessionId, password, requestId),
+
+  tuiSecretRespond: (sessionId: string, value: string, requestId?: string): Promise<any> =>
+    ipcRenderer.invoke("tui-secret-respond", sessionId, value, requestId),
+
   tuiSessionTitle: (sessionId: string): Promise<any> =>
     ipcRenderer.invoke("tui-session-title", sessionId),
 

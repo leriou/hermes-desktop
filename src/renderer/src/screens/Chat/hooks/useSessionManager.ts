@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import type { ApprovalRequest, ChatMessage, ClarifyRequest } from "../types";
+import type { ApprovalRequest, ChatMessage, ClarifyRequest, SudoRequest, SecretRequest } from "../types";
 import type { SessionEntry, SessionStatus } from "../SessionSidebar";
 import { sessionDisplayPreview, sessionDisplayTitle } from "../sessionDisplay";
 
@@ -14,6 +14,8 @@ export interface SessionState {
   streamingReasoning: string;
   pendingApproval: ApprovalRequest | null;
   pendingClarify: ClarifyRequest | null;
+  pendingSudo: SudoRequest | null;
+  pendingSecret: SecretRequest | null;
   pendingModelSwitch: string | null;
   unreadCount: number;
   title: string;
@@ -33,6 +35,8 @@ function emptySession(): SessionState {
     streamingReasoning: "",
     pendingApproval: null,
     pendingClarify: null,
+    pendingSudo: null,
+    pendingSecret: null,
     pendingModelSwitch: null,
     unreadCount: 0,
     title: "",
