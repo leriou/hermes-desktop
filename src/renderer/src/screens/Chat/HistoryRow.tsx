@@ -37,6 +37,12 @@ export function getToolMeta(name: string): ToolMeta {
     return { icon: "\u{1F9E9}", label: "Skill" };
   if (n === "web_extract" || n === "web_search" || n.includes("browse"))
     return { icon: "\u{1F310}", label: "Web" };
+  if (n === "mcp_web_search_prime_web_search_prime")
+    return { icon: "\u{1F310}", label: "Web Search" };
+  if (n === "search_extract")
+    return { icon: "\u{1F4C4}", label: "Search & Extract" };
+  if (n === "search_web")
+    return { icon: "\u{1F50D}", label: "Search Web" };
   if (n === "process") return { icon: "\u{2699}", label: "Process" };
   if (n === "relay_mcp") return { icon: "\u{1F517}", label: "Relay" };
   if (n.includes("kanban")) return { icon: "\u{1F4CA}", label: "Kanban" };

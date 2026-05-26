@@ -251,38 +251,6 @@ export function useChatInbox({
       if (!tabId) return;
       const state = sessionsRef.current.get(tabId);
 
-      // ── Debug: trace event flow ──────────────────────────────────
-      const debugTypes = new Set([
-        "message.start", "message.delta", "message.complete",
-        "tool.start", "tool.complete", "tool.generating", "tool.progress",
-        "thinking.delta", "reasoning.delta",
-      ]);
-      if (debugTypes.has(event.type)) {
-        const extra: Record<string, unknown> = {};
-        if (event.type === "tool.start" || event.type === "tool.complete") {
-          extra.name = event.payload.name;
-          extra.tool_id = event.payload.tool_id;
-        }
-        if (event.type === "thinking.delta" || event.type === "reasoning.delta") {
-          const t = textFromPayload(event.payload);
-          extra.len = t.length;
-          extra.snippet = t.slice(0, 30);
-        }
-        if (event.type === "message.delta") {
-          const t = textFromPayload(event.payload);
-          extra.len = t.length;
-          extra.snippet = t.slice(0, 30);
-        }
-        console.log(
-          `[hermes-event] ${event.type}`,
-          JSON.stringify(extra),
-          `| streamingReasoning=${(state?.streamingReasoning ?? "").length}`,
-          `| streamingText=${(state?.streamingText ?? "").length}`,
-          `| toolProgress=${state?.toolProgress ?? "null"}`,
-          `| isLoading=${state?.isLoading ?? false}`,
-        );
-      }
-      // ── End Debug ────────────────────────────────────────────────
 
       const runtimeSid =
         event.sessionId ??

@@ -150,20 +150,6 @@ export function buildRenderableTranscript({
     }
   }
 
-  // ── Debug: trace rendering decisions ──────────────────────────
-  if (isLoading) {
-    const itemKinds = items.map((it) => (it as { kind?: string }).kind ?? "bubble").filter(k => k !== "bubble" && k !== "reasoning" && k !== "tool_group");
-    console.log(
-      `[hermes-render] live items: [${itemKinds.join(", ")}]`,
-      `| lastMessageIsAgent=${lastMessageIsAgent}`,
-      `| streamingReasoning=${streamingReasoning.length}`,
-      `| streamingText=${streamingText.length}`,
-      `| toolProgress=${toolProgress ?? "null"}`,
-      `| lastMsg=${messages.length > 0 ? (messages[messages.length - 1] as any).kind ?? "bubble" : "none"}`,
-    );
-  }
-  // ── End Debug ────────────────────────────────────────────────
-
   return items;
 }
 

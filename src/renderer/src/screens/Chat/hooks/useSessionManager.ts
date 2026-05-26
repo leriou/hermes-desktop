@@ -14,6 +14,7 @@ export interface SessionState {
   messages: ChatMessage[];
   hermesSessionId: string | null;
   dbSessionId: string | null;
+  relatedSessionIds: string[];
   isLoading: boolean;
   usage: import("../types").UsageState | null;
   toolProgress: string | null;
@@ -37,6 +38,7 @@ function emptySession(): SessionState {
     messages: [],
     hermesSessionId: null,
     dbSessionId: null,
+    relatedSessionIds: [],
     isLoading: false,
     usage: null,
     toolProgress: null,

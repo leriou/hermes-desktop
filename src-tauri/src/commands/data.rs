@@ -544,3 +544,8 @@ pub async fn get_skill_content(path: String) -> Result<Value, String> {
         Err(_) => Ok(json!("")),
     }
 }
+
+#[command]
+pub async fn get_related_session_ids(app: AppHandle, session_id: String, profile: Option<String>) -> Result<Value, String> {
+    crate::session_utils::get_related_session_ids(Some(&app), &session_id, profile)
+}

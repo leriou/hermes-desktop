@@ -42,18 +42,18 @@ describe("ToolGroupRow", () => {
     });
   });
 
-  it("renders multiple tool calls as a collapsible timeline", () => {
+  it("renders multiple tool calls as an aggregated table in a details block", () => {
     const { container } = render(<ToolGroupRow msg={toolGroup} />);
 
-    expect(container.querySelector(".chat-tool-multiple-container")).not.toBeNull();
-    expect(screen.getByText("shell (2次调用)")).toBeInTheDocument();
-    expect(screen.getByText("1✓ 1…")).toBeInTheDocument();
+    expect(container.querySelector(".chat-history--tool-group")).not.toBeNull();
+    expect(screen.getByText("2次调用 · 1✓ 1…")).toBeInTheDocument();
 
-    // 确认渲染了内部的 timeline 详情
-    expect(container.querySelector(".tool-timeline")).not.toBeNull();
+    // 确认渲染了内部的 table
+    expect(container.querySelector(".tool-group-table")).not.toBeNull();
     expect(screen.getByText("npm test")).toBeInTheDocument();
     expect(screen.getByText("npm run typecheck:web")).toBeInTheDocument();
 
+    // 点击详情按钮
     const detailButtons = screen.getAllByRole("button", { name: "查看详情" });
     expect(detailButtons).toHaveLength(2);
 

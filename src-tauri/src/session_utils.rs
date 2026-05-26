@@ -236,16 +236,12 @@ pub fn get_session_messages(app: Option<&AppHandle>, session_id: &str, profile: 
     let result = hermes_core::get_session_messages_impl(&db_path, &desktop_dir, &sessions_dir, session_id);
     match result {
         Ok(items) => {
-            let max_msgs = 100;
             let max_tool_content = 8000;
             let items_val = json!(items);
             let mut arr = match items_val.as_array().cloned() {
                 Some(a) => a,
                 None => return Ok(json!([])),
             };
-            if arr.len() > max_msgs {
-                arr = arr.split_off(arr.len() - max_msgs);
-            }
             for item in arr.iter_mut() {
                 if item.get("kind").map(|v| v.as_str()) == Some(Some("tool_result")) {
                     if let Some(content) = item.get("content").and_then(|v| v.as_str()) {
@@ -385,4 +381,57 @@ fn parse_relative_time(s: &str) -> u64 {
         }
     }
     now
+}
+
+pub fn get_related_session_ids(app: Option<&AppHandle>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
+    let db_path = state_db_path(app, profile).ok_or("state.db not found")?;
+    let conn = rusqlite::Connection::open_with_flags(
+        &db_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    ).map_err(|e| e.to_string())?;
+
+    // Walk parent chain to find the root
+    let mut chain: Vec<String> = vec![session_id.to_string()];
+    let mut current = session_id.to_string();
+    loop {
+        let parent: Option<String> = conn.query_row(
+            "SELECT parent_session_id FROM sessions WHERE id = ?",
+            rusqlite::params![current],
+            |row| row.get(0),
+        ).unwrap_or(None);
+        match parent {
+            Some(p) if !p.is_empty() => {
+                chain.push(p.clone());
+                current = p;
+            }
+            _ => break,
+        }
+    }
+
+    // Walk children: find all sessions whose ancestor chain leads to this root
+    let root = chain.last().unwrap().clone();
+    let mut all: Vec<String> = vec![root.clone()];
+    let mut frontier = vec![root.clone()];
+    while !frontier.is_empty() {
+        let mut next_frontier = Vec::new();
+        for fid in &frontier {
+            let mut stmt = conn.prepare(
+                "SELECT id FROM sessions WHERE parent_session_id = ? ORDER BY started_at"
+            ).map_err(|e| e.to_string())?;
+            let rows: Vec<String> = stmt.query_map(rusqlite::params![fid], |row| row.get(0))
+                .map_err(|e| e.to_string())?
+                .filter_map(|r| r.ok()).collect();
+            for id in rows {
+                all.push(id.clone());
+                next_frontier.push(id);
+            }
+        }
+        frontier = next_frontier;
+    }
+
+    // Remove duplicates, preserve order
+    let mut seen = std::collections::HashSet::new();
+    let unique: Vec<String> = all.into_iter().filter(|id| seen.insert(id.clone())).collect();
+
+    Ok(json!(unique))
 }

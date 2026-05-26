@@ -372,6 +372,13 @@ export function listSessions(
 > {
   return invoke("list_sessions", { profile, limit, offset });
 }
+export function getRelatedSessionIds(
+  sessionId: string,
+  profile?: string,
+): Promise<string[]> {
+  return invoke("get_related_session_ids", { sessionId, profile });
+}
+
 export function getSessionMessages(
   sessionId: string,
   profile?: string,

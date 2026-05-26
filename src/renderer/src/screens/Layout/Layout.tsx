@@ -2,6 +2,7 @@ import {
   abortChat,
   downloadUpdate,
   getPlugins,
+  getRelatedSessionIds,
   getSessionMessages,
   installUpdate,
   isRemoteOnlyMode,
@@ -27,7 +28,7 @@ import Chat, { ChatMessage } from "../Chat/Chat";
 import { SessionSidebar } from "../Chat/SessionSidebar";
 import { useSessionManager } from "../Chat/hooks/useSessionManager";
 import { useChatInbox } from "../Chat/hooks/useChatInbox";
-import { baseSessionTitle, parseTitleSegment } from "../Chat/sessionDisplay";
+import { baseSessionTitle } from "../Chat/sessionDisplay";
 import RemoteNotice from "../../components/RemoteNotice";
 import VerifyWarningBanner from "../../components/VerifyWarningBanner";
 import hermeslogo from "../../assets/hermes.png";
@@ -116,19 +117,6 @@ const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
   { view: "config", icon: Code, labelKey: "navigation.config" },
   { view: "settings", icon: SettingsIcon, labelKey: "navigation.settings" },
 ];
-
-function isHistorySegment(
-  a: { title?: string | null },
-  b: { title?: string | null },
-): boolean {
-  const titleA = baseSessionTitle(a.title);
-  const titleB = baseSessionTitle(b.title);
-  return (
-    !!titleA &&
-    titleA === titleB &&
-    !!(parseTitleSegment(a.title) || parseTitleSegment(b.title))
-  );
-}
 
 interface LayoutProps {
   verifyWarning?: boolean;
@@ -306,7 +294,6 @@ function Layout({
     [sessionManager],
   );
 
-  const MAX_RESUME_MESSAGES = 100;
   const MAX_TOOL_CONTENT = 8000;
 
   const handleResumeSession = useCallback(
@@ -316,47 +303,27 @@ function Layout({
       let targetResumeSessionId = sessionId;
       let relatedSessionIds: string[] = [sessionId];
 
-      // 0. Look up the title from the cached session list
+      // 0. Resolve related session chain from DB (parent_session_id)
       try {
+        relatedSessionIds = await getRelatedSessionIds(sessionId, activeProfile);
+        targetResumeSessionId = relatedSessionIds[relatedSessionIds.length - 1] || sessionId;
+        // Look up title
         const cached = await listCachedSessions(activeProfile);
         const found = cached.find((s: { id: string }) => s.id === sessionId);
-        if (found?.title) sessionTitle = found.title;
-        if (found) {
-          const related = cached
-            .filter((s: { id: string; title?: string | null }) =>
-              isHistorySegment(found, s),
-            )
-            .sort(
-              (a: { startedAt: number }, b: { startedAt: number }) =>
-                a.startedAt - b.startedAt,
-            );
-          if (related.length > 1) {
-            relatedSessionIds = related.map((s: { id: string }) => s.id);
-            targetResumeSessionId =
-              relatedSessionIds[relatedSessionIds.length - 1];
-            sessionTitle = baseSessionTitle(found.title) || sessionTitle;
-          }
-        }
+        if (found?.title) sessionTitle = baseSessionTitle(found.title) || found.title;
       } catch {
         /* ignore */
       }
 
-      // 1. Load messages — check prefetch cache first, then API
+      // 1. Load messages from the latest session only — older segments load on scroll
       try {
-        const loaded = await Promise.all(
-          relatedSessionIds.map((id) =>
-            cache.getOrFetch(`session-msgs:${id}`, 30_000, () =>
-              getSessionMessages(id, activeProfile),
-            ),
-          ),
+        const items = await cache.getOrFetch(
+          `session-msgs:${targetResumeSessionId}`,
+          30_000,
+          () => getSessionMessages(targetResumeSessionId, activeProfile),
         );
-        const items = loaded.flat();
         if (items && items.length > 0) {
-          const sliced =
-            items.length > MAX_RESUME_MESSAGES
-              ? items.slice(items.length - MAX_RESUME_MESSAGES)
-              : items;
-          chatMessages = sliced
+          chatMessages = items
             .map((it: any): ChatMessage | null => {
               const ts = it.timestamp
                 ? Math.round(it.timestamp * 1000)
@@ -421,6 +388,7 @@ function Layout({
         messages: chatMessages,
         hermesSessionId: targetResumeSessionId,
         dbSessionId: targetResumeSessionId,
+        relatedSessionIds,
         title: sessionTitle,
         updatedAt: Date.now(),
         isLoading: false,
@@ -702,6 +670,7 @@ function Layout({
                     }}
                     sessionId={tab.hermesSessionId}
                     dbSessionId={tab.dbSessionId}
+                    relatedSessionIds={tab.relatedSessionIds}
                     sessionTitle={tab.title}
                     isLoading={tab.isLoading}
                     streamingText={tab.streamingText}

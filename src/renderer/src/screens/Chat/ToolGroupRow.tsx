@@ -1,8 +1,14 @@
 import { copyToClipboard } from "@renderer/lib/hermes-tauri";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ClipboardList, X } from "lucide-react";
+import { HermesAvatar } from "./MessageRow";
 import type { ToolCallMessage, ToolGroupMessage } from "./types";
+import {
+  getColumnsForTool,
+  fallbackColumns,
+  type ColumnDef,
+} from "./tool-table-config";
 import { getToolMeta } from "./HistoryRow";
 
 /* ── JSON pretty-print helper ─────────────────────────────────────────── */
@@ -238,11 +244,29 @@ export function getFriendlyToolDescription(toolName: string, argsStr: string): {
     };
   }
 
-  if (nameLower === "search_web" || nameLower.includes("web") || nameLower.includes("url")) {
-    const query = argsObj.query || argsObj.url || "";
+  if (nameLower === "search_web") {
+    const query = argsObj.query || "";
     return {
       icon: "🌐",
       action: "Search web",
+      detail: query,
+    };
+  }
+
+  if (nameLower === "search_extract") {
+    const query = argsObj.query || "";
+    return {
+      icon: "📄",
+      action: "Search & Extract",
+      detail: query,
+    };
+  }
+
+  if (nameLower === "mcp_web_search_prime_web_search_prime") {
+    const query = argsObj.search_query || argsObj.query || "";
+    return {
+      icon: "🌐",
+      action: "Web Search",
       detail: query,
     };
   }
@@ -343,93 +367,88 @@ function SingleToolFootprint({
   );
 }
 
-/* ── Tool Timeline List (For multiple tools) ─────────────────────── */
+/* ── Tool table (For multiple tools) ────────────────────────────────── */
 
-function ToolTimeline({
+function ToolTable({
   calls,
-  toolName,
+  columns,
 }: {
   calls: ToolCallMessage[];
-  toolName: string;
+  columns: ColumnDef[];
 }): React.JSX.Element {
   const [detailIdx, setDetailIdx] = useState<number | null>(null);
 
   return (
-    <div className="tool-timeline">
-      {calls.map((call, i) => {
-        const pending = call.result === undefined;
-        const desc = getFriendlyToolDescription(toolName, call.args || "");
-        const summary = desc.detail;
-        const truncatedSummary =
-          summary.length > 80 ? summary.slice(0, 80) + "…" : summary;
-
-        return (
-          <div
-            key={call.callId || i}
-            className={`tool-timeline-item ${
-              pending
-                ? "tool-timeline-item--pending"
-                : call.success === false
-                  ? "tool-timeline-item--fail"
-                  : ""
-            }`}
-          >
-            <div className="tool-timeline-left">
-              <div className="tool-timeline-line" />
-              <div
-                className={`tool-timeline-dot ${
+    <div className="tool-group-table-wrap">
+      <table className="tool-group-table">
+        <thead>
+          <tr>
+            <th className="tool-group-th tool-group-th--num">#</th>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                className="tool-group-th"
+                style={col.width ? { width: col.width } : undefined}
+              >
+                {col.label}
+              </th>
+            ))}
+            <th className="tool-group-th tool-group-th--status">状态</th>
+            <th className="tool-group-th tool-group-th--detail">详情</th>
+          </tr>
+        </thead>
+        <tbody>
+          {calls.map((call, i) => {
+            let args: Record<string, unknown>;
+            try {
+              args = JSON.parse(call.args || "{}");
+            } catch {
+              args = {};
+            }
+            const pending = call.result === undefined;
+            return (
+              <tr
+                key={call.callId || i}
+                className={
                   pending
-                    ? "tool-timeline-dot--pending"
+                    ? "tool-group-tr--pending"
                     : call.success === false
-                      ? "tool-timeline-dot--fail"
-                      : "tool-timeline-dot--success"
-                }`}
+                      ? "tool-group-tr--fail"
+                      : ""
+                }
               >
-                {pending ? (
-                  <span className="tool-timeline-spinner" />
-                ) : call.success === false ? (
-                  "✗"
-                ) : (
-                  "✓"
-                )}
-              </div>
-            </div>
-
-            <div className="tool-timeline-content">
-              <span className="tool-timeline-index">#{i + 1}</span>
-              {truncatedSummary ? (
-                <code className="tool-timeline-code" title={summary}>
-                  {truncatedSummary}
-                </code>
-              ) : (
-                <span className="tool-timeline-empty">(empty args)</span>
-              )}
-              {call.progress && (
-                <span className="tool-timeline-progress" title={call.progress}>
-                  · {call.progress}
-                </span>
-              )}
-            </div>
-
-            <div className="tool-timeline-right">
-              {call.durationS !== undefined && (
-                <span className="tool-timeline-duration">
-                  {call.durationS.toFixed(1)}s
-                </span>
-              )}
-              <button
-                className="tool-timeline-detail-btn"
-                onClick={() => setDetailIdx(i)}
-                aria-label="查看详情"
-                title="查看完整 JSON 详情"
-              >
-                <ClipboardList size={12} />
-              </button>
-            </div>
-          </div>
-        );
-      })}
-
+                <td className="tool-group-td tool-group-td--num">{i + 1}</td>
+                {columns.map((col) => (
+                  <td key={col.key} className="tool-group-td">
+                    {col.render
+                      ? col.render(args[col.key] ?? "")
+                      : String(args[col.key] ?? "")}
+                  </td>
+                ))}
+                <td className="tool-group-td tool-group-td--status">
+                  {pending ? (
+                    <span className="tool-group-pending">running…</span>
+                  ) : call.success === false ? (
+                    <span className="chat-tool-fail">✗</span>
+                  ) : (
+                    <span className="chat-tool-ok">✓</span>
+                  )}
+                </td>
+                <td className="tool-group-td tool-group-td--detail">
+                  <button
+                    className="tool-group-detail-btn"
+                    onClick={() => setDetailIdx(i)}
+                    aria-label={`查看第 ${i + 1} 次 ${call.name} 调用详情`}
+                    title="查看详情"
+                  >
+                    <ClipboardList size={14} aria-hidden="true" />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
       {detailIdx !== null && (
         <DetailModal
           call={calls[detailIdx]}
@@ -437,59 +456,6 @@ function ToolTimeline({
           onClose={() => setDetailIdx(null)}
         />
       )}
-    </div>
-  );
-}
-
-/* ── Multiple Tools Footprint (TUI-style) ────────────────────────── */
-
-function MultipleToolsFootprint({
-  msg,
-  label,
-  icon,
-  statusStr,
-  allDone,
-}: {
-  msg: ToolGroupMessage;
-  label: string;
-  icon: string;
-  statusStr: string;
-  allDone: boolean;
-}): React.JSX.Element {
-  const [open, setOpen] = useState(!allDone);
-
-  useEffect(() => {
-    if (!allDone) {
-      setOpen(true);
-    }
-  }, [allDone]);
-
-  return (
-    <div className="chat-tool-multiple-container">
-      <details
-        className="chat-tool-multiple-details"
-        open={open}
-        onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
-      >
-        <summary className="chat-tool-multiple-header">
-          <div className="chat-tool-multiple-left">
-            <div className="chat-tool-multiple-line" />
-            <div className="chat-tool-multiple-dot">
-              {icon}
-            </div>
-          </div>
-          <span className="chat-tool-multiple-label">
-            {label} ({msg.calls.length}次调用)
-          </span>
-          <span className="chat-tool-multiple-status">{statusStr}</span>
-          <span className={`chat-tool-multiple-chevron ${open ? "open" : ""}`}>
-            ▸
-          </span>
-        </summary>
-        <div className="chat-tool-multiple-body">
-          <ToolTimeline calls={msg.calls} toolName={msg.toolName} />
-        </div>
-      </details>
     </div>
   );
 }
@@ -511,23 +477,58 @@ export const ToolGroupRow = memo(function ToolGroupRow({
   const pending = msg.calls.filter((c) => c.result === undefined).length;
   const allDone = pending === 0;
 
+  const columns = useMemo(() => {
+    const custom = getColumnsForTool(msg.toolName);
+    if (custom) return custom;
+    const firstArgs = msg.calls.find((c) => c.args)?.args || "";
+    return fallbackColumns(firstArgs);
+  }, [msg.toolName, msg.calls]);
+
   const statusParts: string[] = [];
   if (succeeded) statusParts.push(`${succeeded}✓`);
   if (failed) statusParts.push(`${failed}✗`);
   if (pending) statusParts.push(`${pending}…`);
   const statusStr = statusParts.join(" ");
 
+  const [open, setOpen] = useState(!allDone);
+
+  useEffect(() => {
+    if (!allDone) {
+      setOpen(true);
+    }
+  }, [allDone]);
+
   if (total === 1) {
     return <SingleToolFootprint call={msg.calls[0]} toolName={msg.toolName} />;
   }
 
   return (
-    <MultipleToolsFootprint
-      msg={msg}
-      label={label}
-      icon={icon}
-      statusStr={statusStr}
-      allDone={allDone}
-    />
+    <div className="chat-message chat-message-agent chat-message-history">
+      <HermesAvatar />
+      <details
+        className="chat-history chat-history--tool-group"
+        open={open}
+        onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+      >
+        <summary className="chat-history-header">
+          <span
+            className={`chat-history-chevron ${open ? "chat-history-chevron--open" : ""}`}
+          >
+            ▸
+          </span>
+          <span className="chat-history-label">
+            <span className="chat-tool-icon">{icon}</span>
+            <span className="chat-tool-name">{label}</span>
+            <span className="chat-group-summary">
+              {total > 1 ? `${total}次调用 · ` : ""}
+              {statusStr}
+            </span>
+          </span>
+        </summary>
+        <div className="chat-history-body">
+          <ToolTable calls={msg.calls} columns={columns} />
+        </div>
+      </details>
+    </div>
   );
 });

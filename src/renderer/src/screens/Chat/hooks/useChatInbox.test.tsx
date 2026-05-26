@@ -19,6 +19,7 @@ describe("useChatInbox", () => {
       toolProgress: null,
       hermesSessionId: "sid-1",
       dbSessionId: "db-1",
+      relatedSessionIds: [],
       pendingApproval: null,
       pendingClarify: null,
       pendingSudo: null,
