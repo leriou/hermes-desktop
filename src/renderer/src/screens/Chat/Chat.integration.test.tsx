@@ -10,15 +10,18 @@ vi.mock("../../components/useI18n", () => ({
 }));
 
 vi.mock("./ChatEmptyState", () => ({
-  ChatEmptyState: ({ onSelectSuggestion }: { onSelectSuggestion: (text: string) => void }) => (
-    <button onClick={() => onSelectSuggestion("suggested")}>empty</button>
-  ),
+  ChatEmptyState: ({
+    onSelectSuggestion,
+  }: {
+    onSelectSuggestion: (text: string) => void;
+  }) => <button onClick={() => onSelectSuggestion("suggested")}>empty</button>,
 }));
 
 vi.mock("../../assets/icon.png", () => ({ default: "icon.png" }));
 vi.mock("../../assets/hermes.png", () => ({ default: "hermes.png" }));
 vi.mock("../../assets/hermes-icon.png", () => ({ default: "hermes-icon.png" }));
 
+import * as hermesTauri from "@renderer/lib/hermes-tauri";
 import Chat from "./Chat";
 
 function installHermesAPI() {
@@ -28,7 +31,9 @@ function installHermesAPI() {
     tuiCreateSession: vi.fn().mockResolvedValue({ session_id: "rt-1" }),
     tuiSetGoal: vi.fn().mockResolvedValue({}),
     tuiSetModel: vi.fn().mockResolvedValue({}),
-    tuiSteer: vi.fn().mockResolvedValue({ result: { status: "queued", text: "nudge" } }),
+    tuiSteer: vi
+      .fn()
+      .mockResolvedValue({ result: { status: "queued", text: "nudge" } }),
     tuiCompress: vi.fn().mockResolvedValue({
       result: {
         messages: [{ role: "assistant", text: "compressed" }],
@@ -45,33 +50,45 @@ function installHermesAPI() {
         ],
       },
     }),
-    tuiSessionBranch: vi.fn().mockResolvedValue({ result: { session_id: "branch-1" } }),
-    tuiCommandDispatch: vi.fn().mockImplementation((_sid: string, name: string, arg?: string) => {
-      if (name === "goal") {
-        return Promise.resolve({
-          result: {
-            type: "send",
-            notice: "goal notice",
-            message: arg || "",
-          },
-        });
-      }
-      if (name === "steer") {
-        return Promise.resolve({
-          result: {
-            type: "send",
-            message: arg || "",
-          },
-        });
-      }
-      return Promise.resolve({ result: {} });
-    }),
+    tuiSessionBranch: vi
+      .fn()
+      .mockResolvedValue({ result: { session_id: "branch-1" } }),
+    tuiCommandDispatch: vi
+      .fn()
+      .mockImplementation((_sid: string, name: string, arg?: string) => {
+        if (name === "goal") {
+          return Promise.resolve({
+            result: {
+              type: "send",
+              notice: "goal notice",
+              message: arg || "",
+            },
+          });
+        }
+        if (name === "steer") {
+          return Promise.resolve({
+            result: {
+              type: "send",
+              message: arg || "",
+            },
+          });
+        }
+        return Promise.resolve({ result: {} });
+      }),
     tuiSubmitPrompt: vi.fn().mockResolvedValue(undefined),
-    tuiSessionTitle: vi.fn().mockResolvedValue({ title: "Chat title", session_key: "db-1" }),
+    tuiSessionTitle: vi
+      .fn()
+      .mockResolvedValue({ title: "Chat title", session_key: "db-1" }),
     tuiClarifyRespond: vi.fn().mockResolvedValue(undefined),
     tuiApprovalRespond: vi.fn().mockResolvedValue(undefined),
     tuiResumeSession: vi.fn().mockResolvedValue({ session_id: "rt-1" }),
-    getModelConfig: vi.fn().mockResolvedValue({ model: "gpt-4o-mini", provider: "openai", baseUrl: "" }),
+    getModelConfig: vi
+      .fn()
+      .mockResolvedValue({
+        model: "gpt-4o-mini",
+        provider: "openai",
+        baseUrl: "",
+      }),
     listModels: vi.fn().mockResolvedValue([]),
     getModelAliases: vi.fn().mockResolvedValue([
       {
@@ -99,6 +116,12 @@ function installHermesAPI() {
     configurable: true,
     value: api,
   });
+
+  for (const [key, val] of Object.entries(api)) {
+    if (key in hermesTauri && typeof (hermesTauri as any)[key] === "function") {
+      vi.mocked((hermesTauri as any)[key]).mockImplementation(val as any);
+    }
+  }
 
   return api;
 }
@@ -141,16 +164,24 @@ describe("Chat command wiring", () => {
 
     expect(view.container.querySelector(".chat-approval-modal")).not.toBeNull();
 
-    const approveButton = view.container.querySelector(".chat-approval-approve") as HTMLButtonElement;
+    const approveButton = view.container.querySelector(
+      ".chat-approval-approve",
+    ) as HTMLButtonElement;
     await act(async () => {
       fireEvent.click(approveButton);
       fireEvent.click(approveButton);
     });
 
-    expect(onSessionStateChange).toHaveBeenCalledWith({ pendingApproval: null });
+    expect(onSessionStateChange).toHaveBeenCalledWith({
+      pendingApproval: null,
+    });
     await waitFor(() => {
       expect(api.tuiApprovalRespond).toHaveBeenCalledTimes(1);
-      expect(api.tuiApprovalRespond).toHaveBeenCalledWith("rt-1", "approve", false);
+      expect(api.tuiApprovalRespond).toHaveBeenCalledWith(
+        "rt-1",
+        "approve",
+        false,
+      );
     });
 
     view.rerender(
@@ -163,14 +194,21 @@ describe("Chat command wiring", () => {
       />,
     );
     expect(view.container.querySelector(".chat-approval-modal")).toBeNull();
-    expect(view.container.querySelector(".chat-approval-history")?.textContent).toContain("Approved");
+    expect(
+      view.container.querySelector(".chat-approval-history")?.textContent,
+    ).toContain("Approved");
   });
 
   it("auto approves pending approval when client auto mode is enabled", async () => {
     const api = installHermesAPI();
     window.localStorage.getItem = vi.fn((key: string) => {
       if (key === "hermes:approval-policy:v1") {
-        return JSON.stringify({ mode: "auto_approve", timeoutSeconds: 30, timeoutAction: "deny", historyTtlMinutes: 15 });
+        return JSON.stringify({
+          mode: "auto_approve",
+          timeoutSeconds: 30,
+          timeoutAction: "deny",
+          historyTtlMinutes: 15,
+        });
       }
       return null;
     });
@@ -192,9 +230,15 @@ describe("Chat command wiring", () => {
     );
 
     await waitFor(() => {
-      expect(api.tuiApprovalRespond).toHaveBeenCalledWith("rt-1", "approve", false);
+      expect(api.tuiApprovalRespond).toHaveBeenCalledWith(
+        "rt-1",
+        "approve",
+        false,
+      );
     });
-    expect(onSessionStateChange).toHaveBeenCalledWith({ pendingApproval: null });
+    expect(onSessionStateChange).toHaveBeenCalledWith({
+      pendingApproval: null,
+    });
   });
 
   it("routes goal, toolbar model/compress/steer, and bottom-left alias picker to the expected APIs", async () => {
@@ -220,25 +264,39 @@ describe("Chat command wiring", () => {
       expect(api.getModelAliases).toHaveBeenCalled();
     });
 
-    const toolbarButtons = Array.from(view.container.querySelectorAll(".tui-btn")) as HTMLButtonElement[];
+    const toolbarButtons = Array.from(
+      view.container.querySelectorAll(".tui-btn"),
+    ) as HTMLButtonElement[];
 
     await act(async () => {
-      fireEvent.click(toolbarButtons.find((b) => b.textContent?.includes("Goal"))!);
+      fireEvent.click(
+        toolbarButtons.find((b) => b.textContent?.includes("Goal"))!,
+      );
     });
-    const goalInput = view.container.querySelector(".tui-popover-input") as HTMLInputElement;
+    const goalInput = view.container.querySelector(
+      ".tui-popover-input",
+    ) as HTMLInputElement;
     await act(async () => {
       fireEvent.change(goalInput, { target: { value: "finish task" } });
       fireEvent.keyDown(goalInput, { key: "Enter" });
     });
     await waitFor(() => {
-      expect(api.tuiCommandDispatch).toHaveBeenCalledWith("rt-1", "goal", "finish task");
+      expect(api.tuiCommandDispatch).toHaveBeenCalledWith(
+        "rt-1",
+        "goal",
+        "finish task",
+      );
       expect(api.tuiSubmitPrompt).toHaveBeenCalledWith("rt-1", "finish task");
     });
 
     await act(async () => {
-      fireEvent.click(toolbarButtons.find((b) => b.textContent?.includes("Model"))!);
+      fireEvent.click(
+        toolbarButtons.find((b) => b.textContent?.includes("Model"))!,
+      );
     });
-    const modelInput = view.container.querySelector(".tui-popover-input") as HTMLInputElement;
+    const modelInput = view.container.querySelector(
+      ".tui-popover-input",
+    ) as HTMLInputElement;
     await act(async () => {
       fireEvent.change(modelInput, { target: { value: "gpt-4o" } });
       fireEvent.keyDown(modelInput, { key: "Enter" });
@@ -248,9 +306,13 @@ describe("Chat command wiring", () => {
     });
 
     await act(async () => {
-      fireEvent.click(toolbarButtons.find((b) => b.textContent?.includes("Compress"))!);
+      fireEvent.click(
+        toolbarButtons.find((b) => b.textContent?.includes("Compress"))!,
+      );
     });
-    const yesBtn = Array.from(view.container.querySelectorAll(".tui-popover-btn")).find(
+    const yesBtn = Array.from(
+      view.container.querySelectorAll(".tui-popover-btn"),
+    ).find(
       (el) => (el as HTMLButtonElement).textContent === "Yes",
     ) as HTMLButtonElement;
     await act(async () => {
@@ -262,7 +324,9 @@ describe("Chat command wiring", () => {
     });
 
     await act(async () => {
-      fireEvent.click(toolbarButtons.find((b) => b.textContent?.includes("Undo"))!);
+      fireEvent.click(
+        toolbarButtons.find((b) => b.textContent?.includes("Undo"))!,
+      );
     });
     await waitFor(() => {
       expect(api.tuiUndo).toHaveBeenCalledWith("rt-1");
@@ -271,19 +335,27 @@ describe("Chat command wiring", () => {
     });
 
     await act(async () => {
-      fireEvent.click(toolbarButtons.find((b) => b.textContent?.includes("Branch"))!);
+      fireEvent.click(
+        toolbarButtons.find((b) => b.textContent?.includes("Branch"))!,
+      );
     });
-    const branchInput = view.container.querySelector(".tui-popover-input") as HTMLInputElement;
+    const branchInput = view.container.querySelector(
+      ".tui-popover-input",
+    ) as HTMLInputElement;
     await act(async () => {
       fireEvent.change(branchInput, { target: { value: "safer path" } });
       fireEvent.keyDown(branchInput, { key: "Enter" });
     });
     await waitFor(() => {
       expect(api.tuiSessionBranch).toHaveBeenCalledWith("rt-1", "safer path");
-      expect(onSessionStateChange).toHaveBeenCalledWith(expect.objectContaining({ hermesSessionId: "branch-1" }));
+      expect(onSessionStateChange).toHaveBeenCalledWith(
+        expect.objectContaining({ hermesSessionId: "branch-1" }),
+      );
     });
 
-    const steerBtn = toolbarButtons.find((b) => b.textContent?.includes("Steer"))!;
+    const steerBtn = toolbarButtons.find((b) =>
+      b.textContent?.includes("Steer"),
+    )!;
     expect(steerBtn.disabled).toBe(true);
 
     view.rerender(
@@ -300,28 +372,43 @@ describe("Chat command wiring", () => {
       />,
     );
 
-    const textarea = view.container.querySelector("textarea") as HTMLTextAreaElement;
+    const textarea = view.container.querySelector(
+      "textarea",
+    ) as HTMLTextAreaElement;
     await act(async () => {
       fireEvent.change(textarea, { target: { value: "/steer nudge" } });
       fireEvent.keyDown(textarea, { key: "Enter" });
     });
     await waitFor(() => {
-      expect(api.tuiCommandDispatch).toHaveBeenCalledWith("branch-1", "steer", "nudge");
+      expect(api.tuiCommandDispatch).toHaveBeenCalledWith(
+        "branch-1",
+        "steer",
+        "nudge",
+      );
       expect(api.tuiSubmitPrompt).toHaveBeenCalledWith("branch-1", "nudge");
     });
 
-    const modelTrigger = view.container.querySelector(".chat-model-trigger") as HTMLButtonElement;
+    const modelTrigger = view.container.querySelector(
+      ".chat-model-trigger",
+    ) as HTMLButtonElement;
     await act(async () => {
       fireEvent.click(modelTrigger);
     });
-    const aliasBtn = Array.from(view.container.querySelectorAll(".chat-model-option")).find(
-      (el) => (el as HTMLButtonElement).textContent?.includes("Fast Alias"),
+    const aliasBtn = Array.from(
+      view.container.querySelectorAll(".chat-model-option"),
+    ).find((el) =>
+      (el as HTMLButtonElement).textContent?.includes("Fast Alias"),
     ) as HTMLButtonElement;
     await act(async () => {
       fireEvent.click(aliasBtn);
     });
     await waitFor(() => {
-      expect(api.setModelConfig).toHaveBeenCalledWith("openai", "gpt-4o-mini", "", undefined);
+      expect(api.setModelConfig).toHaveBeenCalledWith(
+        "openai",
+        "gpt-4o-mini",
+        "",
+        undefined,
+      );
       expect(api.tuiSetModel).toHaveBeenCalledWith("branch-1", "Fast Alias");
     });
   });

@@ -1,6 +1,13 @@
 import { onTuiEvent } from "@renderer/lib/hermes-tauri";
 import { useEffect, useRef } from "react";
-import type { ChatBubbleMessage, ChatMessage, ReasoningMessage, SubagentMessage, ToolCallMessage, UsageState } from "../types";
+import type {
+  ChatBubbleMessage,
+  ChatMessage,
+  ReasoningMessage,
+  SubagentMessage,
+  ToolCallMessage,
+  UsageState,
+} from "../types";
 import type { SessionState } from "./useSessionManager";
 import { shortModelName } from "../sessionDisplay";
 import { createSystemEvent, systemEventFromError } from "../systemEvents";
@@ -25,10 +32,19 @@ interface UseChatInboxArgs {
   chatVisible: boolean;
   findTabBySessionId: (sid: string) => string | null;
   updateTab: (id: string, patch: Partial<SessionState>) => void;
-  updateTabMessages: (id: string, updater: (prev: ChatMessage[]) => ChatMessage[]) => void;
+  updateTabMessages: (
+    id: string,
+    updater: (prev: ChatMessage[]) => ChatMessage[],
+  ) => void;
 }
 
-const LIVE_EVENT_TYPES = new Set(["message.start", "message.delta", "tool.start", "thinking.delta", "reasoning.delta"]);
+const LIVE_EVENT_TYPES = new Set([
+  "message.start",
+  "message.delta",
+  "tool.start",
+  "thinking.delta",
+  "reasoning.delta",
+]);
 
 function usageFromPayload(usage: any): UsageState {
   return {
@@ -46,19 +62,35 @@ function usageFromPayload(usage: any): UsageState {
   };
 }
 
-function durationFromPayload(payload: Record<string, unknown>): number | undefined {
-  return numberField(payload, "duration_seconds") ?? numberField(payload, "duration_s");
+function durationFromPayload(
+  payload: Record<string, unknown>,
+): number | undefined {
+  return (
+    numberField(payload, "duration_seconds") ??
+    numberField(payload, "duration_s")
+  );
 }
 
-function isPlainAssistantBubble(message: ChatMessage | undefined): message is ChatBubbleMessage & { role: "agent" } {
-  if (!message || message.role !== "agent" || !("content" in message) || typeof message.content !== "string") {
+function isPlainAssistantBubble(
+  message: ChatMessage | undefined,
+): message is ChatBubbleMessage & { role: "agent" } {
+  if (
+    !message ||
+    message.role !== "agent" ||
+    !("content" in message) ||
+    typeof message.content !== "string"
+  ) {
     return false;
   }
   const kind = (message as { kind?: string }).kind;
   return !kind || kind === "assistant";
 }
 
-function appendStreaming(prev: ChatMessage[], text: string, sessionId?: string): ChatMessage[] {
+function appendStreaming(
+  prev: ChatMessage[],
+  text: string,
+  sessionId?: string,
+): ChatMessage[] {
   if (!text) return prev;
   const last = prev[prev.length - 1];
   if (isPlainAssistantBubble(last)) {
@@ -107,7 +139,12 @@ export function useChatInbox({
       if (!active) return null;
       const state = sessionsRef.current.get(active);
       if (!state) return null;
-      if (event.sessionId && !state.hermesSessionId && state.isLoading && LIVE_EVENT_TYPES.has(event.type)) {
+      if (
+        event.sessionId &&
+        !state.hermesSessionId &&
+        state.isLoading &&
+        LIVE_EVENT_TYPES.has(event.type)
+      ) {
         updateTab(active, { hermesSessionId: event.sessionId });
         return active;
       }
@@ -153,19 +190,30 @@ export function useChatInbox({
       const tabId = tabForEvent(event);
       if (!tabId) return;
       const state = sessionsRef.current.get(tabId);
-      const runtimeSid = event.sessionId ?? state?.hermesSessionId ?? state?.dbSessionId ?? undefined;
+      const runtimeSid =
+        event.sessionId ??
+        state?.hermesSessionId ??
+        state?.dbSessionId ??
+        undefined;
       const payload = event.payload;
 
       switch (event.type) {
         case "message.start":
-          updateTab(tabId, { isLoading: true, toolProgress: null, streamingReasoning: "" });
+          updateTab(tabId, {
+            isLoading: true,
+            toolProgress: null,
+            streamingReasoning: "",
+          });
           break;
 
         case "message.delta": {
           const text = textFromPayload(payload);
           if (text) {
             updateTab(tabId, { isLoading: true });
-            pendingChunksRef.current.set(tabId, `${pendingChunksRef.current.get(tabId) ?? ""}${text}`);
+            pendingChunksRef.current.set(
+              tabId,
+              `${pendingChunksRef.current.get(tabId) ?? ""}${text}`,
+            );
             scheduleFlush(tabId);
           }
           break;
@@ -182,8 +230,12 @@ export function useChatInbox({
           pendingChunksRef.current.delete(tabId);
 
           const finalText = textFromPayload(payload);
-          const reasoningText = stringField(payload, "reasoning", state?.streamingReasoning || "");
-          const hadStreaming = !!(state?.streamingText) || !!pendingChunk;
+          const reasoningText = stringField(
+            payload,
+            "reasoning",
+            state?.streamingReasoning || "",
+          );
+          const hadStreaming = !!state?.streamingText || !!pendingChunk;
           // Compute fallback text: already-flushed streamingText + unflushed pending chunk
           const fallbackText = `${state?.streamingText ?? ""}${pendingChunk}`;
           const usage = recordField(payload, "usage");
@@ -226,7 +278,9 @@ export function useChatInbox({
             pendingSudo: null,
             pendingSecret: null,
             ...(event.sessionId ? { hermesSessionId: event.sessionId } : {}),
-            ...(Object.keys(usage).length ? { usage: usageFromPayload(usage) } : {}),
+            ...(Object.keys(usage).length
+              ? { usage: usageFromPayload(usage) }
+              : {}),
             ...(model ? { model } : {}),
           });
           const warning = stringField(payload, "warning");
@@ -243,7 +297,9 @@ export function useChatInbox({
               },
             ]);
             if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
-              updateTab(tabId, { unreadCount: (current?.unreadCount ?? 0) + 1 });
+              updateTab(tabId, {
+                unreadCount: (current?.unreadCount ?? 0) + 1,
+              });
             }
           }
           break;
@@ -252,7 +308,10 @@ export function useChatInbox({
         case "tool.start":
           const toolId = stringField(payload, "tool_id");
           const toolName = stringField(payload, "name", "Tool");
-          updateTab(tabId, { isLoading: true, toolProgress: toolName || "Thinking..." });
+          updateTab(tabId, {
+            isLoading: true,
+            toolProgress: toolName || "Thinking...",
+          });
           if (toolId) {
             const current = sessionsRef.current.get(tabId);
             updateTabMessages(tabId, (prev) => [
@@ -268,7 +327,9 @@ export function useChatInbox({
               },
             ]);
             if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
-              updateTab(tabId, { unreadCount: (current?.unreadCount ?? 0) + 1 });
+              updateTab(tabId, {
+                unreadCount: (current?.unreadCount ?? 0) + 1,
+              });
             }
           }
           break;
@@ -278,13 +339,20 @@ export function useChatInbox({
           const completeToolId = stringField(payload, "tool_id");
           if (completeToolId) {
             const current = sessionsRef.current.get(tabId);
-            let resultText = optionalJsonText(payload.result_text) || stringField(payload, "error");
+            let resultText =
+              optionalJsonText(payload.result_text) ||
+              stringField(payload, "error");
             if (resultText.length > 8000) {
-              resultText = resultText.slice(0, 8000) + `\n\n... (${resultText.length} chars total)`;
+              resultText =
+                resultText.slice(0, 8000) +
+                `\n\n... (${resultText.length} chars total)`;
             }
             updateTabMessages(tabId, (prev) => {
               const idx = prev.findIndex(
-                (m) => m.kind === "tool_call" && "callId" in m && m.callId === completeToolId,
+                (m) =>
+                  m.kind === "tool_call" &&
+                  "callId" in m &&
+                  m.callId === completeToolId,
               );
               if (idx !== -1) {
                 const existing = prev[idx] as ToolCallMessage;
@@ -295,7 +363,8 @@ export function useChatInbox({
                     result: resultText,
                     success: payload.success !== false,
                     durationS: numberField(payload, "duration_s"),
-                    inlineDiff: stringField(payload, "inline_diff") || undefined,
+                    inlineDiff:
+                      stringField(payload, "inline_diff") || undefined,
                   },
                   ...prev.slice(idx + 1),
                 ];
@@ -314,7 +383,9 @@ export function useChatInbox({
               ];
             });
             if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
-              updateTab(tabId, { unreadCount: (current?.unreadCount ?? 0) + 1 });
+              updateTab(tabId, {
+                unreadCount: (current?.unreadCount ?? 0) + 1,
+              });
             }
           }
           break;
@@ -323,11 +394,16 @@ export function useChatInbox({
           const progressToolId = stringField(payload, "tool_id");
           const progressName = stringField(payload, "name");
           const progressPreview = stringField(payload, "preview");
-          updateTab(tabId, { toolProgress: `${progressName} ${progressPreview}`.trim() });
+          updateTab(tabId, {
+            toolProgress: `${progressName} ${progressPreview}`.trim(),
+          });
           if (progressToolId) {
             updateTabMessages(tabId, (prev) => {
               const idx = prev.findIndex(
-                (m) => m.kind === "tool_call" && "callId" in m && m.callId === progressToolId,
+                (m) =>
+                  m.kind === "tool_call" &&
+                  "callId" in m &&
+                  m.callId === progressToolId,
               );
               if (idx === -1) return prev;
               const existing = prev[idx] as ToolCallMessage;
@@ -371,7 +447,13 @@ export function useChatInbox({
             ...prev,
             { ...systemEventFromError(errorMessage), sessionId: runtimeSid },
           ]);
-          updateTab(tabId, { isLoading: false, toolProgress: null, streamingReasoning: "", pendingSudo: null, pendingSecret: null });
+          updateTab(tabId, {
+            isLoading: false,
+            toolProgress: null,
+            streamingReasoning: "",
+            pendingSudo: null,
+            pendingSecret: null,
+          });
           break;
 
         case "session.info":
@@ -387,11 +469,17 @@ export function useChatInbox({
             updateTabMessages(tabId, (prev) => [
               ...prev,
               {
-                ...createSystemEvent("model_switch", "Model switched", shortModelName(sessionModel)),
+                ...createSystemEvent(
+                  "model_switch",
+                  "Model switched",
+                  shortModelName(sessionModel),
+                ),
               },
             ]);
             if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
-              updateTab(tabId, { unreadCount: (current?.unreadCount ?? 0) + 1 });
+              updateTab(tabId, {
+                unreadCount: (current?.unreadCount ?? 0) + 1,
+              });
             }
           }
           break;
@@ -418,7 +506,9 @@ export function useChatInbox({
                   : "Session update";
             const systemEvent =
               statusKind === "compressing"
-                ? createSystemEvent("context_compress", title, statusText, { tone })
+                ? createSystemEvent("context_compress", title, statusText, {
+                    tone,
+                  })
                 : statusKind === "error"
                   ? systemEventFromError(statusText)
                   : null;
@@ -435,7 +525,9 @@ export function useChatInbox({
               },
             ]);
             if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
-              updateTab(tabId, { unreadCount: (current?.unreadCount ?? 0) + 1 });
+              updateTab(tabId, {
+                unreadCount: (current?.unreadCount ?? 0) + 1,
+              });
             }
           }
           break;
@@ -474,7 +566,10 @@ export function useChatInbox({
           if (!agentId) break;
           updateTabMessages(tabId, (prev) => {
             const idx = prev.findIndex(
-              (m) => m.kind === "subagent" && "agentId" in m && m.agentId === agentId,
+              (m) =>
+                m.kind === "subagent" &&
+                "agentId" in m &&
+                m.agentId === agentId,
             );
             if (idx === -1) return prev;
             const existing = prev[idx] as SubagentMessage;
@@ -482,7 +577,10 @@ export function useChatInbox({
               ...prev.slice(0, idx),
               {
                 ...existing,
-                status: payload.success === false ? ("failed" as const) : ("completed" as const),
+                status:
+                  payload.success === false
+                    ? ("failed" as const)
+                    : ("completed" as const),
                 durationS: durationFromPayload(payload),
               },
               ...prev.slice(idx + 1),
@@ -492,16 +590,22 @@ export function useChatInbox({
         }
 
         case "subagent.progress": {
-          const agentId = stringField(payload, "subagent_id") || stringField(payload, "agent_id");
+          const agentId =
+            stringField(payload, "subagent_id") ||
+            stringField(payload, "agent_id");
           if (!agentId) break;
           updateTabMessages(tabId, (prev) => {
             const idx = prev.findIndex(
-              (m) => m.kind === "subagent" && "agentId" in m && m.agentId === agentId,
+              (m) =>
+                m.kind === "subagent" &&
+                "agentId" in m &&
+                m.agentId === agentId,
             );
             if (idx === -1) return prev;
             const existing = prev[idx] as SubagentMessage;
             const parts: string[] = [];
-            if (payload.iteration != null) parts.push(`#${String(payload.iteration)}`);
+            if (payload.iteration != null)
+              parts.push(`#${String(payload.iteration)}`);
             const subToolName = stringField(payload, "tool_name");
             const subToolPreview = stringField(payload, "tool_preview");
             if (subToolName) parts.push(subToolName);
@@ -518,9 +622,12 @@ export function useChatInbox({
     });
 
     return () => {
-      for (const frame of flushFramesRef.current.values()) window.cancelAnimationFrame(frame);
+      for (const frame of flushFramesRef.current.values())
+        window.cancelAnimationFrame(frame);
       flushFramesRef.current.clear();
-      cleanup();
+      if (typeof cleanup === "function") {
+        cleanup();
+      }
     };
   }, [findTabBySessionId, updateTab, updateTabMessages]);
 }

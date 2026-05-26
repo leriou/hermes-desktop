@@ -35,6 +35,13 @@ export default {
   themeSystem: "Sistem",
   themeLight: "Terang",
   themeDark: "Gelap",
+
+  // Markdown styles
+  mdStyleDefault: "Default",
+  mdStyleNotion: "Notion",
+  mdStyleMaterial: "Material",
+  mdStyleNightowl: "Night Owl",
+  mdStyleSolarized: "Solarized",
   // Settings section titles
   sectionLlmProviders: "Provider LLM",
   sectionToolApiKeys: "API Key Alat",

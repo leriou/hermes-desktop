@@ -12,7 +12,11 @@ import { memo, useMemo } from "react";
  */
 function isTableRow(line: string): boolean {
   const trimmed = line.trim();
-  return trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.split("|").length >= 4;
+  return (
+    trimmed.startsWith("|") &&
+    trimmed.endsWith("|") &&
+    trimmed.split("|").length >= 4
+  );
 }
 
 function isSeparatorRow(line: string): boolean {
@@ -25,7 +29,11 @@ function isSeparatorRow(line: string): boolean {
 }
 
 function splitCells(line: string): string[] {
-  return line.trim().slice(1, -1).split("|").map((cell) => cell.trim());
+  return line
+    .trim()
+    .slice(1, -1)
+    .split("|")
+    .map((cell) => cell.trim());
 }
 
 function renderCompletedTables(text: string): string {
@@ -59,7 +67,10 @@ function renderCompletedTables(text: string): string {
       `<div class="sm-table-wrap"><table class="sm-table"><thead><tr>${header
         .map((cell) => `<th>${cell}</th>`)
         .join("")}</tr></thead><tbody>${rows
-        .map((row) => `<tr>${header.map((_, idx) => `<td>${row[idx] ?? ""}</td>`).join("")}</tr>`)
+        .map(
+          (row) =>
+            `<tr>${header.map((_, idx) => `<td>${row[idx] ?? ""}</td>`).join("")}</tr>`,
+        )
         .join("")}</tbody></table></div>`,
     );
     out.push(lines[i]);
@@ -91,7 +102,7 @@ function renderLightweightMd(raw: string): string {
   // Italic (single *, not preceded/followed by *)
   text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
   // Inline code
-  text = text.replace(/`([^`]+)`/g, "<code class=\"sm-inline-code\">$1</code>");
+  text = text.replace(/`([^`]+)`/g, '<code class="sm-inline-code">$1</code>');
   // Line breaks
   text = text.replace(/\n/g, "<br>");
 

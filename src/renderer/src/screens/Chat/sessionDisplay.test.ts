@@ -19,14 +19,28 @@ describe("session display helpers", () => {
   });
 
   it("falls back from title to preview to placeholder", () => {
-    expect(sessionDisplayTitle({ title: "New Chat", preview: "first prompt" })).toBe("first prompt");
-    expect(sessionDisplayTitle({ title: "", preview: "first prompt" })).toBe("first prompt");
+    expect(
+      sessionDisplayTitle({ title: "New Chat", preview: "first prompt" }),
+    ).toBe("first prompt");
+    expect(sessionDisplayTitle({ title: "", preview: "first prompt" })).toBe(
+      "first prompt",
+    );
     expect(sessionDisplayTitle({ title: null, preview: "" })).toBe("-");
   });
 
   it("uses segment metadata in previews without exposing it as the title", () => {
-    expect(sessionDisplayTitle({ title: "Plan migration #2", preview: "continue here" })).toBe("Plan migration");
-    expect(sessionDisplayPreview({ title: "Plan migration #2", preview: "continue here" })).toBe("Part 2 · continue here");
+    expect(
+      sessionDisplayTitle({
+        title: "Plan migration #2",
+        preview: "continue here",
+      }),
+    ).toBe("Plan migration");
+    expect(
+      sessionDisplayPreview({
+        title: "Plan migration #2",
+        preview: "continue here",
+      }),
+    ).toBe("Part 2 · continue here");
   });
 
   it("hides bare Message #N continuation labels in the transcript", () => {

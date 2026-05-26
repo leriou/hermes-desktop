@@ -54,11 +54,7 @@ describe("buildRenderableTranscript", () => {
     // 2. "a1" (空 bubble) 被过滤
     // 3. "tc1" & "tr1", "tc2" & "tr2" 被合并且由于 name 相同被 group 进 "tool_group"
     // 4. "a2" 被保留
-    expect(result.map((m) => m.id)).toEqual([
-      "u1",
-      "group-tc1-tc2",
-      "a2",
-    ]);
+    expect(result.map((m) => m.id)).toEqual(["u1", "group-tc1-tc2", "a2"]);
 
     const group = result[1] as any;
     expect(group.kind).toBe("tool_group");

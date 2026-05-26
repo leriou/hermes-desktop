@@ -4,8 +4,10 @@ export default {
   searchPlaceholder: "搜索模型...",
   empty: "还没有模型",
   noMatch: "没有匹配的模型",
-  emptyHint: "前往 Providers > 模型标签页探测并添加模型，或手动添加自定义模型。",
-  addFromProviderHint: "要从提供商发现并添加模型，请前往 Providers > 模型标签页。",
+  emptyHint:
+    "前往 Providers > 模型标签页探测并添加模型，或手动添加自定义模型。",
+  addFromProviderHint:
+    "要从提供商发现并添加模型，请前往 Providers > 模型标签页。",
   deleteConfirm: "删除？",
   displayName: "显示名称",
   modelId: "模型 ID",

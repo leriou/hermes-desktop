@@ -58,7 +58,9 @@ export const TuiToolbar = memo(function TuiToolbar({
   onBranch,
   steerEnabled = false,
 }: TuiToolbarProps): React.JSX.Element {
-  const [open, setOpen] = useState<"goal" | "model" | "steer" | "compress" | "branch" | null>(null);
+  const [open, setOpen] = useState<
+    "goal" | "model" | "steer" | "compress" | "branch" | null
+  >(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,7 +158,11 @@ export const TuiToolbar = memo(function TuiToolbar({
           className={`tui-btn ${open === "steer" ? "tui-btn-active" : ""}`}
           onClick={toggle("steer")}
           disabled={!steerEnabled}
-          title={steerEnabled ? "Steer the current run" : "Start a run before steering"}
+          title={
+            steerEnabled
+              ? "Steer the current run"
+              : "Start a run before steering"
+          }
         >
           ↪ Steer
         </button>

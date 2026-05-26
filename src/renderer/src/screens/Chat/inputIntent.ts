@@ -1,8 +1,17 @@
-import { describeBusyInput, type BusyInputAction, type BusyInputMode } from "./busyInput";
+import {
+  describeBusyInput,
+  type BusyInputAction,
+  type BusyInputMode,
+} from "./busyInput";
 
 export type InputIntent =
   | { kind: "clarify"; text: string }
-  | { kind: "gateway_command"; text: string; command: string; canRunWhileBusy: boolean }
+  | {
+      kind: "gateway_command";
+      text: string;
+      command: string;
+      canRunWhileBusy: boolean;
+    }
   | { kind: "busy"; action: BusyInputAction }
   | { kind: "prompt"; text: string };
 

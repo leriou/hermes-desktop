@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTauriChatGatewayClient } from "./tauriChatGatewayClient";
 
 function createMockApi() {
@@ -11,10 +11,14 @@ function createMockApi() {
     tuiCompress: vi.fn().mockResolvedValue({ result: { messages: [] } }),
     tuiSetModel: vi.fn().mockResolvedValue({ result: { model: "gpt-4o" } }),
     tuiCommandDispatch: vi.fn().mockResolvedValue({ result: { output: "ok" } }),
-    tuiSessionTitle: vi.fn().mockResolvedValue({ session_key: "db-1", title: "Title" }),
+    tuiSessionTitle: vi
+      .fn()
+      .mockResolvedValue({ session_key: "db-1", title: "Title" }),
     tuiUndo: vi.fn().mockResolvedValue(undefined),
     tuiSessionHistory: vi.fn().mockResolvedValue({ result: { messages: [] } }),
-    tuiSessionBranch: vi.fn().mockResolvedValue({ result: { session_id: "branch-1" } }),
+    tuiSessionBranch: vi
+      .fn()
+      .mockResolvedValue({ result: { session_id: "branch-1" } }),
     tuiClarifyRespond: vi.fn().mockResolvedValue(undefined),
     tuiApprovalRespond: vi.fn().mockResolvedValue(undefined),
     tuiSudoRespond: vi.fn().mockResolvedValue(undefined),
@@ -65,8 +69,16 @@ describe("tauriChatGatewayClient", () => {
 
     expect(sid).toBe("resumed-1");
     expect(api.tuiResumeSession).toHaveBeenCalledWith("db-1");
-    expect(api.tuiSubmitPrompt).toHaveBeenNthCalledWith(1, "old-runtime", "hello");
-    expect(api.tuiSubmitPrompt).toHaveBeenNthCalledWith(2, "resumed-1", "hello");
+    expect(api.tuiSubmitPrompt).toHaveBeenNthCalledWith(
+      1,
+      "old-runtime",
+      "hello",
+    );
+    expect(api.tuiSubmitPrompt).toHaveBeenNthCalledWith(
+      2,
+      "resumed-1",
+      "hello",
+    );
   });
 
   it("keeps approval and secret-style interactions on the same client surface", async () => {
@@ -78,10 +90,22 @@ describe("tauriChatGatewayClient", () => {
     await client.respondSudo("rt-1", "pw", "sudo-1");
     await client.respondSecret("rt-1", "secret", "secret-1");
 
-    expect(api.tuiApprovalRespond).toHaveBeenCalledWith("rt-1", "approve", false);
-    expect(api.tuiClarifyRespond).toHaveBeenCalledWith("rt-1", "answer", "clarify-1");
+    expect(api.tuiApprovalRespond).toHaveBeenCalledWith(
+      "rt-1",
+      "approve",
+      false,
+    );
+    expect(api.tuiClarifyRespond).toHaveBeenCalledWith(
+      "rt-1",
+      "answer",
+      "clarify-1",
+    );
     expect(api.tuiSudoRespond).toHaveBeenCalledWith("rt-1", "pw", "sudo-1");
-    expect(api.tuiSecretRespond).toHaveBeenCalledWith("rt-1", "secret", "secret-1");
+    expect(api.tuiSecretRespond).toHaveBeenCalledWith(
+      "rt-1",
+      "secret",
+      "secret-1",
+    );
   });
 
   it("exposes Tauri gateway command operations behind the client", async () => {

@@ -1,4 +1,13 @@
-import { abortChat, clearStagedAttachments, copyToClipboard, deleteSession, isRemoteMode, onContextMenuCopyChat, onContextMenuSelectBubble, selectFolder } from "@renderer/lib/hermes-tauri";
+import {
+  abortChat,
+  clearStagedAttachments,
+  copyToClipboard,
+  deleteSession,
+  isRemoteMode,
+  onContextMenuCopyChat,
+  onContextMenuSelectBubble,
+  selectFolder,
+} from "@renderer/lib/hermes-tauri";
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatInput, type ChatInputHandle, type ModelOption } from "./ChatInput";
@@ -105,19 +114,31 @@ function Chat({
   const { t } = useI18n();
   const [dragActive, setDragActive] = useState(false);
   const [remoteMode, setRemoteMode] = useState(false);
-  const [verbose, setVerbose] = useState(() => getStoreItem("hermes-verbose") === "true");
-  const [approvalPolicy, setApprovalPolicyState] = useState<ApprovalPolicy>(() => loadApprovalPolicy());
-  const [approvalHistory, setApprovalHistory] = useState(() => loadApprovalHistory());
+  const [verbose, setVerbose] = useState(
+    () => getStoreItem("hermes-verbose") === "true",
+  );
+  const [approvalPolicy, setApprovalPolicyState] = useState<ApprovalPolicy>(
+    () => loadApprovalPolicy(),
+  );
+  const [approvalHistory, setApprovalHistory] = useState(() =>
+    loadApprovalHistory(),
+  );
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
-  const [dismissedApproval, setDismissedApproval] = useState<typeof pendingApproval>(null);
-  const [approvalJudgment, setApprovalJudgment] = useState<JudgmentAdvice | null>(null);
+  const [dismissedApproval, setDismissedApproval] =
+    useState<typeof pendingApproval>(null);
+  const [approvalJudgment, setApprovalJudgment] =
+    useState<JudgmentAdvice | null>(null);
   const approvalSubmittingRef = useRef(false);
   const dragCounter = useRef(0);
   const chatInputRef = useRef<ChatInputHandle>(null);
   const gatewayClient = useMemo(() => createTauriChatGatewayClient(), []);
   const judgmentEngine = useMemo(() => createRuleBasedJudgmentEngine(), []);
 
-  const { state: session, dispatch } = useSessionLifecycle(messages, sessionId, isLoading);
+  const { state: session, dispatch } = useSessionLifecycle(
+    messages,
+    sessionId,
+    isLoading,
+  );
   const setIsLoading = useCallback(
     (loading: boolean) => onSessionStateChange?.({ isLoading: loading }),
     [onSessionStateChange],
@@ -153,7 +174,11 @@ function Chat({
   );
 
   const addStatusMessage = useCallback(
-    (title: string, content?: string, tone: "info" | "success" | "warning" | "error" = "info") => {
+    (
+      title: string,
+      content?: string,
+      tone: "info" | "success" | "warning" | "error" = "info",
+    ) => {
       setMessages((prev) => [
         ...prev,
         {
@@ -171,8 +196,16 @@ function Chat({
   );
 
   const addSystemEvent = useCallback(
-    (event: Parameters<typeof createSystemEvent>[0], title: string, content?: string, options?: Parameters<typeof createSystemEvent>[3]) => {
-      setMessages((prev) => [...prev, createSystemEvent(event, title, content, options)]);
+    (
+      event: Parameters<typeof createSystemEvent>[0],
+      title: string,
+      content?: string,
+      options?: Parameters<typeof createSystemEvent>[3],
+    ) => {
+      setMessages((prev) => [
+        ...prev,
+        createSystemEvent(event, title, content, options),
+      ]);
     },
     [setMessages],
   );
@@ -189,16 +222,27 @@ function Chat({
     setApprovalPolicyState(normalized);
     saveApprovalPolicy(normalized);
     setApprovalHistory((prev) => {
-      const pruned = pruneApprovalHistory(prev, Date.now(), normalized.historyTtlMinutes);
+      const pruned = pruneApprovalHistory(
+        prev,
+        Date.now(),
+        normalized.historyTtlMinutes,
+      );
       saveApprovalHistory(pruned);
       return pruned;
     });
   }, []);
 
-  const visibleApproval = pendingApproval && pendingApproval !== dismissedApproval ? pendingApproval : null;
+  const visibleApproval =
+    pendingApproval && pendingApproval !== dismissedApproval
+      ? pendingApproval
+      : null;
 
   const recordApprovalDecision = useCallback(
-    (request: NonNullable<typeof pendingApproval>, decision: ApprovalDecision, source: ApprovalDecisionSource) => {
+    (
+      request: NonNullable<typeof pendingApproval>,
+      decision: ApprovalDecision,
+      source: ApprovalDecisionSource,
+    ) => {
       const judgment = approvalJudgment
         ? {
             reason: approvalJudgment.reason,
@@ -206,9 +250,19 @@ function Chat({
             risk: approvalJudgment.risk,
           }
         : undefined;
-      const entry = createApprovalHistoryEntry(request, decision, source, Date.now(), judgment);
+      const entry = createApprovalHistoryEntry(
+        request,
+        decision,
+        source,
+        Date.now(),
+        judgment,
+      );
       setApprovalHistory((prev) => {
-        const next = pruneApprovalHistory([...prev, entry], Date.now(), approvalPolicy.historyTtlMinutes);
+        const next = pruneApprovalHistory(
+          [...prev, entry],
+          Date.now(),
+          approvalPolicy.historyTtlMinutes,
+        );
         saveApprovalHistory(next);
         return next;
       });
@@ -236,7 +290,15 @@ function Chat({
         setApprovalSubmitting(false);
       }
     },
-    [addErrorEvent, gatewayClient, onSessionStateChange, recordApprovalDecision, session.hermesSessionId, sessionId, visibleApproval],
+    [
+      addErrorEvent,
+      gatewayClient,
+      onSessionStateChange,
+      recordApprovalDecision,
+      session.hermesSessionId,
+      sessionId,
+      visibleApproval,
+    ],
   );
 
   useEffect(() => {
@@ -271,7 +333,12 @@ function Chat({
     return () => {
       cancelled = true;
     };
-  }, [judgmentEngine, modelConfig.currentModel, modelConfig.displayModel, visibleApproval]);
+  }, [
+    judgmentEngine,
+    modelConfig.currentModel,
+    modelConfig.displayModel,
+    visibleApproval,
+  ]);
 
   const syncSessionBinding = useCallback(
     async (runtimeSessionId: string | null) => {
@@ -341,7 +408,10 @@ function Chat({
             timestamp: Date.now(),
           },
         ]);
-        await gatewayClient.submitPrompt(runtimeSessionId, String(payload.message));
+        await gatewayClient.submitPrompt(
+          runtimeSessionId,
+          String(payload.message),
+        );
         return true;
       }
       setIsLoading(false);
@@ -357,7 +427,10 @@ function Chat({
       const arg = rest.join(" ").trim();
 
       if (cmd === "/compress") {
-        const result = await gatewayClient.compress(runtimeSessionId, arg || undefined);
+        const result = await gatewayClient.compress(
+          runtimeSessionId,
+          arg || undefined,
+        );
         const payload = result?.result ?? result ?? {};
         if (Array.isArray(payload.messages)) {
           setMessages(gatewayMessagesToChat(payload.messages));
@@ -374,9 +447,12 @@ function Chat({
           dispatch({
             type: "setUsage",
             value: {
-              promptTokens: payload.usage.input ?? payload.usage.promptTokens ?? 0,
-              completionTokens: payload.usage.output ?? payload.usage.completionTokens ?? 0,
-              totalTokens: payload.usage.total ?? payload.usage.totalTokens ?? 0,
+              promptTokens:
+                payload.usage.input ?? payload.usage.promptTokens ?? 0,
+              completionTokens:
+                payload.usage.output ?? payload.usage.completionTokens ?? 0,
+              totalTokens:
+                payload.usage.total ?? payload.usage.totalTokens ?? 0,
               cost: payload.usage.cost_usd ?? payload.usage.cost,
               calls: payload.usage.calls,
               cacheRead: payload.usage.cache_read,
@@ -389,9 +465,12 @@ function Chat({
           });
           onSessionStateChange?.({
             usage: {
-              promptTokens: payload.usage.input ?? payload.usage.promptTokens ?? 0,
-              completionTokens: payload.usage.output ?? payload.usage.completionTokens ?? 0,
-              totalTokens: payload.usage.total ?? payload.usage.totalTokens ?? 0,
+              promptTokens:
+                payload.usage.input ?? payload.usage.promptTokens ?? 0,
+              completionTokens:
+                payload.usage.output ?? payload.usage.completionTokens ?? 0,
+              totalTokens:
+                payload.usage.total ?? payload.usage.totalTokens ?? 0,
               cost: payload.usage.cost_usd ?? payload.usage.cost,
               calls: payload.usage.calls,
               cacheRead: payload.usage.cache_read,
@@ -403,13 +482,18 @@ function Chat({
             },
           });
         }
-        const summaryText = [payload.summary?.headline, payload.summary?.token_line, payload.summary?.note]
+        const summaryText = [
+          payload.summary?.headline,
+          payload.summary?.token_line,
+          payload.summary?.note,
+        ]
           .filter(Boolean)
           .join("\n");
         addSystemEvent(
           "context_compress",
           "Session compressed",
-          summaryText || "Older context was summarized. Continue chatting in the same thread.",
+          summaryText ||
+            "Older context was summarized. Continue chatting in the same thread.",
         );
         await syncSessionBinding(runtimeSessionId);
         setIsLoading(false);
@@ -418,23 +502,38 @@ function Chat({
 
       if (cmd === "/model") {
         if (!arg) {
-          const model = session.sessionModel || modelConfig.currentModel || modelConfig.displayModel || "Not set";
+          const model =
+            session.sessionModel ||
+            modelConfig.currentModel ||
+            modelConfig.displayModel ||
+            "Not set";
           addAgentMessage(`**Current model:** \`${model}\``);
           setIsLoading(false);
           return true;
         }
         onSessionStateChange?.({ pendingModelSwitch: arg });
-        addSystemEvent("model_switch", "Switching model", shortModelName(arg), { tone: "info" });
+        addSystemEvent("model_switch", "Switching model", shortModelName(arg), {
+          tone: "info",
+        });
         const result = await gatewayClient.setModel(runtimeSessionId, arg);
         const payload = result?.result ?? result ?? {};
         if (payload.warning) {
-          addSystemEvent("model_switch", "Model switch warning", String(payload.warning), { tone: "warning" });
+          addSystemEvent(
+            "model_switch",
+            "Model switch warning",
+            String(payload.warning),
+            { tone: "warning" },
+          );
         }
         return true;
       }
 
       if (cmd === "/goal") {
-        const result = await gatewayClient.dispatchCommand(runtimeSessionId, "goal", arg);
+        const result = await gatewayClient.dispatchCommand(
+          runtimeSessionId,
+          "goal",
+          arg,
+        );
         return runCommandDispatchResult(runtimeSessionId, result);
       }
 
@@ -455,7 +554,11 @@ function Chat({
           setIsLoading(false);
           return true;
         }
-        const result = await gatewayClient.dispatchCommand(runtimeSessionId, "steer", arg);
+        const result = await gatewayClient.dispatchCommand(
+          runtimeSessionId,
+          "steer",
+          arg,
+        );
         return runCommandDispatchResult(runtimeSessionId, result);
       }
 
@@ -511,7 +614,10 @@ function Chat({
       void copyToClipboard(buildChatTranscript(msgs, format));
     };
     window.addEventListener("hermes-copy-chat", handleCustom);
-    return () => { unsub(); window.removeEventListener("hermes-copy-chat", handleCustom); };
+    return () => {
+      unsub();
+      window.removeEventListener("hermes-copy-chat", handleCustom);
+    };
   }, [visible]);
 
   useEffect(() => {
@@ -553,7 +659,14 @@ function Chat({
       streamingReasoning: "",
       isLoading: false,
     });
-  }, [isLoading, session.hermesSessionId, sessionId, setMessages, dispatch, onSessionStateChange]);
+  }, [
+    isLoading,
+    session.hermesSessionId,
+    sessionId,
+    setMessages,
+    dispatch,
+    onSessionStateChange,
+  ]);
 
   const toggleVerbose = useCallback(() => {
     setVerbose((v) => {
@@ -580,19 +693,25 @@ function Chat({
     isLoading,
     setIsLoading,
     setMessages,
-    setHermesSessionId: useCallback((id: string | null) => {
-      dispatch({ type: "setHermesSessionId", value: id });
-      onSessionStateChange?.({ hermesSessionId: id });
-    }, [dispatch, onSessionStateChange]),
+    setHermesSessionId: useCallback(
+      (id: string | null) => {
+        dispatch({ type: "setHermesSessionId", value: id });
+        onSessionStateChange?.({ hermesSessionId: id });
+      },
+      [dispatch, onSessionStateChange],
+    ),
     onSessionStarted,
     chatInputRef,
     localCommands,
     contextFolder: session.contextFolder,
     pendingClarify: pendingClarify,
-    setPendingClarify: useCallback((c: import("./types").ClarifyRequest | null) => {
-      dispatch({ type: "setPendingClarify", value: c });
-      onSessionStateChange?.({ pendingClarify: c });
-    }, [dispatch, onSessionStateChange]),
+    setPendingClarify: useCallback(
+      (c: import("./types").ClarifyRequest | null) => {
+        dispatch({ type: "setPendingClarify", value: c });
+        onSessionStateChange?.({ pendingClarify: c });
+      },
+      [dispatch, onSessionStateChange],
+    ),
     executeGatewayCommand,
   });
 
@@ -695,11 +814,22 @@ function Chat({
         }
       }
     },
-    [modelConfig.selectModel, session.hermesSessionId, sessionId, addErrorEvent, executeGatewayCommand],
+    [
+      modelConfig.selectModel,
+      session.hermesSessionId,
+      sessionId,
+      addErrorEvent,
+      executeGatewayCommand,
+    ],
   );
 
   const handleSelectAlias = useCallback(
-    async (alias: { name: string; model: string; provider: string; baseUrl: string }) => {
+    async (alias: {
+      name: string;
+      model: string;
+      provider: string;
+      baseUrl: string;
+    }) => {
       await modelConfig.selectAlias(alias);
       const id = session.hermesSessionId ?? sessionId;
       if (id) {
@@ -712,7 +842,13 @@ function Chat({
         }
       }
     },
-    [modelConfig.selectAlias, session.hermesSessionId, sessionId, addErrorEvent, executeGatewayCommand],
+    [
+      modelConfig.selectAlias,
+      session.hermesSessionId,
+      sessionId,
+      addErrorEvent,
+      executeGatewayCommand,
+    ],
   );
 
   const modelOptions = useMemo<ModelOption[]>(() => {
@@ -727,7 +863,12 @@ function Chat({
 
   const handleModelInputSelect = useCallback(
     async (option: ModelOption) => {
-      await modelConfig.selectAlias({ name: option.label, model: option.model, provider: option.provider, baseUrl: option.baseUrl });
+      await modelConfig.selectAlias({
+        name: option.label,
+        model: option.model,
+        provider: option.provider,
+        baseUrl: option.baseUrl,
+      });
       const id = session.hermesSessionId ?? sessionId;
       if (id) {
         try {
@@ -740,30 +881,64 @@ function Chat({
         }
       }
     },
-    [modelConfig, session.hermesSessionId, sessionId, addErrorEvent, executeGatewayCommand],
+    [
+      modelConfig,
+      session.hermesSessionId,
+      sessionId,
+      addErrorEvent,
+      executeGatewayCommand,
+    ],
   );
 
-  const handleSudoRespond = useCallback(async (password: string) => {
-    const sid = session.hermesSessionId ?? sessionId;
-    if (!sid) return;
-    try {
-      await gatewayClient.respondSudo(sid, password, pendingSudo?.requestId);
-      onSessionStateChange?.({ pendingSudo: null });
-    } catch (err) {
-      addStatusMessage("Sudo failed", (err as Error).message || String(err), "error");
-    }
-  }, [gatewayClient, session.hermesSessionId, sessionId, pendingSudo, onSessionStateChange, addStatusMessage]);
+  const handleSudoRespond = useCallback(
+    async (password: string) => {
+      const sid = session.hermesSessionId ?? sessionId;
+      if (!sid) return;
+      try {
+        await gatewayClient.respondSudo(sid, password, pendingSudo?.requestId);
+        onSessionStateChange?.({ pendingSudo: null });
+      } catch (err) {
+        addStatusMessage(
+          "Sudo failed",
+          (err as Error).message || String(err),
+          "error",
+        );
+      }
+    },
+    [
+      gatewayClient,
+      session.hermesSessionId,
+      sessionId,
+      pendingSudo,
+      onSessionStateChange,
+      addStatusMessage,
+    ],
+  );
 
-  const handleSecretRespond = useCallback(async (value: string) => {
-    const sid = session.hermesSessionId ?? sessionId;
-    if (!sid) return;
-    try {
-      await gatewayClient.respondSecret(sid, value, pendingSecret?.requestId);
-      onSessionStateChange?.({ pendingSecret: null });
-    } catch (err) {
-      addStatusMessage("Secret input failed", (err as Error).message || String(err), "error");
-    }
-  }, [gatewayClient, session.hermesSessionId, sessionId, pendingSecret, onSessionStateChange, addStatusMessage]);
+  const handleSecretRespond = useCallback(
+    async (value: string) => {
+      const sid = session.hermesSessionId ?? sessionId;
+      if (!sid) return;
+      try {
+        await gatewayClient.respondSecret(sid, value, pendingSecret?.requestId);
+        onSessionStateChange?.({ pendingSecret: null });
+      } catch (err) {
+        addStatusMessage(
+          "Secret input failed",
+          (err as Error).message || String(err),
+          "error",
+        );
+      }
+    },
+    [
+      gatewayClient,
+      session.hermesSessionId,
+      sessionId,
+      pendingSecret,
+      onSessionStateChange,
+      addStatusMessage,
+    ],
+  );
 
   const handleTuiCompress = useCallback(async () => {
     const id = session.hermesSessionId ?? sessionId;
@@ -775,7 +950,12 @@ function Chat({
       addErrorEvent(err);
       setIsLoading(false);
     }
-  }, [executeGatewayCommand, session.hermesSessionId, sessionId, addErrorEvent]);
+  }, [
+    executeGatewayCommand,
+    session.hermesSessionId,
+    sessionId,
+    addErrorEvent,
+  ]);
 
   const handleTuiUndo = useCallback(async () => {
     const id = session.hermesSessionId ?? sessionId;
@@ -788,34 +968,64 @@ function Chat({
       if (Array.isArray(payload.messages)) {
         setMessages(gatewayMessagesToChat(payload.messages));
       }
-      addStatusMessage("Last turn undone", "Conversation state was restored from Hermes.", "success");
+      addStatusMessage(
+        "Last turn undone",
+        "Conversation state was restored from Hermes.",
+        "success",
+      );
       setIsLoading(false);
     } catch (err) {
-      addStatusMessage("Undo failed", (err as Error).message || String(err), "error");
+      addStatusMessage(
+        "Undo failed",
+        (err as Error).message || String(err),
+        "error",
+      );
       setIsLoading(false);
     }
-  }, [gatewayClient, session.hermesSessionId, sessionId, setMessages, gatewayMessagesToChat, addStatusMessage]);
+  }, [
+    gatewayClient,
+    session.hermesSessionId,
+    sessionId,
+    setMessages,
+    gatewayMessagesToChat,
+    addStatusMessage,
+  ]);
 
-  const handleTuiBranch = useCallback(async (name: string) => {
-    const id = session.hermesSessionId ?? sessionId;
-    if (!id) return;
-    try {
-      setIsLoading(true);
-      const res = await gatewayClient.branch(id, name || undefined);
-      const payload = res?.result ?? res ?? {};
-      const nextId = payload.session_id || payload.sid || payload.id;
-      if (nextId) {
-        dispatch({ type: "setHermesSessionId", value: nextId });
-        onSessionStateChange?.({ hermesSessionId: nextId });
-        await syncSessionBinding(nextId);
+  const handleTuiBranch = useCallback(
+    async (name: string) => {
+      const id = session.hermesSessionId ?? sessionId;
+      if (!id) return;
+      try {
+        setIsLoading(true);
+        const res = await gatewayClient.branch(id, name || undefined);
+        const payload = res?.result ?? res ?? {};
+        const nextId = payload.session_id || payload.sid || payload.id;
+        if (nextId) {
+          dispatch({ type: "setHermesSessionId", value: nextId });
+          onSessionStateChange?.({ hermesSessionId: nextId });
+          await syncSessionBinding(nextId);
+        }
+        addStatusMessage("Session branched", name || "New branch", "success");
+        setIsLoading(false);
+      } catch (err) {
+        addStatusMessage(
+          "Branch failed",
+          (err as Error).message || String(err),
+          "error",
+        );
+        setIsLoading(false);
       }
-      addStatusMessage("Session branched", name || "New branch", "success");
-      setIsLoading(false);
-    } catch (err) {
-      addStatusMessage("Branch failed", (err as Error).message || String(err), "error");
-      setIsLoading(false);
-    }
-  }, [gatewayClient, session.hermesSessionId, sessionId, dispatch, onSessionStateChange, syncSessionBinding, addStatusMessage]);
+    },
+    [
+      gatewayClient,
+      session.hermesSessionId,
+      sessionId,
+      dispatch,
+      onSessionStateChange,
+      syncSessionBinding,
+      addStatusMessage,
+    ],
+  );
 
   const handleTuiSteer = useCallback(
     async (prompt: string) => {
@@ -825,11 +1035,20 @@ function Chat({
         setIsLoading(true);
         await executeGatewayCommand(id, `/steer ${prompt}`);
       } catch (err) {
-        addStatusMessage("Steer failed", (err as Error).message || String(err), "error");
+        addStatusMessage(
+          "Steer failed",
+          (err as Error).message || String(err),
+          "error",
+        );
         setIsLoading(false);
       }
     },
-    [executeGatewayCommand, session.hermesSessionId, sessionId, addStatusMessage],
+    [
+      executeGatewayCommand,
+      session.hermesSessionId,
+      sessionId,
+      addStatusMessage,
+    ],
   );
 
   return (

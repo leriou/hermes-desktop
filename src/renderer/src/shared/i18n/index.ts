@@ -391,7 +391,8 @@ function readKey(node: unknown, path: string): string | undefined {
 
 let locale: AppLocale = DEFAULT_ACTIVE_LOCALE;
 
-export const sharedI18n: ReturnType<typeof i18next.createInstance> = i18next.createInstance();
+export const sharedI18n: ReturnType<typeof i18next.createInstance> =
+  i18next.createInstance();
 
 void sharedI18n.init({
   lng: locale,

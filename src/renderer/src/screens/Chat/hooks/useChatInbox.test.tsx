@@ -2,9 +2,12 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useChatInbox } from "./useChatInbox";
 import type { SessionState } from "./useSessionManager";
+import { onTuiEvent } from "@renderer/lib/hermes-tauri";
 
 describe("useChatInbox", () => {
-  let eventHandler: ((event: { type: string; payload?: unknown; session_id?: string }) => void) | null;
+  let eventHandler:
+    | ((params: { type: string; payload: any; sid?: string }) => void)
+    | null;
 
   function sessionState(): SessionState {
     return {
@@ -30,14 +33,9 @@ describe("useChatInbox", () => {
 
   beforeEach(() => {
     eventHandler = null;
-    Object.defineProperty(window, "hermesAPI", {
-      configurable: true,
-      value: {
-        onTuiEvent: vi.fn((handler) => {
-          eventHandler = handler;
-          return () => {};
-        }),
-      },
+    vi.mocked(onTuiEvent).mockImplementation((handler) => {
+      eventHandler = handler;
+      return () => {};
     });
   });
 
@@ -63,7 +61,7 @@ describe("useChatInbox", () => {
       }),
     );
 
-    eventHandler?.({ type: "message.start", session_id: "sid-1", payload: {} });
+    eventHandler?.({ type: "message.start", sid: "sid-1", payload: {} });
 
     await waitFor(() => {
       expect(updateTab).toHaveBeenCalledWith("tab-1", {
@@ -89,12 +87,24 @@ describe("useChatInbox", () => {
       }),
     );
 
-    eventHandler?.({ type: "error", session_id: "sid-1", payload: { message: "HTTP 429: rate limit exceeded" } });
-    eventHandler?.({ type: "status.update", session_id: "sid-1", payload: { kind: "compressing", text: "compressing context" } });
+    eventHandler?.({
+      type: "error",
+      sid: "sid-1",
+      payload: { message: "HTTP 429: rate limit exceeded" },
+    });
+    eventHandler?.({
+      type: "status.update",
+      sid: "sid-1",
+      payload: { kind: "compressing", text: "compressing context" },
+    });
 
     await waitFor(() => {
-      const firstUpdater = updateTabMessages.mock.calls[0][1] as (prev: unknown[]) => unknown[];
-      const secondUpdater = updateTabMessages.mock.calls[1][1] as (prev: unknown[]) => unknown[];
+      const firstUpdater = updateTabMessages.mock.calls[0][1] as (
+        prev: unknown[],
+      ) => unknown[];
+      const secondUpdater = updateTabMessages.mock.calls[1][1] as (
+        prev: unknown[],
+      ) => unknown[];
       expect(firstUpdater([])[0]).toMatchObject({
         kind: "system_event",
         role: "system",
@@ -134,15 +144,19 @@ describe("useChatInbox", () => {
       }),
     );
 
-    eventHandler?.({ type: "message.complete", session_id: "sid-1", payload: {} });
+    eventHandler?.({ type: "message.complete", sid: "sid-1", payload: {} });
 
     await waitFor(() => {
-      const updater = updateTabMessages.mock.calls[0][1] as (prev: unknown[]) => unknown[];
-      expect(updater([
-        { id: "user-1", role: "user", content: "first" },
-        { id: "agent-1", role: "agent", content: "Previous answer" },
-        { id: "user-2", role: "user", content: "second" },
-      ])).toMatchObject([
+      const updater = updateTabMessages.mock.calls[0][1] as (
+        prev: unknown[],
+      ) => unknown[];
+      expect(
+        updater([
+          { id: "user-1", role: "user", content: "first" },
+          { id: "agent-1", role: "agent", content: "Previous answer" },
+          { id: "user-2", role: "user", content: "second" },
+        ]),
+      ).toMatchObject([
         { id: "user-1" },
         { id: "agent-1", content: "Previous answer" },
         { id: "user-2" },
@@ -175,14 +189,28 @@ describe("useChatInbox", () => {
       }),
     );
 
-    eventHandler?.({ type: "message.complete", session_id: "sid-1", payload: {} });
+    eventHandler?.({ type: "message.complete", sid: "sid-1", payload: {} });
 
     await waitFor(() => {
-      const updater = updateTabMessages.mock.calls[0][1] as (prev: unknown[]) => unknown[];
-      expect(updater([
-        { id: "tool-result", kind: "tool_result", role: "agent", content: "tool output" },
-        { id: "status", kind: "system_status", role: "agent", content: "queued" },
-      ])).toMatchObject([
+      const updater = updateTabMessages.mock.calls[0][1] as (
+        prev: unknown[],
+      ) => unknown[];
+      expect(
+        updater([
+          {
+            id: "tool-result",
+            kind: "tool_result",
+            role: "agent",
+            content: "tool output",
+          },
+          {
+            id: "status",
+            kind: "system_status",
+            role: "agent",
+            content: "queued",
+          },
+        ]),
+      ).toMatchObject([
         { id: "tool-result", kind: "tool_result", content: "tool output" },
         { id: "status", kind: "system_status", content: "queued" },
         { role: "agent", content: "Final assistant answer" },
@@ -210,12 +238,25 @@ describe("useChatInbox", () => {
       }),
     );
 
-    eventHandler?.({ type: "error", session_id: "sid-1", payload: { message: "boom" } });
+    eventHandler?.({
+      type: "error",
+      sid: "sid-1",
+      payload: { message: "boom" },
+    });
 
-    const updater = updateTabMessages.mock.calls[0][1] as (prev: unknown[]) => unknown[];
-    expect(updater([
-      { id: "tool-result", kind: "tool_result", role: "agent", content: "tool output" },
-    ])).toMatchObject([
+    const updater = updateTabMessages.mock.calls[0][1] as (
+      prev: unknown[],
+    ) => unknown[];
+    expect(
+      updater([
+        {
+          id: "tool-result",
+          kind: "tool_result",
+          role: "agent",
+          content: "tool output",
+        },
+      ]),
+    ).toMatchObject([
       { id: "tool-result", kind: "tool_result", content: "tool output" },
       { role: "agent", content: "streaming answer" },
     ]);
@@ -253,18 +294,31 @@ describe("useChatInbox", () => {
       }),
     );
 
-    eventHandler?.({ type: "message.delta", session_id: "sid-1", payload: { text: "Hel" } });
-    eventHandler?.({ type: "message.delta", session_id: "sid-1", payload: { text: "lo" } });
+    eventHandler?.({
+      type: "message.delta",
+      sid: "sid-1",
+      payload: { text: "Hel" },
+    });
+    eventHandler?.({
+      type: "message.delta",
+      sid: "sid-1",
+      payload: { text: "lo" },
+    });
 
     expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
-    expect(updateTab.mock.calls.some(([, patch]) => "streamingText" in patch)).toBe(false);
+    expect(
+      updateTab.mock.calls.some(([, patch]) => "streamingText" in patch),
+    ).toBe(false);
 
     act(() => {
       frameCallbacks[0]?.(performance.now());
     });
 
-    expect(updateTab).toHaveBeenCalledWith("tab-1", expect.objectContaining({
-      streamingText: "Hello",
-    }));
+    expect(updateTab).toHaveBeenCalledWith(
+      "tab-1",
+      expect.objectContaining({
+        streamingText: "Hello",
+      }),
+    );
   });
 });

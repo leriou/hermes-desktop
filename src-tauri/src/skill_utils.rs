@@ -1,4 +1,5 @@
 use std::fs;
+use std::collections::HashMap;
 use serde_json::{json, Value};
 use crate::python;
 use tauri::AppHandle;
@@ -37,8 +38,50 @@ fn parse_skill_frontmatter(content: &str) -> (String, String) {
     (name, description)
 }
 
+/// Helper to get skill usage counts from access_events.db
+fn get_skill_usage_counts(app: Option<&AppHandle>) -> HashMap<String, i64> {
+    let mut counts = HashMap::new();
+    let home = python::get_hermes_home(app);
+    let db_path = home.join("access_events.db");
+    
+    if !db_path.exists() {
+        return counts;
+    }
+
+    if let Ok(conn) = rusqlite::Connection::open_with_flags(
+        &db_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    ) {
+        let stmt_res = conn.prepare(
+            "SELECT item_key, COUNT(*) as cnt FROM access_events WHERE tool_name = 'skill_view' GROUP BY item_key"
+        );
+        if let Ok(mut stmt) = stmt_res {
+            let rows = stmt.query_map([], |row| {
+                let item_key: String = row.get(0)?;
+                let count: i64 = row.get(1)?;
+                Ok((item_key, count))
+            });
+            if let Ok(rows) = rows {
+                for row in rows.flatten() {
+                    let (item_key, count) = row;
+                    if let Some(stripped) = item_key.strip_prefix("skill:") {
+                        let name = if let Some(slash_idx) = stripped.find('/') {
+                            &stripped[slash_idx + 1..]
+                        } else {
+                            stripped
+                        };
+                        *counts.entry(name.to_lowercase()).or_insert(0) += count;
+                    }
+                }
+            }
+        }
+    }
+    counts
+}
+
 /// List installed skills from ~/.hermes/skills/<category>/<skill>/SKILL.md
 pub fn list_installed_skills(app: Option<&AppHandle>, profile: Option<String>) -> Result<Value, String> {
+    let usage_counts = get_skill_usage_counts(app);
     let home = python::get_hermes_home_with_profile(app, profile);
     let skills_dir = home.join("skills");
     eprintln!("[skills:installed] Looking at {:?}", skills_dir);
@@ -72,11 +115,19 @@ pub fn list_installed_skills(app: Option<&AppHandle>, profile: Option<String>) -
                         (String::new(), String::new())
                     };
 
+                    let display_name = if meta_name.is_empty() { entry_name.clone() } else { meta_name.clone() };
+                    let usage_count = usage_counts.get(&entry_name.to_lowercase())
+                        .or_else(|| usage_counts.get(&display_name.to_lowercase()))
+                        .copied()
+                        .unwrap_or(0);
+
                     skills.push(json!({
-                        "name": if meta_name.is_empty() { entry_name.clone() } else { meta_name },
+                        "name": display_name,
+                        "entry_name": entry_name,
                         "category": category,
                         "description": meta_desc,
-                        "path": entry_path.to_string_lossy()
+                        "path": entry_path.to_string_lossy(),
+                        "usage_count": usage_count
                     }));
                 }
             }
@@ -102,6 +153,7 @@ pub fn list_installed_skills(app: Option<&AppHandle>, profile: Option<String>) -
 
 /// List bundled skills from ~/.hermes/hermes-agent/skills/<category>/<skill>/SKILL.md
 pub fn list_bundled_skills(app: Option<&AppHandle>, profile: Option<String>) -> Result<Value, String> {
+    let usage_counts = get_skill_usage_counts(app);
     let repo = python::get_hermes_repo(app);
     let skills_dir = repo.join("skills");
     eprintln!("[skills:bundled] Looking at {:?}", skills_dir);
@@ -162,14 +214,21 @@ pub fn list_bundled_skills(app: Option<&AppHandle>, profile: Option<String>) -> 
                     };
 
                     let is_installed = installed_set.contains(&entry_name);
+                    let display_name = if meta_name.is_empty() { entry_name.clone() } else { meta_name.clone() };
+                    let usage_count = usage_counts.get(&entry_name.to_lowercase())
+                        .or_else(|| usage_counts.get(&display_name.to_lowercase()))
+                        .copied()
+                        .unwrap_or(0);
 
                     skills.push(json!({
-                        "name": if meta_name.is_empty() { entry_name.clone() } else { meta_name },
+                        "name": display_name,
+                        "entry_name": entry_name,
                         "description": meta_desc,
                         "category": category,
                         "path": entry_path.to_string_lossy(),
                         "source": "bundled",
-                        "installed": is_installed
+                        "installed": is_installed,
+                        "usage_count": usage_count
                     }));
                 }
             }

@@ -1,4 +1,13 @@
-import { adoptHermesHome, inspectInstallTarget, onInstallProgress, openExternal, quitApp, selectHermesFolder, startInstall, validateHermesHome } from "@renderer/lib/hermes-tauri";
+import {
+  adoptHermesHome,
+  inspectInstallTarget,
+  onInstallProgress,
+  openExternal,
+  quitApp,
+  selectHermesFolder,
+  startInstall,
+  validateHermesHome,
+} from "@renderer/lib/hermes-tauri";
 import { useEffect, useState, useRef } from "react";
 import { ArrowRight, Copy, Send } from "../../assets/icons";
 
@@ -146,10 +155,7 @@ function Install({
               {t("install.useExistingDone")}
             </p>
             <div className="install-confirm-actions">
-              <button
-                className="btn btn-primary"
-                onClick={() => quitApp()}
-              >
+              <button className="btn btn-primary" onClick={() => quitApp()}>
                 {t("install.useExistingQuitBtn")}
               </button>
             </div>
@@ -263,9 +269,7 @@ function Install({
             </button>
             <button
               className="btn btn-secondary btn-sm"
-              onClick={() =>
-                openExternal(TELEGRAM_COMMUNITY_URL)
-              }
+              onClick={() => openExternal(TELEGRAM_COMMUNITY_URL)}
               title={TELEGRAM_COMMUNITY_URL}
             >
               <Send size={13} />

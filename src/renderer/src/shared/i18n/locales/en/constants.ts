@@ -38,6 +38,15 @@ export default {
   themeSystem: "System",
   themeLight: "Light",
   themeDark: "Dark",
+  themeColorful: "Colorful",
+  themeApple: "Apple",
+  themeGoogle: "Google",
+  // Markdown styles
+  mdStyleDefault: "Default",
+  mdStyleNotion: "Notion",
+  mdStyleMaterial: "Material",
+  mdStyleNightowl: "Night Owl",
+  mdStyleSolarized: "Solarized",
   // Settings section titles
   sectionLlmProviders: "LLM Providers",
   sectionToolApiKeys: "Tool API Keys",

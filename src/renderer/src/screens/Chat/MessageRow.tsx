@@ -78,8 +78,7 @@ export const MessageRow = memo(function MessageRow({
     return (
       <div className={`chat-message chat-message-${msg.role}`}>
         <HermesAvatar />
-        <div className={`chat-bubble chat-bubble-${msg.role}`}>
-        </div>
+        <div className={`chat-bubble chat-bubble-${msg.role}`}></div>
       </div>
     );
   }
@@ -88,7 +87,8 @@ export const MessageRow = memo(function MessageRow({
   const isStreaming = msg.role === "agent" && isLast && isLoading;
   const showToolbar = msg.role === "agent" && !isStreaming && !!msg.content;
   const hasTimestamp = "timestamp" in msg && !!msg.timestamp;
-  const hasModel = msg.role === "agent" && "model" in msg && !!msg.model && !isStreaming;
+  const hasModel =
+    msg.role === "agent" && "model" in msg && !!msg.model && !isStreaming;
 
   return (
     <div className={`chat-message chat-message-${msg.role}`}>
@@ -105,20 +105,26 @@ export const MessageRow = memo(function MessageRow({
                 <AttachmentChip
                   key={att.id}
                   attachment={att}
-                  onPreview={(a) => a.kind === "image" && setPreviewAttachment(a)}
+                  onPreview={(a) =>
+                    a.kind === "image" && setPreviewAttachment(a)
+                  }
                 />
               ))}
             </div>
           )}
           {msg.content &&
             (msg.role === "agent" ? (
-              <AgentMarkdown streaming={isStreaming}>{msg.content}</AgentMarkdown>
+              <AgentMarkdown streaming={isStreaming}>
+                {msg.content}
+              </AgentMarkdown>
             ) : (
               msg.content
             ))}
         </div>
         {!isStreaming && (showToolbar || hasTimestamp || hasModel) && (
-          <div className={`chat-bubble-toolbar${!showToolbar ? " chat-bubble-toolbar--visible" : ""}`}>
+          <div
+            className={`chat-bubble-toolbar${!showToolbar ? " chat-bubble-toolbar--visible" : ""}`}
+          >
             {showToolbar && (
               <button
                 className="chat-toolbar-btn"

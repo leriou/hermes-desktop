@@ -1,4 +1,14 @@
-import { createCronJob, listCronHistory, listCronJobs, pauseCronJob, readCronOutput, removeCronJob, resumeCronJob, triggerCronJob, updateCronJob } from "@renderer/lib/hermes-tauri";
+import {
+  createCronJob,
+  listCronHistory,
+  listCronJobs,
+  pauseCronJob,
+  readCronOutput,
+  removeCronJob,
+  resumeCronJob,
+  triggerCronJob,
+  updateCronJob,
+} from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
@@ -98,8 +108,10 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
 
   const loadJobs = useCallback(async (): Promise<void> => {
     try {
-      const list = await cache.getOrFetch(`schedules:jobs:${profile ?? "default"}`, 20_000, async () =>
-        (await listCronJobs(true, profile)) ?? [],
+      const list = await cache.getOrFetch(
+        `schedules:jobs:${profile ?? "default"}`,
+        20_000,
+        async () => (await listCronJobs(true, profile)) ?? [],
       );
       setJobs(list);
     } catch {
@@ -112,12 +124,17 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
   const loadHistory = useCallback(async (): Promise<void> => {
     setHistoryLoading(true);
     try {
-      const list = await cache.getOrFetch<HistoryEntry[]>(`schedules:history:${profile ?? "default"}`, 30_000, () =>
-        listCronHistory(profile),
+      const list = await cache.getOrFetch<HistoryEntry[]>(
+        `schedules:history:${profile ?? "default"}`,
+        30_000,
+        () => listCronHistory(profile),
       );
       setHistory(list ?? []);
-    } catch { /* ignore */ }
-    finally { setHistoryLoading(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setHistoryLoading(false);
+    }
   }, [profile]);
 
   useEffect(() => {
@@ -169,7 +186,8 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     setEditPrompt(job.prompt);
     setEditSchedule(job.schedule);
     setEditDeliver(
-      job.deliver.length > 0 && !(job.deliver.length === 1 && job.deliver[0] === "local")
+      job.deliver.length > 0 &&
+        !(job.deliver.length === 1 && job.deliver[0] === "local")
         ? job.deliver[0]
         : "local",
     );
@@ -530,7 +548,10 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
                 </div>
               </div>
               <div className="schedules-modal-right">
-                <div className="schedules-field" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div
+                  className="schedules-field"
+                  style={{ flex: 1, display: "flex", flexDirection: "column" }}
+                >
                   <label className="schedules-field-label">
                     {t("schedules.prompt")}
                   </label>
@@ -621,7 +642,10 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
                 </div>
               </div>
               <div className="schedules-modal-right">
-                <div className="schedules-field" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div
+                  className="schedules-field"
+                  style={{ flex: 1, display: "flex", flexDirection: "column" }}
+                >
                   <label className="schedules-field-label">
                     {t("schedules.prompt")}
                   </label>
@@ -865,17 +889,25 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
             >
               <option value="all">{t("schedules.allJobs")}</option>
               {jobs.map((j) => (
-                <option key={j.id} value={j.id}>{j.name}</option>
+                <option key={j.id} value={j.id}>
+                  {j.name}
+                </option>
               ))}
             </select>
-            <button className="btn-ghost" onClick={loadHistory} disabled={historyLoading}>
+            <button
+              className="btn-ghost"
+              onClick={loadHistory}
+              disabled={historyLoading}
+            >
               <Refresh size={13} />
             </button>
           </div>
         </div>
 
         {historyLoading ? (
-          <div className="schedules-loading"><div className="loading-spinner" /></div>
+          <div className="schedules-loading">
+            <div className="loading-spinner" />
+          </div>
         ) : history.length === 0 ? (
           <p className="schedules-empty-hint">{t("schedules.noHistory")}</p>
         ) : (
@@ -890,40 +922,52 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
             </thead>
             <tbody>
               {history
-                .filter((h) => historyFilter === "all" || h.jobId === historyFilter)
+                .filter(
+                  (h) => historyFilter === "all" || h.jobId === historyFilter,
+                )
                 .slice(0, 100)
                 .map((h) => (
-                <tr
-                  key={h.path}
-                  className="schedules-history-row"
-                  onClick={async () => {
-                    setViewingOutput(h.path);
-                    setOutputLoading(true);
-                    setOutputContent("");
-                    try {
-                      const content = await readCronOutput(h.path);
-                      setOutputContent(content || "(empty)");
-                    } catch {
-                      setOutputContent("(failed to read)");
-                    } finally {
-                      setOutputLoading(false);
-                    }
-                  }}
-                >
-                  <td className="schedules-history-name">{h.jobName}</td>
-                  <td>{formatTime(h.runAt)}</td>
-                  <td>
-                    <span className={`schedules-badge schedules-badge-${
-                      h.status === "ok" ? "active" : h.status === "empty" ? "paused" : "error"
-                    }`}>
-                      {h.status === "ok" ? t("schedules.statusOk") : h.status === "empty" ? t("schedules.statusEmpty") : t("schedules.statusFail")}
-                    </span>
-                  </td>
-                  <td className="schedules-history-size">
-                    {h.size > 0 ? `${(h.size / 1024).toFixed(1)}KB` : "--"}
-                  </td>
-                </tr>
-              ))}
+                  <tr
+                    key={h.path}
+                    className="schedules-history-row"
+                    onClick={async () => {
+                      setViewingOutput(h.path);
+                      setOutputLoading(true);
+                      setOutputContent("");
+                      try {
+                        const content = await readCronOutput(h.path);
+                        setOutputContent(content || "(empty)");
+                      } catch {
+                        setOutputContent("(failed to read)");
+                      } finally {
+                        setOutputLoading(false);
+                      }
+                    }}
+                  >
+                    <td className="schedules-history-name">{h.jobName}</td>
+                    <td>{formatTime(h.runAt)}</td>
+                    <td>
+                      <span
+                        className={`schedules-badge schedules-badge-${
+                          h.status === "ok"
+                            ? "active"
+                            : h.status === "empty"
+                              ? "paused"
+                              : "error"
+                        }`}
+                      >
+                        {h.status === "ok"
+                          ? t("schedules.statusOk")
+                          : h.status === "empty"
+                            ? t("schedules.statusEmpty")
+                            : t("schedules.statusFail")}
+                      </span>
+                    </td>
+                    <td className="schedules-history-size">
+                      {h.size > 0 ? `${(h.size / 1024).toFixed(1)}KB` : "--"}
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         )}
@@ -931,7 +975,10 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
 
       {/* Output Viewer Modal */}
       {viewingOutput && (
-        <div className="skills-detail-overlay" onClick={() => setViewingOutput(null)}>
+        <div
+          className="skills-detail-overlay"
+          onClick={() => setViewingOutput(null)}
+        >
           <div
             className="schedules-modal"
             style={{ maxWidth: 800, maxHeight: "80vh" }}
@@ -939,13 +986,18 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
           >
             <div className="schedules-modal-header">
               <h3>{t("schedules.outputTitle")}</h3>
-              <button className="btn-ghost" onClick={() => setViewingOutput(null)}>
+              <button
+                className="btn-ghost"
+                onClick={() => setViewingOutput(null)}
+              >
                 <X size={18} />
               </button>
             </div>
             <div className="schedules-output-body">
               {outputLoading ? (
-                <div className="schedules-loading"><div className="loading-spinner" /></div>
+                <div className="schedules-loading">
+                  <div className="loading-spinner" />
+                </div>
               ) : (
                 <pre className="schedules-output-pre">{outputContent}</pre>
               )}

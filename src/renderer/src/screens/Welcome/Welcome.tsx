@@ -1,4 +1,9 @@
-import { setConnectionConfig, setSshConfig, testRemoteConnection, testSshConnection } from "@renderer/lib/hermes-tauri";
+import {
+  setConnectionConfig,
+  setSshConfig,
+  testRemoteConnection,
+  testSshConnection,
+} from "@renderer/lib/hermes-tauri";
 import { useState } from "react";
 import HermesLogo from "../../components/common/HermesLogo";
 import {

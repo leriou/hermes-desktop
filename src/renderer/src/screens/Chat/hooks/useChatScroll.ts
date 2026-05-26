@@ -4,7 +4,10 @@ import { isNearScrollBottom } from "../scrollState";
 
 const STREAM_SCROLL_INTERVAL_MS = 80;
 
-export function useChatScroll(messages: ChatMessage[], isLoading: boolean): {
+export function useChatScroll(
+  messages: ChatMessage[],
+  isLoading: boolean,
+): {
   containerRef: React.RefObject<HTMLDivElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
 } {
@@ -15,16 +18,19 @@ export function useChatScroll(messages: ChatMessage[], isLoading: boolean): {
   const streamingRafRef = useRef<number>(0);
   const streamingTimerRef = useRef<number>(0);
 
-  const scrollToBottom = useCallback((force?: boolean, instant?: boolean) => {
-    if (!force && userScrolledUpRef.current) return;
-    const el = containerRef.current;
-    if (!el) return;
-    if (instant || isLoading) {
-      el.scrollTop = el.scrollHeight;
-    } else {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [isLoading]);
+  const scrollToBottom = useCallback(
+    (force?: boolean, instant?: boolean) => {
+      if (!force && userScrolledUpRef.current) return;
+      const el = containerRef.current;
+      if (!el) return;
+      if (instant || isLoading) {
+        el.scrollTop = el.scrollHeight;
+      } else {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    },
+    [isLoading],
+  );
 
   useEffect(() => {
     const container = containerRef.current;

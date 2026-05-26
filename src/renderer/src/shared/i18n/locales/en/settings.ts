@@ -25,6 +25,10 @@ export default {
     label: "Analytics",
     hint: "Help improve Hermes by sending anonymous usage data. No personal information or chat content is collected.",
   },
+  mdStyle: {
+    label: "Markdown Style",
+    hint: "Choose the visual style for code blocks and formatted text in messages",
+  },
   notDetected: "Not detected",
   updatedSuccessfully: "Updated successfully!",
   updateSuccess: "Hermes updated successfully.",

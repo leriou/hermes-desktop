@@ -9,12 +9,7 @@ const baseProps = {
 
 describe("MessageList pending request bars", () => {
   it("does not render sudo or secret prompts in the transcript", () => {
-    const { container } = render(
-      <MessageList
-        {...baseProps}
-        isLoading
-      />,
-    );
+    const { container } = render(<MessageList {...baseProps} isLoading />);
 
     expect(container.querySelector(".chat-sudo-bar")).toBeNull();
     expect(container.querySelector(".chat-secret-bar")).toBeNull();
@@ -61,7 +56,9 @@ describe("MessageList system events", () => {
 
     expect(container.querySelectorAll(".chat-system-event")).toHaveLength(3);
     expect(container.querySelector(".chat-message-agent")).toBeNull();
-    expect(container.querySelector(".chat-system-event-error")?.textContent).toContain("Provider error 429");
+    expect(
+      container.querySelector(".chat-system-event-error")?.textContent,
+    ).toContain("Provider error 429");
   });
 
   it("renders system events as a compact event rail with expandable detail", () => {
@@ -85,7 +82,9 @@ describe("MessageList system events", () => {
     );
 
     expect(container.querySelector(".chat-system-event-rail")).not.toBeNull();
-    const details = container.querySelector("details.chat-system-event") as HTMLDetailsElement;
+    const details = container.querySelector(
+      "details.chat-system-event",
+    ) as HTMLDetailsElement;
     expect(details).not.toBeNull();
     expect(details.open).toBe(false);
     expect(container.textContent).toContain("Provider error 1305");

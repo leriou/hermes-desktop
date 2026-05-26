@@ -27,7 +27,9 @@ export const SubagentRow = memo(function SubagentRow({
           <>
             <CheckCircle2 size={12} className="chat-subagent-ok" />
             {msg.durationS != null && (
-              <span className="chat-subagent-duration">{msg.durationS.toFixed(1)}s</span>
+              <span className="chat-subagent-duration">
+                {msg.durationS.toFixed(1)}s
+              </span>
             )}
           </>
         )}
@@ -35,7 +37,9 @@ export const SubagentRow = memo(function SubagentRow({
           <>
             <XCircle size={12} className="chat-subagent-fail" />
             {msg.durationS != null && (
-              <span className="chat-subagent-duration">{msg.durationS.toFixed(1)}s</span>
+              <span className="chat-subagent-duration">
+                {msg.durationS.toFixed(1)}s
+              </span>
             )}
           </>
         )}

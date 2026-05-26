@@ -28,18 +28,33 @@ const CONFIGS: Record<string, ColumnDef[]> = {
     { key: "status", label: "状态" },
   ],
   terminal: [
-    { key: "command", label: "命令", width: "60%", render: (v) => truncate(String(v)) },
+    {
+      key: "command",
+      label: "命令",
+      width: "60%",
+      render: (v) => truncate(String(v)),
+    },
     { key: "cwd", label: "目录", render: (v) => truncate(String(v), 40) },
   ],
   write_file: [
-    { key: "path", label: "文件路径", width: "50%", render: (v) => truncate(String(v), 60) },
+    {
+      key: "path",
+      label: "文件路径",
+      width: "50%",
+      render: (v) => truncate(String(v), 60),
+    },
     { key: "content", label: "内容", render: (v) => truncate(String(v), 60) },
   ],
   read_file: [
     { key: "path", label: "文件路径", render: (v) => truncate(String(v), 80) },
   ],
   search_files: [
-    { key: "query", label: "关键词", width: "40%", render: (v) => truncate(String(v), 60) },
+    {
+      key: "query",
+      label: "关键词",
+      width: "40%",
+      render: (v) => truncate(String(v), 60),
+    },
     { key: "path", label: "路径", render: (v) => truncate(String(v), 40) },
   ],
   execute_code: [
@@ -53,7 +68,12 @@ const CONFIGS: Record<string, ColumnDef[]> = {
     { key: "url", label: "URL", render: (v) => truncate(String(v), 80) },
   ],
   patch: [
-    { key: "path", label: "文件路径", width: "50%", render: (v) => truncate(String(v), 60) },
+    {
+      key: "path",
+      label: "文件路径",
+      width: "50%",
+      render: (v) => truncate(String(v), 60),
+    },
   ],
   memory: [
     { key: "action", label: "操作", width: "20%" },

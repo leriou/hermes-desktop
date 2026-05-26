@@ -19,21 +19,19 @@ describe("AgentMarkdown", () => {
   it("shows a plain code placeholder before deferred highlighting", () => {
     const { container } = render(
       <I18nProvider>
-        <AgentMarkdown>
-          {"```ts\nconst value = 1;\n```"}
-        </AgentMarkdown>
+        <AgentMarkdown>{"```ts\nconst value = 1;\n```"}</AgentMarkdown>
       </I18nProvider>,
     );
 
     expect(container.querySelector(".chat-code-block")).not.toBeNull();
-    expect(container.querySelector(".chat-code-placeholder")?.textContent).toContain("const value = 1;");
+    expect(
+      container.querySelector(".chat-code-placeholder")?.textContent,
+    ).toContain("const value = 1;");
   });
 
   it("uses the lightweight streaming renderer when streaming", () => {
     const { container } = render(
-      <AgentMarkdown streaming>
-        {"**Live** response"}
-      </AgentMarkdown>,
+      <AgentMarkdown streaming>{"**Live** response"}</AgentMarkdown>,
     );
 
     expect(container.querySelector(".sm-streaming")).not.toBeNull();

@@ -238,7 +238,10 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
     const hints: Array<{ key: string; suggestion: string }> = [];
     for (const k of Object.keys(parsedYaml)) {
       if (COMMON_TYPOS[k]) {
-        hints.push({ key: k, suggestion: `Did you mean "${COMMON_TYPOS[k]}"?` });
+        hints.push({
+          key: k,
+          suggestion: `Did you mean "${COMMON_TYPOS[k]}"?`,
+        });
       }
     }
     return hints;
@@ -329,7 +332,11 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
             onClick={handleSave}
             disabled={!dirty || saving}
           >
-            {saving ? t("config.saving") : saved ? t("config.saved") : t("config.save")}
+            {saving
+              ? t("config.saving")
+              : saved
+                ? t("config.saved")
+                : t("config.save")}
           </button>
         </div>
       </div>
@@ -353,7 +360,10 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
             <>
               <span className="config-editor-search-count">
                 {searchMatches.length > 0
-                  ? t("config.matchCount", { current: searchIndex + 1, total: searchMatches.length })
+                  ? t("config.matchCount", {
+                      current: searchIndex + 1,
+                      total: searchMatches.length,
+                    })
                   : t("config.noMatch")}
               </span>
               <button
@@ -387,9 +397,12 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
       {(error || yamlError) && (
         <div className="config-editor-error">
           <span>
-            {error || t("config.yamlError", { message: yamlError.split("\n")[0] })}
+            {error ||
+              t("config.yamlError", { message: yamlError.split("\n")[0] })}
           </span>
-          <button className="btn-ghost" onClick={() => setError("")}>×</button>
+          <button className="btn-ghost" onClick={() => setError("")}>
+            ×
+          </button>
         </div>
       )}
 
@@ -411,7 +424,9 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
           </div>
           <div className="config-diff-keys">
             {diffKeys.map((k) => (
-              <span key={k} className="config-diff-key">{k}</span>
+              <span key={k} className="config-diff-key">
+                {k}
+              </span>
             ))}
           </div>
           <div className="config-diff-actions">
@@ -473,7 +488,9 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
         <div className="config-editor-body config-structured">
           {outline.length === 0 && (
             <div className="config-structured-empty">
-              {t("config.emptyConfig", { defaultValue: "No supported sections found." })}
+              {t("config.emptyConfig", {
+                defaultValue: "No supported sections found.",
+              })}
             </div>
           )}
           {outline.map(({ key }) => {
@@ -485,7 +502,8 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
                   <button
                     className="btn-ghost config-structured-goto"
                     onClick={() => {
-                      const line = outline.find((o) => o.key === key)?.line ?? 0;
+                      const line =
+                        outline.find((o) => o.key === key)?.line ?? 0;
                       setViewMode("yaml");
                       setTimeout(() => {
                         setOutlineActive(key);
@@ -503,7 +521,9 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
                     onUpdate={(newValue) => {
                       if (!parsedYaml) return;
                       const updated = { ...parsedYaml, [key]: newValue };
-                      setContent(yaml.dump(updated, { lineWidth: -1, noRefs: true }));
+                      setContent(
+                        yaml.dump(updated, { lineWidth: -1, noRefs: true }),
+                      );
                     }}
                   />
                 ) : null}
@@ -530,7 +550,12 @@ function StructuredBlock({
   onUpdate: (newValue: unknown) => void;
 }): React.JSX.Element {
   if (sectionKey === "model" && typeof value === "object" && value !== null) {
-    return <ModelBlock value={value as Record<string, unknown>} onUpdate={onUpdate} />;
+    return (
+      <ModelBlock
+        value={value as Record<string, unknown>}
+        onUpdate={onUpdate}
+      />
+    );
   }
   if (
     sectionKey === "model_aliases" &&
@@ -547,10 +572,24 @@ function StructuredBlock({
     typeof value === "object" &&
     value !== null
   ) {
-    return <ScalarMapBlock value={value as Record<string, unknown>} onUpdate={onUpdate} />;
+    return (
+      <ScalarMapBlock
+        value={value as Record<string, unknown>}
+        onUpdate={onUpdate}
+      />
+    );
   }
-  if (sectionKey === "providers" && typeof value === "object" && value !== null) {
-    return <ProvidersBlock value={value as Record<string, unknown>} onUpdate={onUpdate} />;
+  if (
+    sectionKey === "providers" &&
+    typeof value === "object" &&
+    value !== null
+  ) {
+    return (
+      <ProvidersBlock
+        value={value as Record<string, unknown>}
+        onUpdate={onUpdate}
+      />
+    );
   }
   return (
     <pre className="config-structured-raw">
@@ -576,9 +615,7 @@ function ModelBlock({
             className="input config-struct-input"
             type={f === "max_tokens" ? "number" : "text"}
             value={String(value[f] ?? "")}
-            onChange={(e) =>
-              onUpdate({ ...value, [f]: e.target.value })
-            }
+            onChange={(e) => onUpdate({ ...value, [f]: e.target.value })}
             placeholder={f}
           />
         </div>
@@ -607,14 +644,16 @@ function AliasBlock({
         </div>
       ))}
       {entries.length === 0 && (
-        <div className="config-struct-empty">{t2("config.noAliases", { defaultValue: "No aliases configured" })}</div>
+        <div className="config-struct-empty">
+          {t2("config.noAliases", { defaultValue: "No aliases configured" })}
+        </div>
       )}
     </div>
   );
 }
 
 function t2(key: string, opts?: Record<string, unknown>): string {
-  return opts?.defaultValue as string || key;
+  return (opts?.defaultValue as string) || key;
 }
 
 function FallbackBlock({
@@ -629,8 +668,12 @@ function FallbackBlock({
       {(value as Array<Record<string, unknown>>).map((fb, i) => (
         <div key={i} className="config-struct-fallback-row">
           <span className="config-struct-fallback-idx">{i + 1}</span>
-          <span className="config-struct-fallback-model">{String(fb.model ?? "")}</span>
-          <span className="config-struct-fallback-provider">{String(fb.provider ?? "")}</span>
+          <span className="config-struct-fallback-model">
+            {String(fb.model ?? "")}
+          </span>
+          <span className="config-struct-fallback-provider">
+            {String(fb.provider ?? "")}
+          </span>
           <button
             className="btn-ghost config-struct-fallback-remove"
             onClick={() => onUpdate(value.filter((_, idx) => idx !== i))}
@@ -662,9 +705,7 @@ function ScalarMapBlock({
             className="input config-struct-input"
             type="text"
             value={String(v)}
-            onChange={(e) =>
-              onUpdate({ ...value, [k]: e.target.value })
-            }
+            onChange={(e) => onUpdate({ ...value, [k]: e.target.value })}
           />
         </div>
       ))}
@@ -688,7 +729,7 @@ function ProvidersBlock({
     fieldValue: string,
   ): void {
     const next = { ...value };
-    const prov = { ...(next[provName] as Record<string, unknown> || {}) };
+    const prov = { ...((next[provName] as Record<string, unknown>) || {}) };
     prov[field] = fieldValue;
     next[provName] = prov;
     onUpdate(next);
@@ -701,8 +742,8 @@ function ProvidersBlock({
     newConfig: Record<string, unknown>,
   ): void {
     const next = { ...value };
-    const prov = { ...(next[provName] as Record<string, unknown> || {}) };
-    const models = { ...(prov.models as Record<string, unknown> || {}) };
+    const prov = { ...((next[provName] as Record<string, unknown>) || {}) };
+    const models = { ...((prov.models as Record<string, unknown>) || {}) };
     if (oldModelId !== newModelId) delete models[oldModelId];
     models[newModelId] = newConfig;
     prov.models = models;
@@ -712,8 +753,8 @@ function ProvidersBlock({
 
   function handleAddModel(provName: string): void {
     const next = { ...value };
-    const prov = { ...(next[provName] as Record<string, unknown> || {}) };
-    const models = { ...(prov.models as Record<string, unknown> || {}) };
+    const prov = { ...((next[provName] as Record<string, unknown>) || {}) };
+    const models = { ...((prov.models as Record<string, unknown>) || {}) };
     const baseId = "new-model";
     let id = baseId;
     let n = 1;
@@ -729,8 +770,8 @@ function ProvidersBlock({
 
   function handleRemoveModel(provName: string, modelId: string): void {
     const next = { ...value };
-    const prov = { ...(next[provName] as Record<string, unknown> || {}) };
-    const models = { ...(prov.models as Record<string, unknown> || {}) };
+    const prov = { ...((next[provName] as Record<string, unknown>) || {}) };
+    const models = { ...((prov.models as Record<string, unknown>) || {}) };
     delete models[modelId];
     prov.models = models;
     next[provName] = prov;

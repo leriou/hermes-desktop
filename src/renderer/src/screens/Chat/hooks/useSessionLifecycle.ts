@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useReducer } from "react";
-import type { ApprovalRequest, ChatMessage, ClarifyRequest, UsageState } from "../types";
+import type {
+  ApprovalRequest,
+  ChatMessage,
+  ClarifyRequest,
+  UsageState,
+} from "../types";
 
 interface SessionLifecycleState {
   hermesSessionId: string | null;
@@ -50,10 +55,17 @@ function initialState(): SessionLifecycleState {
   };
 }
 
-function reducer(state: SessionLifecycleState, action: Action): SessionLifecycleState {
+function reducer(
+  state: SessionLifecycleState,
+  action: Action,
+): SessionLifecycleState {
   switch (action.type) {
     case "reset":
-      return { ...initialState(), usage: state.usage, toolProgress: state.toolProgress };
+      return {
+        ...initialState(),
+        usage: state.usage,
+        toolProgress: state.toolProgress,
+      };
     case "setHermesSessionId":
       return { ...state, hermesSessionId: action.value };
     case "setPendingApproval":
@@ -84,7 +96,9 @@ function reducer(state: SessionLifecycleState, action: Action): SessionLifecycle
       return {
         ...state,
         lastResponseAt: action.now,
-        lastResponseDuration: state.responseStart ? action.now - state.responseStart : null,
+        lastResponseDuration: state.responseStart
+          ? action.now - state.responseStart
+          : null,
         responseStart: null,
       };
     default:

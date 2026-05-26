@@ -1,6 +1,20 @@
-import { copyToClipboard, listCachedSessions, searchSessions, syncSessionCache } from "@renderer/lib/hermes-tauri";
+import {
+  copyToClipboard,
+  listCachedSessions,
+  searchSessions,
+  syncSessionCache,
+} from "@renderer/lib/hermes-tauri";
 import { useEffect, useState, useRef, useCallback, memo, useMemo } from "react";
-import { Plus, Search, X, ChatBubble, ChevronDown, ChevronRight, Copy, Check } from "../../assets/icons";
+import {
+  Plus,
+  Search,
+  X,
+  ChatBubble,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Check,
+} from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
 import {
   baseSessionTitle,
@@ -150,11 +164,16 @@ type MsgCountFilter = "all" | "1-20" | "21-50" | "50-100" | ">100";
 
 function matchesMsgCount(count: number, filter: MsgCountFilter): boolean {
   switch (filter) {
-    case "1-20": return count >= 1 && count <= 20;
-    case "21-50": return count >= 21 && count <= 50;
-    case "50-100": return count >= 50 && count <= 100;
-    case ">100": return count > 100;
-    default: return true;
+    case "1-20":
+      return count >= 1 && count <= 20;
+    case "21-50":
+      return count >= 21 && count <= 50;
+    case "50-100":
+      return count >= 50 && count <= 100;
+    case ">100":
+      return count > 100;
+    default:
+      return true;
   }
 }
 
@@ -166,19 +185,18 @@ function matchesSource(source: string, filter: SourceFilter): boolean {
 // Copy button with feedback
 function CopyIdButton({ id }: { id: string }): React.JSX.Element {
   const [copied, setCopied] = useState(false);
-  const handleCopy = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    void copyToClipboard(id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }, [id]);
+  const handleCopy = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      void copyToClipboard(id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    },
+    [id],
+  );
 
   return (
-    <button
-      className="sessions-copy-id"
-      onClick={handleCopy}
-      title={id}
-    >
+    <button className="sessions-copy-id" onClick={handleCopy} title={id}>
       {copied ? <Check size={11} /> : <Copy size={11} />}
       <span className="sessions-copy-id-text">{id.slice(0, 8)}</span>
     </button>
@@ -203,15 +221,11 @@ const SessionCard = memo(function SessionCard({
       onClick={onClick}
     >
       <div className="sessions-card-row">
-        <span className={sourceTagClass(session.source)}>
-          {session.source}
-        </span>
+        <span className={sourceTagClass(session.source)}>{session.source}</span>
         <span className="sessions-card-title">
           {sessionDisplayTitle(session)}
         </span>
-        <span className="sessions-card-count">
-          {session.messageCount}
-        </span>
+        <span className="sessions-card-count">{session.messageCount}</span>
         <span className="sessions-card-time">
           {showFullDate
             ? formatFullDate(session.startedAt)
@@ -257,11 +271,16 @@ function Sessions({
   const filteredSessions = useMemo(() => {
     if (sourceFilter === "all" && msgCountFilter === "all") return sessions;
     return sessions.filter(
-      (s) => matchesSource(s.source, sourceFilter) && matchesMsgCount(s.messageCount, msgCountFilter),
+      (s) =>
+        matchesSource(s.source, sourceFilter) &&
+        matchesMsgCount(s.messageCount, msgCountFilter),
     );
   }, [sessions, sourceFilter, msgCountFilter]);
 
-  const grouped = useMemo(() => groupSessions(filteredSessions), [filteredSessions]);
+  const grouped = useMemo(
+    () => groupSessions(filteredSessions),
+    [filteredSessions],
+  );
 
   const refreshSessions = useCallback(async (): Promise<void> => {
     const synced = await syncSessionCache(profile);
@@ -328,7 +347,7 @@ function Sessions({
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
     if (scrollHeight - scrollTop - clientHeight < 200) {
       if (displayLimit < sessions.length) {
-        setDisplayLimit(prev => prev + 50);
+        setDisplayLimit((prev) => prev + 50);
       }
     }
   }, [displayLimit, sessions.length]);
@@ -364,9 +383,12 @@ function Sessions({
   }, [grouped, displayLimit, isShowingSearch]);
 
   const filteredSearchResults = useMemo(() => {
-    if (sourceFilter === "all" && msgCountFilter === "all") return searchResults;
+    if (sourceFilter === "all" && msgCountFilter === "all")
+      return searchResults;
     return searchResults.filter(
-      (r) => matchesSource(r.source, sourceFilter) && matchesMsgCount(r.messageCount, msgCountFilter),
+      (r) =>
+        matchesSource(r.source, sourceFilter) &&
+        matchesMsgCount(r.messageCount, msgCountFilter),
     );
   }, [searchResults, sourceFilter, msgCountFilter]);
 
@@ -421,7 +443,9 @@ function Sessions({
         </div>
         <div className="sessions-filter-bar">
           <div className="sessions-filter-group">
-            <span className="sessions-filter-label">{t("sessions.filterType")}</span>
+            <span className="sessions-filter-label">
+              {t("sessions.filterType")}
+            </span>
             {sourceFilters.map((f) => (
               <button
                 key={f.key}
@@ -433,7 +457,9 @@ function Sessions({
             ))}
           </div>
           <div className="sessions-filter-group">
-            <span className="sessions-filter-label">{t("sessions.filterMsgCount")}</span>
+            <span className="sessions-filter-label">
+              {t("sessions.filterMsgCount")}
+            </span>
             {msgCountFilters.map((f) => (
               <button
                 key={f.key}
@@ -482,16 +508,14 @@ function Sessions({
                 onClick={() => onResumeSession(r.sessionId)}
               >
                 <div className="sessions-card-row">
-                  <span className={sourceTagClass(r.source)}>
-                    {r.source}
-                  </span>
+                  <span className={sourceTagClass(r.source)}>{r.source}</span>
                   <span className="sessions-card-title">
-                    {sessionDisplayTitle({ title: r.title, preview: r.snippet }) ||
-                      `${t("sessions.title")} ${r.sessionId.slice(-6)}`}
+                    {sessionDisplayTitle({
+                      title: r.title,
+                      preview: r.snippet,
+                    }) || `${t("sessions.title")} ${r.sessionId.slice(-6)}`}
                   </span>
-                  <span className="sessions-card-count">
-                    {r.messageCount}
-                  </span>
+                  <span className="sessions-card-count">{r.messageCount}</span>
                   <span className="sessions-card-time">
                     {formatFullDate(r.startedAt)}
                   </span>
@@ -541,7 +565,8 @@ function Sessions({
                         session={cluster.sessions[0]}
                         isActive={currentSessionId === cluster.sessions[0].id}
                         showFullDate={
-                          group.label === "thisWeek" || group.label === "earlier"
+                          group.label === "thisWeek" ||
+                          group.label === "earlier"
                         }
                         onClick={() => onResumeSession(cluster.sessions[0].id)}
                       />
@@ -553,8 +578,13 @@ function Sessions({
                     const sb = parseTitleSegment(b.title);
                     return (sa?.segment ?? 1) - (sb?.segment ?? 1);
                   });
-                  const hasActive = sorted.some((s) => s.id === currentSessionId);
-                  const totalMsgs = sorted.reduce((n, s) => n + s.messageCount, 0);
+                  const hasActive = sorted.some(
+                    (s) => s.id === currentSessionId,
+                  );
+                  const totalMsgs = sorted.reduce(
+                    (n, s) => n + s.messageCount,
+                    0,
+                  );
                   const latest = sorted[sorted.length - 1];
 
                   return (
@@ -574,7 +604,8 @@ function Sessions({
                             {totalMsgs}
                           </span>
                           <span className="sessions-card-time">
-                            {group.label === "thisWeek" || group.label === "earlier"
+                            {group.label === "thisWeek" ||
+                            group.label === "earlier"
                               ? formatFullDate(latest.startedAt)
                               : formatTime(latest.startedAt)}
                           </span>
@@ -583,7 +614,11 @@ function Sessions({
                           <span className="sessions-cluster-meta">
                             {sorted.length} {t("sessions.parts")}
                           </span>
-                          {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                          {isExpanded ? (
+                            <ChevronDown size={13} />
+                          ) : (
+                            <ChevronRight size={13} />
+                          )}
                         </div>
                       </button>
                       {isExpanded && (
@@ -607,7 +642,8 @@ function Sessions({
                                 {s.messageCount}
                               </span>
                               <span className="sessions-card-time">
-                                {group.label === "thisWeek" || group.label === "earlier"
+                                {group.label === "thisWeek" ||
+                                group.label === "earlier"
                                   ? formatFullDate(s.startedAt)
                                   : formatTime(s.startedAt)}
                               </span>
@@ -625,7 +661,10 @@ function Sessions({
           })}
           {displayLimit < sessions.length && (
             <div className="sessions-list-more">
-              <button className="btn-ghost" onClick={() => setDisplayLimit(prev => prev + 50)}>
+              <button
+                className="btn-ghost"
+                onClick={() => setDisplayLimit((prev) => prev + 50)}
+              >
                 {t("sessions.loadMore")}
               </button>
             </div>

@@ -30,11 +30,16 @@ function UsageBadge({ usage }: { usage: UsageState }): React.JSX.Element {
     `Completion: ${usage.completionTokens.toLocaleString()}`,
   ];
   if (usage.calls) parts.push(`Calls: ${usage.calls}`);
-  if (usage.reasoning) parts.push(`Reasoning: ${usage.reasoning.toLocaleString()}`);
-  if (usage.cacheRead) parts.push(`Cache read: ${usage.cacheRead.toLocaleString()}`);
-  if (usage.cacheWrite) parts.push(`Cache write: ${usage.cacheWrite.toLocaleString()}`);
+  if (usage.reasoning)
+    parts.push(`Reasoning: ${usage.reasoning.toLocaleString()}`);
+  if (usage.cacheRead)
+    parts.push(`Cache read: ${usage.cacheRead.toLocaleString()}`);
+  if (usage.cacheWrite)
+    parts.push(`Cache write: ${usage.cacheWrite.toLocaleString()}`);
   if (usage.contextUsed && usage.contextMax) {
-    parts.push(`Context: ${usage.contextUsed.toLocaleString()} / ${usage.contextMax.toLocaleString()}`);
+    parts.push(
+      `Context: ${usage.contextUsed.toLocaleString()} / ${usage.contextMax.toLocaleString()}`,
+    );
   }
   if (usage.cost != null) parts.push(`Cost: $${usage.cost.toFixed(4)}`);
   const tooltip = parts.join(" | ");
@@ -46,7 +51,10 @@ function UsageBadge({ usage }: { usage: UsageState }): React.JSX.Element {
         <span className="chat-cost"> · ${usage.cost.toFixed(4)}</span>
       )}
       {usage.contextPercent != null && (
-        <span className="chat-context"> · {Math.round(usage.contextPercent)}%</span>
+        <span className="chat-context">
+          {" "}
+          · {Math.round(usage.contextPercent)}%
+        </span>
       )}
     </span>
   );
@@ -80,8 +88,8 @@ export const ChatHeader = memo(function ChatHeader({
     <div className="chat-header drag-surface" data-tauri-drag-region>
       <div className="chat-header-left">
         <div className="chat-header-title">
-          {displayTitle
-            || (sessionId
+          {displayTitle ||
+            (sessionId
               ? t("chat.sessionTitle", { id: sessionId.slice(-6) })
               : t("chat.title"))}
           {sessionId && (

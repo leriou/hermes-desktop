@@ -9,11 +9,15 @@ import {
 
 describe("TUI gateway event helpers", () => {
   it("normalizes session ids from both gateway envelopes", () => {
-    expect(normalizeTuiEvent({ type: "message.delta", sid: "sid-a" })).toMatchObject({
+    expect(
+      normalizeTuiEvent({ type: "message.delta", sid: "sid-a" }),
+    ).toMatchObject({
       type: "message.delta",
       sessionId: "sid-a",
     });
-    expect(normalizeTuiEvent({ type: "message.delta", session_id: "sid-b" })).toMatchObject({
+    expect(
+      normalizeTuiEvent({ type: "message.delta", session_id: "sid-b" }),
+    ).toMatchObject({
       type: "message.delta",
       sessionId: "sid-b",
     });
@@ -66,6 +70,8 @@ describe("TUI gateway event helpers", () => {
       prompt: "API key",
     });
 
-    expect(normalizeClarifyRequest({ choices: ["yes", 1, "no"] }).choices).toEqual(["yes", "no"]);
+    expect(
+      normalizeClarifyRequest({ choices: ["yes", 1, "no"] }).choices,
+    ).toEqual(["yes", "no"]);
   });
 });

@@ -23,7 +23,10 @@ interface UseChatActionsArgs {
   contextFolder: string | null;
   pendingClarify: ClarifyRequest | null;
   setPendingClarify: (c: ClarifyRequest | null) => void;
-  executeGatewayCommand?: (sessionId: string, command: string) => Promise<boolean>;
+  executeGatewayCommand?: (
+    sessionId: string,
+    command: string,
+  ) => Promise<boolean>;
 }
 
 interface UseChatActionsResult {
@@ -51,7 +54,9 @@ export function useChatActions({
   const hermesSessionIdRef = useRef(hermesSessionId);
   const dbSessionIdRef = useRef(dbSessionId ?? null);
   const abortRequestedRef = useRef(false);
-  const queuedInputRef = useRef<Array<{ text: string; attachments?: Attachment[] }>>([]);
+  const queuedInputRef = useRef<
+    Array<{ text: string; attachments?: Attachment[] }>
+  >([]);
   const gatewayClientRef = useRef(createTauriChatGatewayClient());
 
   useEffect(() => {
@@ -102,7 +107,11 @@ export function useChatActions({
         const sid = hermesSessionIdRef.current;
         if (sid) {
           try {
-            await gatewayClientRef.current.respondClarify(sid, text, clarify?.requestId);
+            await gatewayClientRef.current.respondClarify(
+              sid,
+              text,
+              clarify?.requestId,
+            );
           } catch {
             setIsLoading(false);
           }
@@ -117,7 +126,9 @@ export function useChatActions({
         onSessionStarted?.();
 
         try {
-          const sid = await gatewayClientRef.current.ensureSession(hermesSessionIdRef.current);
+          const sid = await gatewayClientRef.current.ensureSession(
+            hermesSessionIdRef.current,
+          );
           if (sid !== hermesSessionIdRef.current) {
             setHermesSessionId(sid);
             hermesSessionIdRef.current = sid;
@@ -166,8 +177,13 @@ export function useChatActions({
 
         if (action.kind === "steer" && sid) {
           try {
-            const result = await gatewayClientRef.current.steer(sid, action.text);
-            const payload = (result?.result ?? result ?? {}) as { status?: string };
+            const result = await gatewayClientRef.current.steer(
+              sid,
+              action.text,
+            );
+            const payload = (result?.result ?? result ?? {}) as {
+              status?: string;
+            };
             if (payload.status === "queued") {
               setMessages((prev) => [
                 ...prev,
@@ -203,7 +219,7 @@ export function useChatActions({
         }
 
         if (sid) {
-          gatewayClientRef.current.interrupt(sid).catch(err => {
+          gatewayClientRef.current.interrupt(sid).catch((err) => {
             console.error("[useChatActions] Pipelined interrupt failed:", err);
           });
         }
@@ -243,7 +259,17 @@ export function useChatActions({
         setIsLoading(false);
       }
     },
-    [localCommands, pushUser, onSessionStarted, setIsLoading, setMessages, pendingClarify, setPendingClarify, setHermesSessionId, executeGatewayCommand],
+    [
+      localCommands,
+      pushUser,
+      onSessionStarted,
+      setIsLoading,
+      setMessages,
+      pendingClarify,
+      setPendingClarify,
+      setHermesSessionId,
+      executeGatewayCommand,
+    ],
   );
 
   useEffect(() => {
@@ -279,7 +305,9 @@ export function useChatActions({
   const handleAbort = useCallback(() => {
     abortRequestedRef.current = true;
     if (hermesSessionIdRef.current) {
-      gatewayClientRef.current.interrupt(hermesSessionIdRef.current).catch(() => {});
+      gatewayClientRef.current
+        .interrupt(hermesSessionIdRef.current)
+        .catch(() => {});
     }
     setIsLoading(false);
     setTimeout(() => chatInputRef.current?.focus(), 50);

@@ -18,7 +18,9 @@ function fmtTokens(n: number): string {
 
 function textBar(pct: number): string {
   const filled = Math.round((pct / 100) * 10);
-  return "█".repeat(Math.min(filled, 10)) + "░".repeat(10 - Math.min(filled, 10));
+  return (
+    "█".repeat(Math.min(filled, 10)) + "░".repeat(10 - Math.min(filled, 10))
+  );
 }
 
 interface ChatStatusBarProps {
@@ -62,7 +64,9 @@ export const ChatStatusBar = memo(function ChatStatusBar({
   if (usage) {
     segments.push(
       <span key="tokens" className="chat-status-segment">
-        {max ? `${fmtTokens(used)}/${fmtTokens(max)}` : `${fmtTokens(usage.totalTokens)}`}
+        {max
+          ? `${fmtTokens(used)}/${fmtTokens(max)}`
+          : `${fmtTokens(usage.totalTokens)}`}
       </span>,
     );
   }
@@ -71,7 +75,9 @@ export const ChatStatusBar = memo(function ChatStatusBar({
   if (pct > 0) {
     segments.push(
       <span key="bar" className="chat-status-segment chat-status-progress">
-        <span className={`chat-status-bar-fill-${pct > 95 ? "critical" : pct > 80 ? "warn" : "ok"}`}>
+        <span
+          className={`chat-status-bar-fill-${pct > 95 ? "critical" : pct > 80 ? "warn" : "ok"}`}
+        >
           {textBar(pct)}
         </span>
         <span className="chat-status-pct">{pct}%</span>
@@ -92,8 +98,7 @@ export const ChatStatusBar = memo(function ChatStatusBar({
   if (isLoading && responseStart) {
     segments.push(
       <span key="resp" className="chat-status-segment chat-status-live">
-        <span className="chat-status-dot" />
-        ⏲ {fmtDuration(now - responseStart)}
+        <span className="chat-status-dot" />⏲ {fmtDuration(now - responseStart)}
       </span>,
     );
   } else if (lastResponseDuration != null) {

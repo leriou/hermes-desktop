@@ -81,7 +81,10 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
         {t("providers.routing.title", { defaultValue: "Routing & Fallback" })}
       </h1>
       <p className="models-subtitle" style={{ marginBottom: 16 }}>
-        {t("providers.routing.hint", { defaultValue: "Configure default model, provider, and fallback chain." })}
+        {t("providers.routing.hint", {
+          defaultValue:
+            "Configure default model, provider, and fallback chain.",
+        })}
       </p>
 
       <div className="settings-section">
@@ -133,7 +136,10 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
         </div>
 
         {error && (
-          <div className="settings-field-hint" style={{ color: "var(--danger)" }}>
+          <div
+            className="settings-field-hint"
+            style={{ color: "var(--danger)" }}
+          >
             {error}
           </div>
         )}
@@ -141,10 +147,15 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
 
       <div className="settings-section" style={{ marginTop: 20 }}>
         <div className="settings-section-title">
-          {t("providers.routing.fallbacks", { defaultValue: "Fallback Providers" })}
+          {t("providers.routing.fallbacks", {
+            defaultValue: "Fallback Providers",
+          })}
         </div>
         <div className="settings-field-hint" style={{ marginBottom: 10 }}>
-          {t("providers.routing.fallbacksHint", { defaultValue: "When the default provider fails, requests will be routed to these fallbacks in order." })}
+          {t("providers.routing.fallbacksHint", {
+            defaultValue:
+              "When the default provider fails, requests will be routed to these fallbacks in order.",
+          })}
         </div>
 
         {fallbacks.length > 0 && (
@@ -161,7 +172,9 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
               {fallbacks.map((fb, i) => (
                 <tr key={i}>
                   <td className="routing-fallback-idx">{i + 1}</td>
-                  <td style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>{fb.model}</td>
+                  <td style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>
+                    {fb.model}
+                  </td>
                   <td style={{ fontSize: 12 }}>{fb.provider || "auto"}</td>
                   <td>
                     <button
@@ -210,7 +223,14 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
         </div>
       </div>
 
-      <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
+      <div
+        style={{
+          marginTop: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
         <button
           className="btn btn-primary"
           onClick={handleSave}
@@ -219,7 +239,9 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
           {saving ? "Saving..." : t("common.save", { defaultValue: "Save" })}
         </button>
         {saved && (
-          <span className="settings-saved">{t("common.saved", { defaultValue: "Saved" })}</span>
+          <span className="settings-saved">
+            {t("common.saved", { defaultValue: "Saved" })}
+          </span>
         )}
       </div>
     </div>

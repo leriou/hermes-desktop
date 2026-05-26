@@ -8,7 +8,10 @@ import {
   type AppLocale,
 } from "@shared/i18n";
 import { I18nContext, type I18nContextValue } from "./I18nContext";
-import { getLocale, setLocale as setTauriLocale } from "@renderer/lib/hermes-tauri";
+import {
+  getLocale,
+  setLocale as setTauriLocale,
+} from "@renderer/lib/hermes-tauri";
 
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 
@@ -37,9 +40,7 @@ export function I18nProvider({
   children: React.ReactNode;
 }): React.JSX.Element {
   const [locale, setLocaleState] = useState<AppLocale>(initialLocale);
-  const [mainLocaleLoaded, setMainLocaleLoaded] = useState(
-    () => !getLocale,
-  );
+  const [mainLocaleLoaded, setMainLocaleLoaded] = useState(() => !getLocale);
   const userSelectedLocale = useRef(false);
 
   const setLocale = useCallback((nextLocale: AppLocale) => {

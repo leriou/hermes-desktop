@@ -1,4 +1,9 @@
-import { getModelAliases, getModelConfig, listModels, setModelConfig } from "@renderer/lib/hermes-tauri";
+import {
+  getModelAliases,
+  getModelConfig,
+  listModels,
+  setModelConfig,
+} from "@renderer/lib/hermes-tauri";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../../components/useI18n";
 import type { ModelGroup } from "../types";
@@ -64,12 +69,7 @@ export function useModelConfig(profile?: string): UseModelConfigResult {
   const selectModel = useCallback(
     async (provider: string, model: string, baseUrl: string): Promise<void> => {
       const effectiveBaseUrl = provider === "custom" ? baseUrl : "";
-      await setModelConfig(
-        provider,
-        model,
-        effectiveBaseUrl,
-        profile,
-      );
+      await setModelConfig(provider, model, effectiveBaseUrl, profile);
       selectionGuard.current = true;
       setCurrentModel(model);
       setCurrentProvider(provider);
@@ -97,7 +97,9 @@ export function useModelConfig(profile?: string): UseModelConfigResult {
   const displayModel = useMemo(() => {
     if (currentModel) {
       const match = aliases.find(
-        (a) => a.model === currentModel && (!currentBaseUrl || a.baseUrl === currentBaseUrl),
+        (a) =>
+          a.model === currentModel &&
+          (!currentBaseUrl || a.baseUrl === currentBaseUrl),
       );
       if (match) return match.name;
       return currentModel.split("/").pop() || currentModel;

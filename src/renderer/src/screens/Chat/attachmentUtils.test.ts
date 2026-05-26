@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
 import { processFiles, filesFromClipboard } from "./attachmentUtils";
+import { getPathForFile } from "@renderer/lib/hermes-tauri";
 
 vi.mock("@renderer/lib/hermes-tauri", () => ({
   getPathForFile: vi.fn(() => ""),
@@ -55,12 +56,7 @@ describe("processFiles", () => {
   });
 
   it("rejects an image over the size limit", async () => {
-    const file = makeFile(
-      "huge.png",
-      "image/png",
-      "x",
-      21 * 1024 * 1024,
-    );
+    const file = makeFile("huge.png", "image/png", "x", 21 * 1024 * 1024);
     const out = await processFiles([file], 0);
     expect(out.attachments).toEqual([]);
     expect(out.errors).toHaveLength(1);
@@ -104,10 +100,9 @@ describe("processFiles", () => {
   });
 
   it("uses the origin path returned by webUtils for picker/drag-drop files", async () => {
-    vi.doMock("@renderer/lib/hermes-tauri", () => ({
-      getPathForFile: vi.fn(() => "C:/Users/me/Downloads/doc.pdf"),
-      stageAttachment: vi.fn(),
-    }));
+    vi.mocked(getPathForFile).mockReturnValueOnce(
+      "C:/Users/me/Downloads/doc.pdf",
+    );
     const file = makeFile("doc.pdf", "application/pdf", "%PDF-1.4");
     const out = await processFiles([file], 0);
     expect(out.errors).toEqual([]);

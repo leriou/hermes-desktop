@@ -75,11 +75,11 @@ const SessionItem = memo(function SessionItem({
     >
       <div className="session-item-top">
         <StatusDot status={entry.status} />
-        <span className="session-item-title">
-          {sessionDisplayTitle(entry)}
-        </span>
+        <span className="session-item-title">{sessionDisplayTitle(entry)}</span>
         {!!entry.unreadCount && (
-          <span className="session-item-unread">{entry.unreadCount > 9 ? "9+" : entry.unreadCount}</span>
+          <span className="session-item-unread">
+            {entry.unreadCount > 9 ? "9+" : entry.unreadCount}
+          </span>
         )}
         <button
           className="session-item-close"
@@ -153,10 +153,14 @@ export function SessionSidebar({
         const { sessions, ts } = JSON.parse(cached);
         if (Date.now() - ts < 60_000 && Array.isArray(sessions)) {
           const threeDaysAgo = Math.floor(Date.now() / 1000) - 3 * 86400;
-          return sessions.filter((s: HistorySession) => s.startedAt >= threeDaysAgo);
+          return sessions.filter(
+            (s: HistorySession) => s.startedAt >= threeDaysAgo,
+          );
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return [];
   });
   useEffect(() => {
@@ -166,19 +170,28 @@ export function SessionSidebar({
         const cached = await listCachedSessions(profile, 30);
         if (cancelled) return;
         const threeDaysAgo = Math.floor(Date.now() / 1000) - 3 * 86400;
-        const filtered = cached.filter((s: HistorySession) => s.startedAt >= threeDaysAgo);
+        const filtered = cached.filter(
+          (s: HistorySession) => s.startedAt >= threeDaysAgo,
+        );
         setHistory(filtered);
         try {
-          setStoreItem(`hermes-session-cache:${profile}`, JSON.stringify({
-            sessions: filtered,
-            ts: Date.now(),
-          }));
-        } catch { /* storage full, ignore */ }
+          setStoreItem(
+            `hermes-session-cache:${profile}`,
+            JSON.stringify({
+              sessions: filtered,
+              ts: Date.now(),
+            }),
+          );
+        } catch {
+          /* storage full, ignore */
+        }
       } catch {
         // ignore — sidebar degrades gracefully without history
       }
     })();
-    return (): void => { cancelled = true; };
+    return (): void => {
+      cancelled = true;
+    };
   }, [profile]);
 
   // Build a set of db session IDs that are already open as tabs
@@ -194,7 +207,10 @@ export function SessionSidebar({
 
   return (
     <div className="session-sidebar">
-      <div className="session-sidebar-header drag-surface" data-tauri-drag-region>
+      <div
+        className="session-sidebar-header drag-surface"
+        data-tauri-drag-region
+      >
         <button className="session-new-btn" onClick={onNewChat}>
           <Plus size={14} />
           {t("chat.newChat")}

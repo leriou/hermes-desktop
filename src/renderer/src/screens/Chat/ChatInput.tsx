@@ -243,19 +243,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       [slashMenuOpen, slashFilter],
     );
 
-    const filteredModelOptions = useMemo(
-      () => {
-        if (!modelMenuOpen || !modelOptions?.length) return [];
-        if (!modelMenuFilter) return modelOptions;
-        const q = modelMenuFilter.toLowerCase();
-        return modelOptions.filter(
-          (m) =>
-            m.label.toLowerCase().includes(q) ||
-            m.sublabel.toLowerCase().includes(q),
-        );
-      },
-      [modelMenuOpen, modelOptions, modelMenuFilter],
-    );
+    const filteredModelOptions = useMemo(() => {
+      if (!modelMenuOpen || !modelOptions?.length) return [];
+      if (!modelMenuFilter) return modelOptions;
+      const q = modelMenuFilter.toLowerCase();
+      return modelOptions.filter(
+        (m) =>
+          m.label.toLowerCase().includes(q) ||
+          m.sublabel.toLowerCase().includes(q),
+      );
+    }, [modelMenuOpen, modelOptions, modelMenuFilter]);
 
     function clearAfterSend(text: string): void {
       history.push(text);
@@ -410,7 +407,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       }
 
       // History navigation: ArrowUp/Down when not in a multiline draft (or already navigating)
-      if (!slashMenuOpen && !modelMenuOpen && (history.isNavigating() || !input.includes("\n"))) {
+      if (
+        !slashMenuOpen &&
+        !modelMenuOpen &&
+        (history.isNavigating() || !input.includes("\n"))
+      ) {
         if (e.key === "ArrowUp" && history.size() > 0) {
           if (history.recallPrev()) {
             e.preventDefault();
@@ -455,8 +456,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       setAttachmentError(null);
     }
 
-    const canSend =
-      input.trim().length > 0 || attachments.length > 0;
+    const canSend = input.trim().length > 0 || attachments.length > 0;
 
     return (
       <>
@@ -522,7 +522,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         )}
         {pendingClarify && (
           <div className="chat-clarify-bar">
-            <div className="chat-clarify-question">{pendingClarify.question}</div>
+            <div className="chat-clarify-question">
+              {pendingClarify.question}
+            </div>
             {pendingClarify.choices && pendingClarify.choices.length > 0 && (
               <div className="chat-clarify-choices">
                 {pendingClarify.choices.map((choice) => (
@@ -565,7 +567,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
           <textarea
             ref={inputRef}
             className="chat-input"
-            placeholder={pendingClarify ? t("chat.answerClarify") : t("chat.typeMessage")}
+            placeholder={
+              pendingClarify ? t("chat.answerClarify") : t("chat.typeMessage")
+            }
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}

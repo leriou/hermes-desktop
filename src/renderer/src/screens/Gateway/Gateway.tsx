@@ -118,6 +118,100 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
     GATEWAY_SECTIONS.flatMap((s) => s.items).map((f) => [f.key, f]),
   );
 
+  const isPlatformConfigured = (
+    platform: (typeof GATEWAY_PLATFORMS)[0],
+  ): boolean => {
+    return platform.fields.some((fieldKey) => {
+      const val = env[fieldKey];
+      return val && val.trim() !== "";
+    });
+  };
+
+  const configuredPlatforms = GATEWAY_PLATFORMS.filter(isPlatformConfigured);
+  const unconfiguredPlatforms = GATEWAY_PLATFORMS.filter(
+    (p) => !isPlatformConfigured(p),
+  );
+
+  const renderPlatformCard = (
+    platform: (typeof GATEWAY_PLATFORMS)[0],
+    isConfigured: boolean,
+  ) => (
+    <div
+      key={platform.key}
+      className={`settings-platform-card ${isConfigured ? "configured" : ""}`}
+    >
+      <div className="settings-platform-header">
+        <div className="settings-platform-left">
+          <BrandLogo provider={platform.key} size={28} />
+          <div className="settings-platform-info">
+            <span className="settings-platform-label">
+              {t(platform.label)}
+              {isConfigured && (
+                <span className="settings-platform-badge">
+                  {t("gateway.configuredBadge") || "已配置"}
+                </span>
+              )}
+            </span>
+            <span className="settings-platform-desc">
+              {t(platform.description)}
+            </span>
+          </div>
+        </div>
+        <label className="tools-toggle">
+          <input
+            type="checkbox"
+            checked={!!platformEnabled[platform.key]}
+            onChange={() => togglePlatform(platform.key)}
+          />
+          <span className="tools-toggle-track" />
+        </label>
+      </div>
+      {platformEnabled[platform.key] && (
+        <div className="settings-platform-fields">
+          {platform.fields.map((fieldKey) => {
+            const field = fieldDefs.get(fieldKey);
+            if (!field) return null;
+            return (
+              <div key={field.key} className="settings-field">
+                <label className="settings-field-label">
+                  {t(field.label)}
+                  {savedKey === field.key && (
+                    <span className="settings-saved">{t("common.saved")}</span>
+                  )}
+                </label>
+                <div className="settings-input-row">
+                  <input
+                    className="input"
+                    type={
+                      field.type === "password" && !visibleKeys.has(field.key)
+                        ? "password"
+                        : "text"
+                    }
+                    value={env[field.key] || ""}
+                    onChange={(e) => handleChange(field.key, e.target.value)}
+                    onBlur={() => handleBlur(field.key)}
+                    placeholder={t(field.label)}
+                  />
+                  {field.type === "password" && (
+                    <button
+                      className="btn-ghost settings-toggle-btn"
+                      onClick={() => toggleVisibility(field.key)}
+                    >
+                      {visibleKeys.has(field.key)
+                        ? t("common.hide")
+                        : t("common.show")}
+                    </button>
+                  )}
+                </div>
+                <div className="settings-field-hint">{t(field.hint)}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="settings-container">
       <h1 className="settings-header">{t("gateway.title")}</h1>
@@ -145,82 +239,27 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
         </div>
       </div>
 
-      <div className="settings-section">
-        <div className="settings-section-title">{t("gateway.platforms")}</div>
-        {GATEWAY_PLATFORMS.map((platform) => (
-          <div key={platform.key} className="settings-platform-card">
-            <div className="settings-platform-header">
-              <div className="settings-platform-left">
-                <BrandLogo provider={platform.key} size={28} />
-                <div className="settings-platform-info">
-                  <span className="settings-platform-label">
-                    {t(platform.label)}
-                  </span>
-                  <span className="settings-platform-desc">
-                    {t(platform.description)}
-                  </span>
-                </div>
-              </div>
-              <label className="tools-toggle">
-                <input
-                  type="checkbox"
-                  checked={!!platformEnabled[platform.key]}
-                  onChange={() => togglePlatform(platform.key)}
-                />
-                <span className="tools-toggle-track" />
-              </label>
-            </div>
-            {platformEnabled[platform.key] && (
-              <div className="settings-platform-fields">
-                {platform.fields.map((fieldKey) => {
-                  const field = fieldDefs.get(fieldKey);
-                  if (!field) return null;
-                  return (
-                    <div key={field.key} className="settings-field">
-                      <label className="settings-field-label">
-                        {t(field.label)}
-                        {savedKey === field.key && (
-                          <span className="settings-saved">
-                            {t("common.saved")}
-                          </span>
-                        )}
-                      </label>
-                      <div className="settings-input-row">
-                        <input
-                          className="input"
-                          type={
-                            field.type === "password" &&
-                            !visibleKeys.has(field.key)
-                              ? "password"
-                              : "text"
-                          }
-                          value={env[field.key] || ""}
-                          onChange={(e) =>
-                            handleChange(field.key, e.target.value)
-                          }
-                          onBlur={() => handleBlur(field.key)}
-                          placeholder={t(field.label)}
-                        />
-                        {field.type === "password" && (
-                          <button
-                            className="btn-ghost settings-toggle-btn"
-                            onClick={() => toggleVisibility(field.key)}
-                          >
-                            {visibleKeys.has(field.key)
-                              ? t("common.hide")
-                              : t("common.show")}
-                          </button>
-                        )}
-                      </div>
-                      <div className="settings-field-hint">{t(field.hint)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+      {configuredPlatforms.length > 0 && (
+        <div className="settings-section">
+          <div className="settings-section-title">
+            {t("gateway.configuredChannels") || "已启用的通信渠道"}
           </div>
-        ))}
-      </div>
+          {configuredPlatforms.map((platform) =>
+            renderPlatformCard(platform, true),
+          )}
+        </div>
+      )}
+
+      {unconfiguredPlatforms.length > 0 && (
+        <div className="settings-section">
+          <div className="settings-section-title">
+            {t("gateway.unconfiguredChannels") || "可配置的其他渠道"}
+          </div>
+          {unconfiguredPlatforms.map((platform) =>
+            renderPlatformCard(platform, false),
+          )}
+        </div>
+      )}
 
       {otherSections.map((section) => (
         <div key={section.title} className="settings-section">

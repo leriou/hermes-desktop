@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark" | "system";
-type ResolvedTheme = "light" | "dark";
+type Theme = "light" | "dark" | "system" | "colorful" | "apple" | "google";
+type ResolvedTheme = "light" | "dark" | "colorful" | "apple" | "google";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -35,8 +35,15 @@ export function ThemeProvider({
 }): React.JSX.Element {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = getStoreItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "system")
-      return stored;
+    if (
+      stored === "light" ||
+      stored === "dark" ||
+      stored === "system" ||
+      stored === "colorful" ||
+      stored === "apple" ||
+      stored === "google"
+    )
+      return stored as Theme;
     return "system";
   });
   const [resolved, setResolved] = useState<ResolvedTheme>(() => resolve(theme));

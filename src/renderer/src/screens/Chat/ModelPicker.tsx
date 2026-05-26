@@ -123,7 +123,9 @@ export const ModelPicker = memo(function ModelPicker({
                       setIsOpen(false);
                     }}
                   >
-                    <span className="chat-model-option-label">{alias.name}</span>
+                    <span className="chat-model-option-label">
+                      {alias.name}
+                    </span>
                     <span className="chat-model-option-id">
                       {alias.model}
                       {alias.contextLength
@@ -157,7 +159,9 @@ export const ModelPicker = memo(function ModelPicker({
                           setIsOpen(false);
                         }}
                       >
-                        <span className="chat-model-option-label">{m.label}</span>
+                        <span className="chat-model-option-label">
+                          {m.label}
+                        </span>
                         <span className="chat-model-option-id">{m.model}</span>
                       </button>
                     ))}

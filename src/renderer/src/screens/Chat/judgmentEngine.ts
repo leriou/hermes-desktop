@@ -37,20 +37,27 @@ export const DEFAULT_JUDGMENT_SETTINGS: JudgmentSettings = {
 };
 
 export function normalizeJudgmentSettings(value: unknown): JudgmentSettings {
-  const input = (value && typeof value === "object" ? value : {}) as Partial<JudgmentSettings>;
+  const input = (
+    value && typeof value === "object" ? value : {}
+  ) as Partial<JudgmentSettings>;
   const confidenceThreshold = Number.isFinite(input.confidenceThreshold)
     ? Math.max(0, Math.min(1, Number(input.confidenceThreshold)))
     : DEFAULT_JUDGMENT_SETTINGS.confidenceThreshold;
 
   return {
     enabled: input.enabled === true,
-    model: typeof input.model === "string" ? input.model : DEFAULT_JUDGMENT_SETTINGS.model,
+    model:
+      typeof input.model === "string"
+        ? input.model
+        : DEFAULT_JUDGMENT_SETTINGS.model,
     confidenceThreshold,
     allowAutoDecision: input.allowAutoDecision === true,
   };
 }
 
-function disabledAdvice(reason = "Judgment engine is disabled."): JudgmentAdvice {
+function disabledAdvice(
+  reason = "Judgment engine is disabled.",
+): JudgmentAdvice {
   return {
     kind: "approval",
     decision: "manual",
@@ -62,8 +69,12 @@ function disabledAdvice(reason = "Judgment engine is disabled."): JudgmentAdvice
 }
 
 function classifyApprovalRisk(request: ApprovalRequest): JudgmentAdvice {
-  const text = `${request.command}\n${request.description}\n${request.patternKeys.join(" ")}`.toLowerCase();
-  const destructive = /\brm\s+-rf\b|\bsudo\b|\bchmod\b|\bchown\b|\bdd\b|--force|destructive|delete|remove/.test(text);
+  const text =
+    `${request.command}\n${request.description}\n${request.patternKeys.join(" ")}`.toLowerCase();
+  const destructive =
+    /\brm\s+-rf\b|\bsudo\b|\bchmod\b|\bchown\b|\bdd\b|--force|destructive|delete|remove/.test(
+      text,
+    );
   if (destructive) {
     return {
       kind: "approval",
@@ -75,7 +86,8 @@ function classifyApprovalRisk(request: ApprovalRequest): JudgmentAdvice {
     };
   }
 
-  const testLike = /\btest\b|typecheck|lint|vitest|tsc --noemit|cargo test|pytest/.test(text);
+  const testLike =
+    /\btest\b|typecheck|lint|vitest|tsc --noemit|cargo test|pytest/.test(text);
   if (testLike) {
     return {
       kind: "approval",
@@ -99,7 +111,10 @@ function classifyApprovalRisk(request: ApprovalRequest): JudgmentAdvice {
 
 export function createRuleBasedJudgmentEngine(): JudgmentEngine {
   return {
-    async judgeApproval({ request, settings }: ApprovalJudgmentInput): Promise<JudgmentAdvice> {
+    async judgeApproval({
+      request,
+      settings,
+    }: ApprovalJudgmentInput): Promise<JudgmentAdvice> {
       const normalized = normalizeJudgmentSettings(settings);
       if (!normalized.enabled) return disabledAdvice();
       const advice = classifyApprovalRisk(request);
@@ -119,7 +134,12 @@ export function createRuleBasedJudgmentEngine(): JudgmentEngine {
       }
       return {
         ...advice,
-        suggestedAction: advice.decision === "approve" ? "auto_approve" : advice.decision === "deny" ? "auto_deny" : "ask_user",
+        suggestedAction:
+          advice.decision === "approve"
+            ? "auto_approve"
+            : advice.decision === "deny"
+              ? "auto_deny"
+              : "ask_user",
       };
     },
   };

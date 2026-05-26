@@ -49,7 +49,8 @@ export function sessionDisplayPreview(session: DisplaySessionLike): string {
   const rawTitle = (session.title || "").trim();
   const parsed = parseTitleSegment(rawTitle);
   const preview = (session.preview || "").trim();
-  if (parsed && preview) return `Part ${parsed.segment} · ${preview.slice(0, 80)}`;
+  if (parsed && preview)
+    return `Part ${parsed.segment} · ${preview.slice(0, 80)}`;
   if (preview) return preview.slice(0, 80);
   const count = session.messageCount ?? 0;
   const model = shortModelName(session.model);
@@ -66,11 +67,17 @@ function isContinuationUserLabel(content: string): boolean {
   return /^(?:message|消息)\s*#\d+\s*[:：-]?\s*$/i.test(content.trim());
 }
 
-export function mergeContinuationLabels(messages: ChatMessage[]): ChatMessage[] {
+export function mergeContinuationLabels(
+  messages: ChatMessage[],
+): ChatMessage[] {
   const merged: ChatMessage[] = [];
 
   for (const msg of messages) {
-    if (isBubble(msg) && msg.role === "user" && isContinuationUserLabel(msg.content)) {
+    if (
+      isBubble(msg) &&
+      msg.role === "user" &&
+      isContinuationUserLabel(msg.content)
+    ) {
       const prev = merged[merged.length - 1];
       if (prev && isBubble(prev) && prev.role === "user") {
         continue;

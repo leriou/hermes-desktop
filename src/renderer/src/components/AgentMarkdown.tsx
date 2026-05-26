@@ -5,6 +5,15 @@ import remarkGfm from "remark-gfm";
 import { Copy } from "lucide-react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import oneDark from "react-syntax-highlighter/dist/esm/styles/prism/one-dark";
+import oneLight from "react-syntax-highlighter/dist/esm/styles/prism/one-light";
+import a11yDark from "react-syntax-highlighter/dist/esm/styles/prism/a11y-dark";
+import a11yOneLight from "react-syntax-highlighter/dist/esm/styles/prism/a11y-one-light";
+import vscDarkPlus from "react-syntax-highlighter/dist/esm/styles/prism/vsc-dark-plus";
+import vs from "react-syntax-highlighter/dist/esm/styles/prism/vs";
+import nightOwl from "react-syntax-highlighter/dist/esm/styles/prism/night-owl";
+import coldarkCold from "react-syntax-highlighter/dist/esm/styles/prism/coldark-cold";
+import solarizedlight from "react-syntax-highlighter/dist/esm/styles/prism/solarizedlight";
+import solarizedDarkAtom from "react-syntax-highlighter/dist/esm/styles/prism/solarized-dark-atom";
 import bash from "react-syntax-highlighter/dist/esm/languages/prism/bash";
 import c from "react-syntax-highlighter/dist/esm/languages/prism/c";
 import cpp from "react-syntax-highlighter/dist/esm/languages/prism/cpp";
@@ -29,14 +38,44 @@ import xml from "react-syntax-highlighter/dist/esm/languages/prism/xml-doc";
 import powershell from "react-syntax-highlighter/dist/esm/languages/prism/powershell";
 import { useI18n } from "./useI18n";
 import { StreamingMarkdown } from "./StreamingMarkdown";
+import type { MarkdownStyle } from "../constants";
 
 const LANG_MAP: Record<string, typeof bash> = {
-  bash, c, cpp, css, diff, go, java, javascript, json, kotlin,
-  lua, markdown, python, ruby, rust, sql, swift, typescript, yaml,
-  shell, xml, powershell,
-  sh: bash, zsh: bash, ts: typescript, js: javascript, py: python,
-  yml: yaml, makefile: bash, dockerfile: bash, toml: yaml, proto: cpp,
-  rb: ruby, kt: kotlin, rs: rust,
+  bash,
+  c,
+  cpp,
+  css,
+  diff,
+  go,
+  java,
+  javascript,
+  json,
+  kotlin,
+  lua,
+  markdown,
+  python,
+  ruby,
+  rust,
+  sql,
+  swift,
+  typescript,
+  yaml,
+  shell,
+  xml,
+  powershell,
+  sh: bash,
+  zsh: bash,
+  ts: typescript,
+  js: javascript,
+  py: python,
+  yml: yaml,
+  makefile: bash,
+  dockerfile: bash,
+  toml: yaml,
+  proto: cpp,
+  rb: ruby,
+  kt: kotlin,
+  rs: rust,
 };
 for (const [name, lang] of Object.entries(LANG_MAP)) {
   SyntaxHighlighter.registerLanguage(name, lang);
@@ -62,6 +101,31 @@ function DiffView({ code }: { code: string }): React.JSX.Element {
 }
 
 const MAX_RENDER_LINES = 80;
+
+const MD_CODE_THEMES_DARK: Record<MarkdownStyle, Record<string, React.CSSProperties>> = {
+  default: oneDark,
+  notion: a11yDark,
+  material: vscDarkPlus,
+  nightowl: nightOwl,
+  solarized: solarizedDarkAtom,
+};
+const MD_CODE_THEMES_LIGHT: Record<MarkdownStyle, Record<string, React.CSSProperties>> = {
+  default: oneLight,
+  notion: a11yOneLight,
+  material: vs,
+  nightowl: coldarkCold,
+  solarized: solarizedlight,
+};
+
+function getPrismStyle(
+  mdStyle: MarkdownStyle,
+  resolvedTheme: string,
+): Record<string, React.CSSProperties> {
+  const isLight = resolvedTheme === "light" || resolvedTheme === "apple" || resolvedTheme === "google";
+  return !isLight
+    ? MD_CODE_THEMES_DARK[mdStyle]
+    : MD_CODE_THEMES_LIGHT[mdStyle];
+}
 
 const CodeBlock = memo(function CodeBlock({
   className,
@@ -89,7 +153,9 @@ const CodeBlock = memo(function CodeBlock({
 
   const lines = code.split("\n");
   const truncated = !expanded && lines.length > MAX_RENDER_LINES;
-  const displayCode = truncated ? lines.slice(0, MAX_RENDER_LINES).join("\n") : code;
+  const displayCode = truncated
+    ? lines.slice(0, MAX_RENDER_LINES).join("\n")
+    : code;
 
   function handleCopy(): void {
     navigator.clipboard.writeText(code);
@@ -111,7 +177,10 @@ const CodeBlock = memo(function CodeBlock({
         <DiffView code={displayCode} />
       ) : highlightedCode === code ? (
         <SyntaxHighlighter
-          style={oneDark}
+          style={getPrismStyle(
+            (document.documentElement.getAttribute("data-md-style") || "default") as MarkdownStyle,
+            document.documentElement.getAttribute("data-theme") || "dark",
+          )}
           language={LANG_MAP[language] ? language : "text"}
           PreTag="div"
           showLineNumbers
@@ -131,10 +200,7 @@ const CodeBlock = memo(function CodeBlock({
         </pre>
       )}
       {truncated && (
-        <button
-          className="chat-code-expand"
-          onClick={() => setExpanded(true)}
-        >
+        <button className="chat-code-expand" onClick={() => setExpanded(true)}>
           {lines.length} lines — show all
         </button>
       )}
@@ -178,9 +244,7 @@ const MD_COMPONENTS: Record<string, React.ComponentType<any>> = {
     [key: string]: unknown;
   }) => {
     const isInline =
-      !className &&
-      typeof children === "string" &&
-      !children.includes("\n");
+      !className && typeof children === "string" && !children.includes("\n");
     if (isInline) {
       return (
         <code className={className} {...props}>

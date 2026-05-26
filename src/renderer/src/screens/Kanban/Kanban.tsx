@@ -1,4 +1,20 @@
-import { kanbanArchiveTask, kanbanBlockTask, kanbanCompleteTask, kanbanCreateBoard, kanbanCreateTask, kanbanDispatchOnce, kanbanGetTask, kanbanListBoards, kanbanListTasks, kanbanReclaimTask, kanbanSpecifyTask, kanbanSwitchBoard, kanbanUnblockTask, listProfiles, selectFolder } from "@renderer/lib/hermes-tauri";
+import {
+  kanbanArchiveTask,
+  kanbanBlockTask,
+  kanbanCompleteTask,
+  kanbanCreateBoard,
+  kanbanCreateTask,
+  kanbanDispatchOnce,
+  kanbanGetTask,
+  kanbanListBoards,
+  kanbanListTasks,
+  kanbanReclaimTask,
+  kanbanSpecifyTask,
+  kanbanSwitchBoard,
+  kanbanUnblockTask,
+  listProfiles,
+  selectFolder,
+} from "@renderer/lib/hermes-tauri";
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
@@ -302,18 +318,10 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
     setActionBusy(task.id);
     let res: { success: boolean; error?: string };
     if (target === "done") {
-      res = await kanbanCompleteTask(
-        task.id,
-        undefined,
-        profile,
-      );
+      res = await kanbanCompleteTask(task.id, undefined, profile);
     } else if (target === "blocked") {
       const reason = window.prompt("Reason for blocking?") || "";
-      res = await kanbanBlockTask(
-        task.id,
-        reason || undefined,
-        profile,
-      );
+      res = await kanbanBlockTask(task.id, reason || undefined, profile);
     } else if (target === "ready" && task.status === "blocked") {
       res = await kanbanUnblockTask(task.id, profile);
     } else {

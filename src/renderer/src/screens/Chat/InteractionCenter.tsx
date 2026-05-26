@@ -8,7 +8,11 @@ interface InteractionCenterProps {
   onSecretRespond: (value: string) => void;
 }
 
-function SudoCard({ onSubmit }: { onSubmit: (password: string) => void }): React.JSX.Element {
+function SudoCard({
+  onSubmit,
+}: {
+  onSubmit: (password: string) => void;
+}): React.JSX.Element {
   const [value, setValue] = useState("");
   const handleSubmit = useCallback(() => {
     if (!value) return;
@@ -37,7 +41,13 @@ function SudoCard({ onSubmit }: { onSubmit: (password: string) => void }): React
   );
 }
 
-function SecretCard({ req, onSubmit }: { req: SecretRequest; onSubmit: (value: string) => void }): React.JSX.Element {
+function SecretCard({
+  req,
+  onSubmit,
+}: {
+  req: SecretRequest;
+  onSubmit: (value: string) => void;
+}): React.JSX.Element {
   const [value, setValue] = useState("");
   const handleSubmit = useCallback(() => {
     if (!value) return;
@@ -77,7 +87,9 @@ export function InteractionCenter({
   return (
     <div className="chat-interaction-center">
       {pendingSudo && <SudoCard onSubmit={onSudoRespond} />}
-      {pendingSecret && <SecretCard req={pendingSecret} onSubmit={onSecretRespond} />}
+      {pendingSecret && (
+        <SecretCard req={pendingSecret} onSubmit={onSecretRespond} />
+      )}
     </div>
   );
 }

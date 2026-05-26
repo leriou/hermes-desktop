@@ -21,6 +21,10 @@ export default {
     portuguese: "葡萄牙语",
     hint: "选择界面语言",
   },
+  mdStyle: {
+    label: "Markdown 风格",
+    hint: "选择消息中代码块和格式化文本的视觉风格",
+  },
   notDetected: "未检测到",
   updatedSuccessfully: "更新成功！",
   updateSuccess: "Hermes 更新成功。",

@@ -1,4 +1,11 @@
-import { addModel, listModels, listTemplates, removeModel, setEnv, updateModel } from "@renderer/lib/hermes-tauri";
+import {
+  addModel,
+  listModels,
+  listTemplates,
+  removeModel,
+  setEnv,
+  updateModel,
+} from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Trash, Search, X, ArrowRight } from "../../assets/icons";
 import { PROVIDERS } from "../../constants";
@@ -36,7 +43,11 @@ interface ModelsProps {
 
 type TabType = "myModels" | "templates";
 
-function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}): React.JSX.Element {
+function Models({
+  visible,
+  profile = "default",
+  onNavigate,
+}: ModelsProps = {}): React.JSX.Element {
   const { t } = useI18n();
   const [tab, setTab] = useState<TabType>("myModels");
   const [models, setModels] = useState<SavedModel[]>([]);
@@ -138,12 +149,16 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
     setFormError("");
 
     if (editingModel) {
-      await updateModel(editingModel.id, {
-        name,
-        provider: formProvider,
-        model,
-        baseUrl: formBaseUrl.trim(),
-      }, profile);
+      await updateModel(
+        editingModel.id,
+        {
+          name,
+          provider: formProvider,
+          model,
+          baseUrl: formBaseUrl.trim(),
+        },
+        profile,
+      );
     } else {
       await addModel(
         name,
@@ -173,7 +188,14 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
   }
 
   async function handleQuickAdd(tmpl: TemplateModel): Promise<void> {
-    await addModel(tmpl.name, tmpl.provider, tmpl.model, tmpl.baseUrl, undefined, profile);
+    await addModel(
+      tmpl.name,
+      tmpl.provider,
+      tmpl.model,
+      tmpl.baseUrl,
+      undefined,
+      profile,
+    );
     cache.invalidate("models:list");
     await loadData();
   }
@@ -220,10 +242,14 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => onNavigate("providers")}
-                title={t("models.addFromProviderHint", { defaultValue: "Go to Providers to discover and add models" })}
+                title={t("models.addFromProviderHint", {
+                  defaultValue: "Go to Providers to discover and add models",
+                })}
               >
                 <ArrowRight size={14} />
-                {t("models.addFromProvider", { defaultValue: "Add from Provider" })}
+                {t("models.addFromProvider", {
+                  defaultValue: "Add from Provider",
+                })}
               </button>
             )}
             <button className="btn btn-primary btn-sm" onClick={openAddModal}>
@@ -286,7 +312,11 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
                 >
                   <div className="models-card-header">
                     <div className="models-card-title">
-                      <BrandLogo provider={m.provider} modelId={m.model} size={20} />
+                      <BrandLogo
+                        provider={m.provider}
+                        modelId={m.model}
+                        size={20}
+                      />
                       <div className="models-card-name">{m.name}</div>
                     </div>
                     <span className="models-card-provider">
@@ -297,7 +327,9 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
                   {m.aliases && m.aliases.length > 0 && (
                     <div className="models-card-tags">
                       {m.aliases.map((a) => (
-                        <span key={a} className="models-card-tag">{a}</span>
+                        <span key={a} className="models-card-tag">
+                          {a}
+                        </span>
                       ))}
                     </div>
                   )}
@@ -492,7 +524,8 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
 
               <div className="models-modal-field">
                 <label className="models-modal-label">
-                  {t("models.aliasLabel") || "Alias"} ({t("common.optional") || "optional"})
+                  {t("models.aliasLabel") || "Alias"} (
+                  {t("common.optional") || "optional"})
                 </label>
                 <input
                   className="input"
@@ -502,7 +535,8 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
                   placeholder={t("models.aliasPlaceholder") || "e.g. my-model"}
                 />
                 <span className="models-modal-hint">
-                  {t("models.aliasHint") || "Shortcut name to switch models quickly"}
+                  {t("models.aliasHint") ||
+                    "Shortcut name to switch models quickly"}
                 </span>
               </div>
 

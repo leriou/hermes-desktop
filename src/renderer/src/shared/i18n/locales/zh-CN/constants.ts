@@ -38,6 +38,15 @@ export default {
   themeSystem: "跟随系统",
   themeLight: "浅色",
   themeDark: "深色",
+  themeColorful: "多彩",
+  themeApple: "苹果",
+  themeGoogle: "Google",
+  // Markdown styles
+  mdStyleDefault: "默认",
+  mdStyleNotion: "Notion",
+  mdStyleMaterial: "Material",
+  mdStyleNightowl: "Night Owl",
+  mdStyleSolarized: "Solarized",
   // Settings section titles
   sectionLlmProviders: "LLM 提供商",
   sectionToolApiKeys: "工具 API Key",

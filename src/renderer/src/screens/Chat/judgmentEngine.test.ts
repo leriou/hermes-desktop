@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createRuleBasedJudgmentEngine, DEFAULT_JUDGMENT_SETTINGS, normalizeJudgmentSettings } from "./judgmentEngine";
+import {
+  createRuleBasedJudgmentEngine,
+  DEFAULT_JUDGMENT_SETTINGS,
+  normalizeJudgmentSettings,
+} from "./judgmentEngine";
 
 const approvalRequest = {
   command: "npm test -- src/renderer/src/screens/Chat",
@@ -10,7 +14,13 @@ const approvalRequest = {
 
 describe("judgmentEngine", () => {
   it("normalizes judgment settings to a disabled safe default", () => {
-    expect(normalizeJudgmentSettings({ enabled: true, confidenceThreshold: 2, model: "fast" })).toEqual({
+    expect(
+      normalizeJudgmentSettings({
+        enabled: true,
+        confidenceThreshold: 2,
+        model: "fast",
+      }),
+    ).toEqual({
       ...DEFAULT_JUDGMENT_SETTINGS,
       enabled: true,
       model: "fast",

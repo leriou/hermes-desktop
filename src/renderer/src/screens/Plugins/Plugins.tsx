@@ -25,8 +25,10 @@ function Plugins({ profile }: PluginsProps): React.JSX.Element {
   const loadPlugins = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError("");
-    const list = await cache.getOrFetch(`plugins:${profile ?? "default"}`, 20_000, async () =>
-      (await getPlugins(profile)) ?? [],
+    const list = await cache.getOrFetch(
+      `plugins:${profile ?? "default"}`,
+      20_000,
+      async () => (await getPlugins(profile)) ?? [],
     );
     list.sort((a, b) => {
       if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
@@ -50,11 +52,7 @@ function Plugins({ profile }: PluginsProps): React.JSX.Element {
         p.name === name ? { ...p, enabled: !currentEnabled } : p,
       ),
     );
-    const result = await setPluginEnabled(
-      name,
-      !currentEnabled,
-      profile,
-    );
+    const result = await setPluginEnabled(name, !currentEnabled, profile);
     if (!result.success) {
       cache.invalidate(`plugins:${profile ?? "default"}`);
       setPlugins((prev) =>

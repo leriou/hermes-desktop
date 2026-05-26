@@ -1,4 +1,8 @@
-import { cancelOAuthLogin, oauthLogin, onOAuthLoginProgress } from "@renderer/lib/hermes-tauri";
+import {
+  cancelOAuthLogin,
+  oauthLogin,
+  onOAuthLoginProgress,
+} from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useRef } from "react";
 import { X } from "../assets/icons";
 import { useI18n } from "./useI18n";

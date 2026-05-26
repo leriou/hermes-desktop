@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ApprovalRequest } from "./types";
-import type { ApprovalDecision, ApprovalDecisionSource, ApprovalPolicy } from "./approvalPolicy";
+import type {
+  ApprovalDecision,
+  ApprovalDecisionSource,
+  ApprovalPolicy,
+} from "./approvalPolicy";
 import type { JudgmentAdvice } from "./judgmentEngine";
 
 interface ApprovalModalProps {
@@ -8,7 +12,10 @@ interface ApprovalModalProps {
   policy: ApprovalPolicy;
   submitting: boolean;
   judgmentAdvice?: JudgmentAdvice | null;
-  onDecision: (decision: ApprovalDecision, source: ApprovalDecisionSource) => void;
+  onDecision: (
+    decision: ApprovalDecision,
+    source: ApprovalDecisionSource,
+  ) => void;
   onPolicyChange: (policy: ApprovalPolicy) => void;
 }
 
@@ -45,7 +52,12 @@ export function ApprovalModal({
 
   return (
     <div className="chat-approval-modal-backdrop" role="presentation">
-      <section className="chat-approval-modal" role="dialog" aria-modal="true" aria-label="Command approval">
+      <section
+        className="chat-approval-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command approval"
+      >
         <div className="chat-approval-modal-head">
           <div>
             <div className="chat-approval-kicker">Approval required</div>
@@ -58,20 +70,31 @@ export function ApprovalModal({
           )}
         </div>
 
-        {request.description && <p className="chat-approval-description">{request.description}</p>}
+        {request.description && (
+          <p className="chat-approval-description">{request.description}</p>
+        )}
         <pre className="chat-approval-command-full">{request.command}</pre>
         {request.patternKeys.length > 0 && (
           <div className="chat-approval-patterns">
-            {request.patternKeys.map((key) => <span key={key}>{key}</span>)}
+            {request.patternKeys.map((key) => (
+              <span key={key}>{key}</span>
+            ))}
           </div>
         )}
         {judgmentAdvice && (
-          <div className={`chat-approval-judgment chat-approval-judgment-${judgmentAdvice.risk}`}>
+          <div
+            className={`chat-approval-judgment chat-approval-judgment-${judgmentAdvice.risk}`}
+          >
             <div className="chat-approval-judgment-head">
               <span>Judgment</span>
-              <span>{judgmentAdvice.risk} · {Math.round(judgmentAdvice.confidence * 100)}%</span>
+              <span>
+                {judgmentAdvice.risk} ·{" "}
+                {Math.round(judgmentAdvice.confidence * 100)}%
+              </span>
             </div>
-            <div className="chat-approval-judgment-body">{judgmentAdvice.reason}</div>
+            <div className="chat-approval-judgment-body">
+              {judgmentAdvice.reason}
+            </div>
           </div>
         )}
 
@@ -80,7 +103,12 @@ export function ApprovalModal({
             <input
               type="checkbox"
               checked={policy.mode === "auto_approve"}
-              onChange={(event) => onPolicyChange({ ...policy, mode: event.target.checked ? "auto_approve" : "manual" })}
+              onChange={(event) =>
+                onPolicyChange({
+                  ...policy,
+                  mode: event.target.checked ? "auto_approve" : "manual",
+                })
+              }
             />
             Auto approve future requests
           </label>
@@ -88,7 +116,12 @@ export function ApprovalModal({
             <input
               type="checkbox"
               checked={policy.mode === "countdown"}
-              onChange={(event) => onPolicyChange({ ...policy, mode: event.target.checked ? "countdown" : "manual" })}
+              onChange={(event) =>
+                onPolicyChange({
+                  ...policy,
+                  mode: event.target.checked ? "countdown" : "manual",
+                })
+              }
               disabled={policy.mode === "auto_approve"}
             />
             Countdown
@@ -100,14 +133,24 @@ export function ApprovalModal({
               min={5}
               max={600}
               value={policy.timeoutSeconds}
-              onChange={(event) => onPolicyChange({ ...policy, timeoutSeconds: Number(event.target.value) })}
+              onChange={(event) =>
+                onPolicyChange({
+                  ...policy,
+                  timeoutSeconds: Number(event.target.value),
+                })
+              }
             />
           </label>
           <label>
             Timeout
             <select
               value={policy.timeoutAction}
-              onChange={(event) => onPolicyChange({ ...policy, timeoutAction: event.target.value as ApprovalDecision })}
+              onChange={(event) =>
+                onPolicyChange({
+                  ...policy,
+                  timeoutAction: event.target.value as ApprovalDecision,
+                })
+              }
             >
               <option value="deny">Deny</option>
               <option value="approve">Approve</option>
@@ -120,14 +163,31 @@ export function ApprovalModal({
               min={1}
               max={240}
               value={policy.historyTtlMinutes}
-              onChange={(event) => onPolicyChange({ ...policy, historyTtlMinutes: Number(event.target.value) })}
+              onChange={(event) =>
+                onPolicyChange({
+                  ...policy,
+                  historyTtlMinutes: Number(event.target.value),
+                })
+              }
             />
           </label>
         </div>
 
         <div className="chat-approval-modal-actions">
-          <button className="chat-approval-deny" disabled={submitting} onClick={() => onDecision("deny", "manual")}>Deny</button>
-          <button className="chat-approval-approve" disabled={submitting} onClick={() => onDecision("approve", "manual")}>Approve</button>
+          <button
+            className="chat-approval-deny"
+            disabled={submitting}
+            onClick={() => onDecision("deny", "manual")}
+          >
+            Deny
+          </button>
+          <button
+            className="chat-approval-approve"
+            disabled={submitting}
+            onClick={() => onDecision("approve", "manual")}
+          >
+            Approve
+          </button>
         </div>
       </section>
     </div>

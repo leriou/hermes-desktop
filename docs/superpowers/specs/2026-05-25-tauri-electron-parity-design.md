@@ -1,19 +1,20 @@
 # Tauri-Electron Parity Design
 
 ## Goal
+
 Make the Tauri version functionally identical to the Electron version: all menus, IPC commands, events, and data interfaces must match.
 
 ## Gap Analysis
 
 ### 1. Missing Rust Commands (5) — FIXED
 
-| Command | Description |
-|---------|-------------|
-| `list_cron_history` | List cron job execution history (reads output directory) |
-| `read_cron_output` | Read content of a specific cron output file |
-| `tui_clarify_respond` | Respond to a clarification request from the agent |
-| `tui_session_title` | Get session title via `session.title` RPC |
-| `voice_tts` | Call `voice.tts` RPC via gateway (not stub) |
+| Command               | Description                                              |
+| --------------------- | -------------------------------------------------------- |
+| `list_cron_history`   | List cron job execution history (reads output directory) |
+| `read_cron_output`    | Read content of a specific cron output file              |
+| `tui_clarify_respond` | Respond to a clarification request from the agent        |
+| `tui_session_title`   | Get session title via `session.title` RPC                |
+| `voice_tts`           | Call `voice.tts` RPC via gateway (not stub)              |
 
 ### 2. Missing JS Bridge Methods (5) — FIXED
 
@@ -42,6 +43,7 @@ All 5 missing methods added to `hermes-tauri.ts`.
 ### 6. Right-click Context Menu — FIXED
 
 Implemented entirely in frontend JS (`main.tsx`) for Tauri mode:
+
 - Editable fields: Cut, Copy, Paste, Select All, separator, Copy entire chat (text/markdown)
 - Non-editable: Copy, Select All (scoped to `.chat-bubble`), Copy entire chat (text/markdown)
 - Uses native-looking CSS menu with theme variables
@@ -61,5 +63,6 @@ Uses `document.documentElement.style.zoom` (applies to entire page including htm
 6. `src/renderer/src/screens/Chat/Chat.tsx` — listen for hermes-copy-chat CustomEvent
 
 ## Build Status
+
 - `cargo build`: 0 errors, 18 warnings (pre-existing)
 - TypeScript: 0 errors in modified files (pre-existing errors in index.d.ts unrelated)

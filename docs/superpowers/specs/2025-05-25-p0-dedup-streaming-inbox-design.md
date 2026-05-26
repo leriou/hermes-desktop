@@ -11,6 +11,7 @@ Chat 页面的 `message.complete` 事件处理存在内容重复风险：streami
 **文件**: `useChatInbox.ts`, `useChatIPC.ts`
 
 在 `message.complete` handler 中：
+
 - 丢弃未 flush 的 `pendingChunks`（清空 timer 和 buffer）
 - 用 `payload.text` 整体替换最后一条 agent message 的 content
 - 如果 `payload.text` 为空/缺失，回退到当前 streaming 累积文本
@@ -21,7 +22,8 @@ Chat 页面的 `message.complete` 事件处理存在内容重复风险：streami
 **新文件**: `src/renderer/src/components/StreamingMarkdown.tsx`
 
 廉价正则 markdown 渲染器，处理：
-- 围栏代码块（``` ... ```）
+
+- 围栏代码块（`...`）
 - 粗体（`**text**`）
 - 斜体（`*text*`）
 - 行内 code（`` `code` ``）
@@ -30,19 +32,23 @@ Chat 页面的 `message.complete` 事件处理存在内容重复风险：streami
 用 `dangerouslySetInnerHTML` 输出，避免 react-markdown 的 AST 解析成本。
 
 **文件**: `MessageList.tsx`
+
 - 将流式阶段的纯文本 `<div>` 替换为 `<StreamingMarkdown>`
 - 传入 `streamingText` 作为 children
 
 ### 3. Sidebar Live Badge
 
 **文件**: `SessionSidebar.tsx` / 对应 CSS
+
 - `status === "streaming"` 时 StatusDot 添加 CSS 脉冲动画
 - 样式: `@keyframes pulse` + green dot
 
 **文件**: `useSessionManager.ts` — `getSidebarEntries()`
+
 - preview 文本从 `tab.streamingText ?? lastMessage.content` 取值，确保流式阶段 preview 实时更新
 
 **文件**: `Layout.tsx`
+
 - 验证 tab switch 时 `unreadCount = 0` 清除逻辑（已有，确认生效）
 
 ## 不做的事

@@ -170,11 +170,7 @@ export async function processFiles(
       // No origin path (clipboard paste) — stage the bytes to disk.
       try {
         const base64 = await readAsBase64(file);
-        path = await stageAttachment(
-          options.sessionId || "",
-          name,
-          base64,
-        );
+        path = await stageAttachment(options.sessionId || "", name, base64);
       } catch (err) {
         errors.push({
           code: "read-failed",

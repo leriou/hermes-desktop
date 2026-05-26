@@ -30,6 +30,7 @@ describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
     const listBundledSkills = vi.fn().mockResolvedValue([
       {
         name: "concept-diagram",
+        entry_name: "concept-diagram",
         description: "draw diagrams",
         category: "creative",
         source: "bundled",
@@ -56,9 +57,9 @@ describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
       expect(listInstalledSkills).toHaveBeenCalled();
     });
 
-    // Default tab is "installed"; switch to Browse so the bundled card renders.
+    // Default tab is "stats"; switch to Browse so the bundled card renders.
     const tabs = view.container.querySelectorAll(".skills-tab");
-    const browseTab = tabs[1] as HTMLButtonElement;
+    const browseTab = tabs[2] as HTMLButtonElement;
     expect(browseTab).toBeTruthy();
     await act(async () => {
       fireEvent.click(browseTab);
@@ -94,6 +95,7 @@ describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
     const listBundledSkills = vi.fn().mockResolvedValue([
       {
         name: "concept-diagram",
+        entry_name: "concept-diagram",
         description: "",
         category: "creative",
         source: "bundled",
@@ -119,7 +121,7 @@ describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
     });
 
     const tabs = view.container.querySelectorAll(".skills-tab");
-    const browseTab = tabs[1] as HTMLButtonElement;
+    const browseTab = tabs[2] as HTMLButtonElement;
     await act(async () => {
       fireEvent.click(browseTab);
     });

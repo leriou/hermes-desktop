@@ -204,7 +204,11 @@ export const OAUTH_PROVIDERS: OAuthProviderDef[] = [
     name: "ChatGPT (Codex Plan)",
     desc: "providers.oauth.codexDesc",
   },
-  { id: "xai-oauth", name: "xAI Grok (OAuth)", desc: "providers.oauth.xaiDesc" },
+  {
+    id: "xai-oauth",
+    name: "xAI Grok (OAuth)",
+    desc: "providers.oauth.xaiDesc",
+  },
   { id: "qwen-oauth", name: "Qwen (OAuth)", desc: "providers.oauth.qwenDesc" },
   {
     id: "google-gemini-cli",
@@ -301,9 +305,26 @@ export const THEME_OPTIONS = [
   { value: "system" as const, label: "constants.themeSystem" },
   { value: "light" as const, label: "constants.themeLight" },
   { value: "dark" as const, label: "constants.themeDark" },
+  { value: "colorful" as const, label: "constants.themeColorful" },
+  { value: "apple" as const, label: "constants.themeApple" },
+  { value: "google" as const, label: "constants.themeGoogle" },
 ];
 
 export const THEME_STORAGE_KEY = "hermes-theme";
+
+// ── Markdown Style ──────────────────────────────────────
+
+export const MARKDOWN_STYLE_OPTIONS = [
+  { value: "default", label: "constants.mdStyleDefault" },
+  { value: "notion", label: "constants.mdStyleNotion" },
+  { value: "material", label: "constants.mdStyleMaterial" },
+  { value: "nightowl", label: "constants.mdStyleNightowl" },
+  { value: "solarized", label: "constants.mdStyleSolarized" },
+] as const;
+
+export type MarkdownStyle = (typeof MARKDOWN_STYLE_OPTIONS)[number]["value"];
+
+export const MARKDOWN_STYLE_STORAGE_KEY = "hermes-md-style";
 
 // ── Settings API Key Sections ───────────────────────────
 

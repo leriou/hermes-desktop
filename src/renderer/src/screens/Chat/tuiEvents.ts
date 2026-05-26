@@ -1,4 +1,9 @@
-import type { ApprovalRequest, ClarifyRequest, SecretRequest, SudoRequest } from "./types";
+import type {
+  ApprovalRequest,
+  ClarifyRequest,
+  SecretRequest,
+  SudoRequest,
+} from "./types";
 
 export type TuiEventPayload = Record<string, unknown>;
 
@@ -16,22 +21,34 @@ export interface NormalizedTuiEvent {
 }
 
 function asRecord(value: unknown): TuiEventPayload {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as TuiEventPayload) : {};
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as TuiEventPayload)
+    : {};
 }
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-export function stringField(payload: TuiEventPayload, key: string, fallback = ""): string {
+export function stringField(
+  payload: TuiEventPayload,
+  key: string,
+  fallback = "",
+): string {
   return asString(payload[key]) || fallback;
 }
 
-export function numberField(payload: TuiEventPayload, key: string): number | undefined {
+export function numberField(
+  payload: TuiEventPayload,
+  key: string,
+): number | undefined {
   return typeof payload[key] === "number" ? payload[key] : undefined;
 }
 
-export function recordField(payload: TuiEventPayload, key: string): TuiEventPayload {
+export function recordField(
+  payload: TuiEventPayload,
+  key: string,
+): TuiEventPayload {
   return asRecord(payload[key]);
 }
 
@@ -46,7 +63,9 @@ export function optionalJsonText(value: unknown): string {
 }
 
 function asStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 export function normalizeTuiEvent(event: RawTuiEvent): NormalizedTuiEvent {
@@ -62,7 +81,9 @@ export function textFromPayload(payload: TuiEventPayload): string {
   return asString(payload.text) || asString(payload.rendered);
 }
 
-export function normalizeApprovalRequest(payload: TuiEventPayload): ApprovalRequest {
+export function normalizeApprovalRequest(
+  payload: TuiEventPayload,
+): ApprovalRequest {
   return {
     command: asString(payload.command),
     description: asString(payload.description),
@@ -73,7 +94,9 @@ export function normalizeApprovalRequest(payload: TuiEventPayload): ApprovalRequ
   };
 }
 
-export function normalizeClarifyRequest(payload: TuiEventPayload): ClarifyRequest {
+export function normalizeClarifyRequest(
+  payload: TuiEventPayload,
+): ClarifyRequest {
   return {
     requestId: asString(payload.request_id) || asString(payload.requestId),
     question: asString(payload.question),
@@ -87,7 +110,9 @@ export function normalizeSudoRequest(payload: TuiEventPayload): SudoRequest {
   };
 }
 
-export function normalizeSecretRequest(payload: TuiEventPayload): SecretRequest {
+export function normalizeSecretRequest(
+  payload: TuiEventPayload,
+): SecretRequest {
   return {
     requestId: asString(payload.request_id) || asString(payload.requestId),
     envVar: asString(payload.env_var) || asString(payload.envVar),

@@ -1,4 +1,27 @@
-import { abortChat, downloadUpdate, getPlugins, getSessionMessages, installUpdate, isRemoteOnlyMode, listBundledSkills, listCachedSessions, listCronJobs, listInstalledSkills, listModels, listProfiles, listTemplates, onMenuNewChat, onMenuSearchSessions, onUpdateAvailable, onUpdateDownloadProgress, onUpdateDownloaded, onUpdateError, startGateway, tuiResumeSession, tuiSessionHistory } from "@renderer/lib/hermes-tauri";
+import {
+  abortChat,
+  downloadUpdate,
+  getPlugins,
+  getSessionMessages,
+  installUpdate,
+  isRemoteOnlyMode,
+  listBundledSkills,
+  listCachedSessions,
+  listCronJobs,
+  listInstalledSkills,
+  listModels,
+  listProfiles,
+  listTemplates,
+  onMenuNewChat,
+  onMenuSearchSessions,
+  onUpdateAvailable,
+  onUpdateDownloadProgress,
+  onUpdateDownloaded,
+  onUpdateError,
+  startGateway,
+  tuiResumeSession,
+  tuiSessionHistory,
+} from "@renderer/lib/hermes-tauri";
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import Chat, { ChatMessage } from "../Chat/Chat";
 import { SessionSidebar } from "../Chat/SessionSidebar";
@@ -48,7 +71,14 @@ const Routing = lazy(() => import("../Routing/Routing"));
 
 function TabSpinner(): React.JSX.Element {
   return (
-    <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center" }}>
+    <div
+      style={{
+        display: "flex",
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <span style={{ opacity: 0.4 }}>Loading…</span>
     </div>
   );
@@ -93,7 +123,11 @@ function isHistorySegment(
 ): boolean {
   const titleA = baseSessionTitle(a.title);
   const titleB = baseSessionTitle(b.title);
-  return !!titleA && titleA === titleB && !!(parseTitleSegment(a.title) || parseTitleSegment(b.title));
+  return (
+    !!titleA &&
+    titleA === titleB &&
+    !!(parseTitleSegment(a.title) || parseTitleSegment(b.title))
+  );
 }
 
 interface LayoutProps {
@@ -114,7 +148,9 @@ function Layout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const sessionManager = useSessionManager();
   const activeTabId = sessionManager.activeTabId;
-  const activeTab = activeTabId ? sessionManager.sessions.get(activeTabId) : undefined;
+  const activeTab = activeTabId
+    ? sessionManager.sessions.get(activeTabId)
+    : undefined;
   useChatInbox({
     sessions: sessionManager.sessions,
     activeTabId,
@@ -140,20 +176,30 @@ function Layout({
       cache.prefetch("models:templates", 60_000, () =>
         (listTemplates() as Promise<any[]>).then((r) => r ?? []),
       );
-      cache.prefetch("agents:profiles", 20_000, () =>
-        (listProfiles() ?? Promise.resolve([])),
+      cache.prefetch(
+        "agents:profiles",
+        20_000,
+        () => listProfiles() ?? Promise.resolve([]),
       );
-      cache.prefetch(`skills:installed:${p}`, 20_000, () =>
-        (listInstalledSkills(p) ?? Promise.resolve([])),
+      cache.prefetch(
+        `skills:installed:${p}`,
+        20_000,
+        () => listInstalledSkills(p) ?? Promise.resolve([]),
       );
-      cache.prefetch(`skills:bundled:${p}`, 120_000, () =>
-        (listBundledSkills(p) ?? Promise.resolve([])),
+      cache.prefetch(
+        `skills:bundled:${p}`,
+        120_000,
+        () => listBundledSkills(p) ?? Promise.resolve([]),
       );
-      cache.prefetch(`plugins:${p}`, 20_000, () =>
-        (getPlugins(p) ?? Promise.resolve([])),
+      cache.prefetch(
+        `plugins:${p}`,
+        20_000,
+        () => getPlugins(p) ?? Promise.resolve([]),
       );
-      cache.prefetch(`schedules:jobs:${p}`, 20_000, () =>
-        (listCronJobs(true, p) ?? Promise.resolve([])),
+      cache.prefetch(
+        `schedules:jobs:${p}`,
+        20_000,
+        () => listCronJobs(true, p) ?? Promise.resolve([]),
       );
     };
     if ("requestIdleCallback" in window) {
@@ -195,11 +241,9 @@ function Layout({
       setUpdateError(null);
       setDownloadPercent(0);
     });
-    const cleanupProgress = onUpdateDownloadProgress(
-      (info) => {
-        setDownloadPercent(info.percent);
-      },
-    );
+    const cleanupProgress = onUpdateDownloadProgress((info) => {
+      setDownloadPercent(info.percent);
+    });
     const cleanupDownloaded = onUpdateDownloaded(() => {
       setUpdateState("ready");
       setUpdateError(null);
@@ -254,10 +298,13 @@ function Layout({
     };
   }, [handleNewChat, goTo]);
 
-  const handleSelectProfile = useCallback((name: string) => {
-    setActiveProfile(name);
-    sessionManager.createTab();
-  }, [sessionManager]);
+  const handleSelectProfile = useCallback(
+    (name: string) => {
+      setActiveProfile(name);
+      sessionManager.createTab();
+    },
+    [sessionManager],
+  );
 
   const MAX_RESUME_MESSAGES = 100;
   const MAX_TOOL_CONTENT = 8000;
@@ -276,40 +323,59 @@ function Layout({
         if (found?.title) sessionTitle = found.title;
         if (found) {
           const related = cached
-            .filter((s: { id: string; title?: string | null }) => isHistorySegment(found, s))
-            .sort((a: { startedAt: number }, b: { startedAt: number }) => a.startedAt - b.startedAt);
+            .filter((s: { id: string; title?: string | null }) =>
+              isHistorySegment(found, s),
+            )
+            .sort(
+              (a: { startedAt: number }, b: { startedAt: number }) =>
+                a.startedAt - b.startedAt,
+            );
           if (related.length > 1) {
             relatedSessionIds = related.map((s: { id: string }) => s.id);
-            targetResumeSessionId = relatedSessionIds[relatedSessionIds.length - 1];
+            targetResumeSessionId =
+              relatedSessionIds[relatedSessionIds.length - 1];
             sessionTitle = baseSessionTitle(found.title) || sessionTitle;
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       // 1. Load messages — check prefetch cache first, then API
       try {
         const loaded = await Promise.all(
           relatedSessionIds.map((id) =>
-            cache.getOrFetch(
-              `session-msgs:${id}`,
-              30_000,
-              () => getSessionMessages(id, activeProfile),
+            cache.getOrFetch(`session-msgs:${id}`, 30_000, () =>
+              getSessionMessages(id, activeProfile),
             ),
           ),
         );
         const items = loaded.flat();
         if (items && items.length > 0) {
-          const sliced = items.length > MAX_RESUME_MESSAGES
-            ? items.slice(items.length - MAX_RESUME_MESSAGES)
-            : items;
+          const sliced =
+            items.length > MAX_RESUME_MESSAGES
+              ? items.slice(items.length - MAX_RESUME_MESSAGES)
+              : items;
           chatMessages = sliced
             .map((it: any): ChatMessage | null => {
-              const ts = it.timestamp ? Math.round(it.timestamp * 1000) : undefined;
+              const ts = it.timestamp
+                ? Math.round(it.timestamp * 1000)
+                : undefined;
               switch (it.kind) {
                 case "user":
-                  return { id: `db-${it.id}`, role: "user", content: it.content, timestamp: ts };
+                  return {
+                    id: `db-${it.id}`,
+                    role: "user",
+                    content: it.content,
+                    timestamp: ts,
+                  };
                 case "assistant":
-                  return { id: `db-${it.id}`, role: "agent", content: it.content, timestamp: ts };
+                  return {
+                    id: `db-${it.id}`,
+                    role: "agent",
+                    content: it.content,
+                    timestamp: ts,
+                  };
                 case "reasoning":
                   return null;
                 case "tool_call":
@@ -324,9 +390,18 @@ function Layout({
                 case "tool_result": {
                   let content = it.content || "";
                   if (content.length > MAX_TOOL_CONTENT) {
-                    content = content.slice(0, MAX_TOOL_CONTENT) + `\n\n... (${content.length} chars total)`;
+                    content =
+                      content.slice(0, MAX_TOOL_CONTENT) +
+                      `\n\n... (${content.length} chars total)`;
                   }
-                  return { id: `db-${it.id}`, kind: "tool_result", role: "agent", callId: it.callId || "", name: it.name || "tool", content };
+                  return {
+                    id: `db-${it.id}`,
+                    kind: "tool_result",
+                    role: "agent",
+                    callId: it.callId || "",
+                    name: it.name || "tool",
+                    content,
+                  };
                 }
                 default:
                   return null;
@@ -334,7 +409,9 @@ function Layout({
             })
             .filter((m): m is ChatMessage => m !== null);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       // Show messages immediately before waiting for Gateway
       // Set hermesSessionId upfront so gateway replay events get filtered out
@@ -347,7 +424,9 @@ function Layout({
         isLoading: false,
         toolProgress: null as string | null,
       };
-      const existingTabId = sessionManager.findTabBySessionId(targetResumeSessionId);
+      const existingTabId = sessionManager.findTabBySessionId(
+        targetResumeSessionId,
+      );
       let targetTabId = existingTabId;
       if (!targetTabId) {
         targetTabId = sessionManager.createTabWith(initialPatch);
@@ -363,16 +442,38 @@ function Layout({
         if (res) {
           const tuiSessionId = res.session_id || targetResumeSessionId;
           // If resume returned messages and we had none, use them
-          if (chatMessages.length === 0 && Array.isArray(res.messages) && res.messages.length > 0) {
+          if (
+            chatMessages.length === 0 &&
+            Array.isArray(res.messages) &&
+            res.messages.length > 0
+          ) {
             const gatewayMessages: ChatMessage[] = [];
             for (const msg of res.messages) {
               const id = `gw-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
               if (msg.role === "user" && (msg.text || msg.content)) {
-                gatewayMessages.push({ id, role: "user", content: msg.text || msg.content });
-              } else if (msg.role === "assistant" && (msg.text || msg.content)) {
-                gatewayMessages.push({ id, role: "agent", content: msg.text || msg.content });
+                gatewayMessages.push({
+                  id,
+                  role: "user",
+                  content: msg.text || msg.content,
+                });
+              } else if (
+                msg.role === "assistant" &&
+                (msg.text || msg.content)
+              ) {
+                gatewayMessages.push({
+                  id,
+                  role: "agent",
+                  content: msg.text || msg.content,
+                });
               } else if (msg.role === "tool") {
-                gatewayMessages.push({ id, kind: "tool_result", role: "agent", callId: "", name: msg.name || "tool", content: msg.context || "" });
+                gatewayMessages.push({
+                  id,
+                  kind: "tool_result",
+                  role: "agent",
+                  callId: "",
+                  name: msg.name || "tool",
+                  content: msg.context || "",
+                });
               }
             }
             const currentTabId = targetTabId;
@@ -387,7 +488,7 @@ function Layout({
             // Just update the Gateway session ID so user can send new messages
             const currentTabId = targetTabId;
             if (currentTabId) {
-              sessionManager.updateTab(currentTabId, { 
+              sessionManager.updateTab(currentTabId, {
                 hermesSessionId: tuiSessionId,
                 model: res.info?.model || "",
               });
@@ -422,21 +523,43 @@ function Layout({
             for (const msg of hist.result.messages) {
               const id = `mem-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
               if (msg.role === "user" && (msg.text || msg.content)) {
-                memMessages.push({ id, role: "user", content: msg.text || msg.content });
-              } else if (msg.role === "assistant" && (msg.text || msg.content)) {
-                memMessages.push({ id, role: "agent", content: msg.text || msg.content });
+                memMessages.push({
+                  id,
+                  role: "user",
+                  content: msg.text || msg.content,
+                });
+              } else if (
+                msg.role === "assistant" &&
+                (msg.text || msg.content)
+              ) {
+                memMessages.push({
+                  id,
+                  role: "agent",
+                  content: msg.text || msg.content,
+                });
               } else if (msg.role === "tool") {
-                memMessages.push({ id, kind: "tool_result", role: "agent", callId: "", name: msg.name || "tool", content: msg.context || "" });
+                memMessages.push({
+                  id,
+                  kind: "tool_result",
+                  role: "agent",
+                  callId: "",
+                  name: msg.name || "tool",
+                  content: msg.context || "",
+                });
               }
             }
             if (memMessages.length > 0) {
               const currentTabId = targetTabId;
               if (currentTabId) {
-                sessionManager.updateTab(currentTabId, { messages: memMessages });
+                sessionManager.updateTab(currentTabId, {
+                  messages: memMessages,
+                });
               }
             }
           }
-        } catch { /* nothing left to try */ }
+        } catch {
+          /* nothing left to try */
+        }
       }
     },
     [goTo, sessionManager, activeProfile],
@@ -453,8 +576,18 @@ function Layout({
     <div className="layout">
       <aside className={`sidebar${sidebarCollapsed ? " collapsed" : ""}`}>
         <div className="sidebar-brand">
-          <img src={hermesicon} height={26} alt="" className="sidebar-logo-icon" />
-          <img src={hermeslogo} height={30} alt="" className="sidebar-logo-full" />
+          <img
+            src={hermesicon}
+            height={26}
+            alt=""
+            className="sidebar-logo-icon"
+          />
+          <img
+            src={hermeslogo}
+            height={30}
+            alt=""
+            className="sidebar-logo-full"
+          />
         </div>
 
         <nav className="sidebar-nav">
@@ -502,14 +635,24 @@ function Layout({
           )}
           <div className="sidebar-footer-row">
             <div className="sidebar-footer-text">
-              {activeProfile === "default" ? t("common.appName") : activeProfile}
+              {activeProfile === "default"
+                ? t("common.appName")
+                : activeProfile}
             </div>
             <button
               className="sidebar-collapse-btn"
               onClick={() => setSidebarCollapsed((c) => !c)}
-              title={sidebarCollapsed ? t("common.expandSidebar") : t("common.collapseSidebar")}
+              title={
+                sidebarCollapsed
+                  ? t("common.expandSidebar")
+                  : t("common.collapseSidebar")
+              }
             >
-              {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+              {sidebarCollapsed ? (
+                <PanelLeftOpen size={16} />
+              ) : (
+                <PanelLeftClose size={16} />
+              )}
             </button>
           </div>
         </div>
@@ -528,7 +671,9 @@ function Layout({
             <SessionSidebar
               sessions={sessionManager.getSidebarEntries()}
               activeSessionId={sessionManager.activeTabId}
-              activeDbSessionId={sessionManager.getActive()?.dbSessionId ?? null}
+              activeDbSessionId={
+                sessionManager.getActive()?.dbSessionId ?? null
+              }
               onSelect={sessionManager.switchTab}
               onNewChat={handleNewChat}
               onClose={sessionManager.closeTab}
@@ -567,27 +712,55 @@ function Layout({
                     onNewChat={handleNewChat}
                     onSessionStateChange={(patch) => {
                       sessionManager.updateTab(tabId, {
-                        ...(patch.hermesSessionId !== undefined ? { hermesSessionId: patch.hermesSessionId } : {}),
-                        ...(patch.dbSessionId !== undefined ? { dbSessionId: patch.dbSessionId } : {}),
-                        ...(patch.title !== undefined ? { title: patch.title } : {}),
-                        ...(patch.model !== undefined ? { model: patch.model } : {}),
-                        ...(patch.pendingModelSwitch !== undefined ? { pendingModelSwitch: patch.pendingModelSwitch } : {}),
-                        ...(patch.isLoading !== undefined ? { isLoading: patch.isLoading } : {}),
-                        ...(patch.toolProgress !== undefined ? { toolProgress: patch.toolProgress } : {}),
-                        ...(patch.pendingApproval !== undefined ? { pendingApproval: patch.pendingApproval } : {}),
-                        ...(patch.pendingClarify !== undefined ? { pendingClarify: patch.pendingClarify } : {}),
-                        ...(patch.pendingSudo !== undefined ? { pendingSudo: patch.pendingSudo } : {}),
-                        ...(patch.pendingSecret !== undefined ? { pendingSecret: patch.pendingSecret } : {}),
-                        ...(patch.usage !== undefined ? { usage: patch.usage } : {}),
-                        ...(patch.streamingText !== undefined ? { streamingText: patch.streamingText } : {}),
-                        ...(patch.streamingReasoning !== undefined ? { streamingReasoning: patch.streamingReasoning } : {}),
+                        ...(patch.hermesSessionId !== undefined
+                          ? { hermesSessionId: patch.hermesSessionId }
+                          : {}),
+                        ...(patch.dbSessionId !== undefined
+                          ? { dbSessionId: patch.dbSessionId }
+                          : {}),
+                        ...(patch.title !== undefined
+                          ? { title: patch.title }
+                          : {}),
+                        ...(patch.model !== undefined
+                          ? { model: patch.model }
+                          : {}),
+                        ...(patch.pendingModelSwitch !== undefined
+                          ? { pendingModelSwitch: patch.pendingModelSwitch }
+                          : {}),
+                        ...(patch.isLoading !== undefined
+                          ? { isLoading: patch.isLoading }
+                          : {}),
+                        ...(patch.toolProgress !== undefined
+                          ? { toolProgress: patch.toolProgress }
+                          : {}),
+                        ...(patch.pendingApproval !== undefined
+                          ? { pendingApproval: patch.pendingApproval }
+                          : {}),
+                        ...(patch.pendingClarify !== undefined
+                          ? { pendingClarify: patch.pendingClarify }
+                          : {}),
+                        ...(patch.pendingSudo !== undefined
+                          ? { pendingSudo: patch.pendingSudo }
+                          : {}),
+                        ...(patch.pendingSecret !== undefined
+                          ? { pendingSecret: patch.pendingSecret }
+                          : {}),
+                        ...(patch.usage !== undefined
+                          ? { usage: patch.usage }
+                          : {}),
+                        ...(patch.streamingText !== undefined
+                          ? { streamingText: patch.streamingText }
+                          : {}),
+                        ...(patch.streamingReasoning !== undefined
+                          ? { streamingReasoning: patch.streamingReasoning }
+                          : {}),
                       });
                     }}
                   />
                 );
               })}
             </div>
-        </div>
+          </div>
         )}
 
         {view === "sessions" && (
@@ -599,7 +772,9 @@ function Layout({
                 <Sessions
                   onResumeSession={handleResumeSession}
                   onNewChat={handleNewChat}
-                  currentSessionId={sessionManager.getActive()?.hermesSessionId ?? null}
+                  currentSessionId={
+                    sessionManager.getActive()?.hermesSessionId ?? null
+                  }
                   visible={true}
                   profile={activeProfile}
                 />
@@ -630,7 +805,11 @@ function Layout({
         {view === "models" && (
           <div style={paneStyle}>
             <Suspense fallback={<TabSpinner />}>
-              <Models visible={true} profile={activeProfile} onNavigate={(view) => goTo(view as View)} />
+              <Models
+                visible={true}
+                profile={activeProfile}
+                onNavigate={(view) => goTo(view as View)}
+              />
             </Suspense>
           </div>
         )}

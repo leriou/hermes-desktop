@@ -1,4 +1,11 @@
-import { checkInstall, getConnectionConfig, setConnectionConfig, startSshTunnel, testRemoteConnection, verifyInstall } from "@renderer/lib/hermes-tauri";
+import {
+  checkInstall,
+  getConnectionConfig,
+  setConnectionConfig,
+  startSshTunnel,
+  testRemoteConnection,
+  verifyInstall,
+} from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
 import { ThemeProvider } from "./components/ThemeProvider";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -18,7 +25,9 @@ function App(): React.JSX.Element {
     "local" | "remote" | "ssh"
   >("local");
   const [verifyWarning, setVerifyWarning] = useState(false);
-  const isMac = !!(window as any).__TAURI_INTERNALS__ && navigator.userAgent.includes("Macintosh");
+  const isMac =
+    !!(window as any).__TAURI_INTERNALS__ &&
+    navigator.userAgent.includes("Macintosh");
   const runInstallCheck = useCallback(async () => {
     let next: Screen = "welcome";
     let error: string | null = null;

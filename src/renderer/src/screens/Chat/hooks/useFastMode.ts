@@ -24,11 +24,7 @@ export function useFastMode(profile?: string): UseFastModeResult {
   const set = useCallback(
     async (next: boolean): Promise<void> => {
       setFastMode(next);
-      await setConfig(
-        "agent.service_tier",
-        next ? "fast" : "normal",
-        profile,
-      );
+      await setConfig("agent.service_tier", next ? "fast" : "normal", profile);
     },
     [profile],
   );

@@ -4,7 +4,8 @@ let tauriStore: LazyStore | null = null;
 const cache: Record<string, string> = {};
 let initialized = false;
 
-const isTauri = typeof window !== "undefined" && !!(window as any).__TAURI_INTERNALS__;
+const isTauri =
+  typeof window !== "undefined" && !!(window as any).__TAURI_INTERNALS__;
 
 export async function initStore(): Promise<void> {
   if (initialized) return;
@@ -12,12 +13,15 @@ export async function initStore(): Promise<void> {
   if (isTauri) {
     try {
       tauriStore = new LazyStore(".settings.json");
-      const entries = await tauriStore.entries() as [string, unknown][];
+      const entries = (await tauriStore.entries()) as [string, unknown][];
       for (const [k, v] of entries) {
         cache[k] = typeof v === "string" ? v : JSON.stringify(v);
       }
     } catch (e) {
-      console.error("[Store] Failed to initialize tauri-plugin-store, falling back to localStorage", e);
+      console.error(
+        "[Store] Failed to initialize tauri-plugin-store, falling back to localStorage",
+        e,
+      );
       tauriStore = null;
     }
   }
@@ -33,7 +37,10 @@ export async function initStore(): Promise<void> {
           }
         }
       } catch (e) {
-        console.warn("[Store] localStorage is not accessible in this context", e);
+        console.warn(
+          "[Store] localStorage is not accessible in this context",
+          e,
+        );
       }
     }
   }
@@ -42,7 +49,11 @@ export async function initStore(): Promise<void> {
 }
 
 export function getStoreItem(key: string, fallback: string = ""): string {
-  if (!initialized && typeof window !== "undefined" && typeof localStorage !== "undefined") {
+  if (
+    !initialized &&
+    typeof window !== "undefined" &&
+    typeof localStorage !== "undefined"
+  ) {
     try {
       return localStorage.getItem(key) || fallback;
     } catch {
@@ -56,12 +67,18 @@ export function setStoreItem(key: string, value: string): void {
   cache[key] = value;
 
   if (tauriStore) {
-    tauriStore.set(key, value).then(() => {
-      tauriStore?.save();
-    }).catch(err => {
-      console.error("[Store] set failed", err);
-    });
-  } else if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    tauriStore
+      .set(key, value)
+      .then(() => {
+        tauriStore?.save();
+      })
+      .catch((err) => {
+        console.error("[Store] set failed", err);
+      });
+  } else if (
+    typeof window !== "undefined" &&
+    typeof localStorage !== "undefined"
+  ) {
     try {
       localStorage.setItem(key, value);
     } catch (e) {
@@ -74,12 +91,18 @@ export function removeStoreItem(key: string): void {
   delete cache[key];
 
   if (tauriStore) {
-    tauriStore.delete(key).then(() => {
-      tauriStore?.save();
-    }).catch(err => {
-      console.error("[Store] delete failed", err);
-    });
-  } else if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    tauriStore
+      .delete(key)
+      .then(() => {
+        tauriStore?.save();
+      })
+      .catch((err) => {
+        console.error("[Store] delete failed", err);
+      });
+  } else if (
+    typeof window !== "undefined" &&
+    typeof localStorage !== "undefined"
+  ) {
     try {
       localStorage.removeItem(key);
     } catch (e) {

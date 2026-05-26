@@ -94,10 +94,12 @@ export function buildRenderableTranscript({
   streamingText = "",
   streamingReasoning = "",
 }: BuildRenderableTranscriptArgs): RenderTranscriptItem[] {
-  const processed = groupToolCalls(mergeContinuationLabels(messages)).filter((m) => {
-    if (!isBubble(m)) return true;
-    return ((m.content as string) || "").trim().length > 0;
-  });
+  const processed = groupToolCalls(mergeContinuationLabels(messages)).filter(
+    (m) => {
+      if (!isBubble(m)) return true;
+      return ((m.content as string) || "").trim().length > 0;
+    },
+  );
 
   const items: RenderTranscriptItem[] = [...processed];
 
@@ -151,6 +153,11 @@ export function buildRenderableTranscript({
 
 export function isReasoningItem(
   item: RenderTranscriptItem,
-): item is ReasoningMessage | Extract<RenderTranscriptItem, { kind: "live_reasoning" }> {
-  return (item as { kind?: string }).kind === "reasoning" || (item as { kind?: string }).kind === "live_reasoning";
+): item is
+  | ReasoningMessage
+  | Extract<RenderTranscriptItem, { kind: "live_reasoning" }> {
+  return (
+    (item as { kind?: string }).kind === "reasoning" ||
+    (item as { kind?: string }).kind === "live_reasoning"
+  );
 }

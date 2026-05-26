@@ -5,7 +5,13 @@ import BrandLogo from "../../components/common/BrandLogo";
 import { useDiscoveredModels } from "../../hooks/useDiscoveredModels";
 import OAuthLoginModal from "../../components/OAuthLoginModal";
 import { KeyRound, Check } from "../../assets/icons";
-import { addModel, getCredentialPool, getEnv, setCredentialPool, setEnv as setTauriEnv } from "@renderer/lib/hermes-tauri";
+import {
+  addModel,
+  getCredentialPool,
+  getEnv,
+  setCredentialPool,
+  setEnv as setTauriEnv,
+} from "@renderer/lib/hermes-tauri";
 
 type ProviderTab = "model" | "apikeys" | "tools" | "credentials" | "oauth";
 
@@ -237,9 +243,7 @@ function Providers({
   const isLlmSection = (title: string) =>
     title === "constants.sectionLlmProviders";
 
-  const llmSection = SETTINGS_SECTIONS.find((s) =>
-    isLlmSection(s.title),
-  );
+  const llmSection = SETTINGS_SECTIONS.find((s) => isLlmSection(s.title));
   const toolSections = SETTINGS_SECTIONS.filter((s) => !isLlmSection(s.title));
 
   function renderEnvField(
@@ -247,7 +251,10 @@ function Providers({
     asCard: boolean,
   ): React.JSX.Element {
     return (
-      <div key={field.key} className={asCard ? "provider-key-card" : "settings-field"}>
+      <div
+        key={field.key}
+        className={asCard ? "provider-key-card" : "settings-field"}
+      >
         {asCard && (
           <div className="provider-key-card-head">
             <BrandLogo provider={field.key} size={22} />
@@ -320,7 +327,9 @@ function Providers({
             </div>
 
             <div className="settings-field">
-              <label className="settings-field-label">{t("common.provider")}</label>
+              <label className="settings-field-label">
+                {t("common.provider")}
+              </label>
               <div className="settings-provider-row">
                 <BrandLogo provider={discProvider} size={20} />
                 <select
@@ -368,9 +377,7 @@ function Providers({
 
             {discProvider && (
               <div className="settings-field">
-                <label className="settings-field-label">
-                  API Key
-                </label>
+                <label className="settings-field-label">API Key</label>
                 <div className="settings-input-row">
                   <input
                     className="input"
@@ -383,7 +390,9 @@ function Providers({
                     className="btn-ghost settings-toggle-btn"
                     onClick={() => toggleVisibility("disc-api-key")}
                   >
-                    {visibleKeys.has("disc-api-key") ? t("common.hide") : t("common.show")}
+                    {visibleKeys.has("disc-api-key")
+                      ? t("common.hide")
+                      : t("common.show")}
                   </button>
                 </div>
                 <div className="settings-field-hint">
@@ -410,14 +419,19 @@ function Providers({
               <div className="providers-model-list">
                 <div className="providers-model-list-header">
                   <div className="settings-field-hint">
-                    {t("settings.discoveredCount", { count: discovery.models.length })}
+                    {t("settings.discoveredCount", {
+                      count: discovery.models.length,
+                    })}
                     {discovery.cached && ` (${t("providers.cached")})`}
                   </div>
                   <div className="providers-model-actions">
                     <label className="providers-select-all">
                       <input
                         type="checkbox"
-                        checked={selectedModels.size === discovery.models.length && discovery.models.length > 0}
+                        checked={
+                          selectedModels.size === discovery.models.length &&
+                          discovery.models.length > 0
+                        }
                         onChange={selectAllModels}
                       />
                       {t("providers.selectAll", { defaultValue: "Select All" })}
@@ -430,7 +444,9 @@ function Providers({
                       >
                         {addingModels
                           ? t("providers.adding", { defaultValue: "Adding..." })
-                          : t("providers.addSelected", { defaultValue: `Add ${selectedModels.size} to My Models` })}
+                          : t("providers.addSelected", {
+                              defaultValue: `Add ${selectedModels.size} to My Models`,
+                            })}
                       </button>
                     )}
                   </div>
@@ -440,7 +456,9 @@ function Providers({
                     <tr>
                       <th style={{ width: 36 }}></th>
                       <th>{t("providers.colModel")}</th>
-                      <th style={{ width: 160 }}>{t("providers.colAlias", { defaultValue: "Alias" })}</th>
+                      <th style={{ width: 160 }}>
+                        {t("providers.colAlias", { defaultValue: "Alias" })}
+                      </th>
                       <th style={{ width: 40 }}></th>
                     </tr>
                   </thead>
@@ -461,7 +479,12 @@ function Providers({
                               disabled={isAdded}
                             />
                           </td>
-                          <td style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>
+                          <td
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              fontSize: 12,
+                            }}
+                          >
                             {m}
                           </td>
                           <td>
@@ -470,9 +493,14 @@ function Providers({
                               type="text"
                               value={modelAliases[m] || ""}
                               onChange={(e) =>
-                                setModelAliases((prev) => ({ ...prev, [m]: e.target.value }))
+                                setModelAliases((prev) => ({
+                                  ...prev,
+                                  [m]: e.target.value,
+                                }))
                               }
-                              placeholder={t("providers.aliasPlaceholder", { defaultValue: "optional" })}
+                              placeholder={t("providers.aliasPlaceholder", {
+                                defaultValue: "optional",
+                              })}
                               disabled={isAdded}
                             />
                           </td>
@@ -492,17 +520,26 @@ function Providers({
             )}
 
             {discovery.status === "no-key" && (
-              <div className="settings-field-hint" style={{ color: "var(--warning)" }}>
+              <div
+                className="settings-field-hint"
+                style={{ color: "var(--warning)" }}
+              >
                 {t("settings.discoveryNoKey")}
               </div>
             )}
             {discovery.status === "error" && (
-              <div className="settings-field-hint" style={{ color: "var(--error)" }}>
+              <div
+                className="settings-field-hint"
+                style={{ color: "var(--error)" }}
+              >
                 {t("settings.discoveryError")}
               </div>
             )}
             {discovery.status === "unknown-host" && (
-              <div className="settings-field-hint" style={{ color: "var(--error)" }}>
+              <div
+                className="settings-field-hint"
+                style={{ color: "var(--error)" }}
+              >
                 {t("providers.unknownHost")}
               </div>
             )}
@@ -602,7 +639,8 @@ function Providers({
                     {entries.map((entry, idx) => (
                       <div key={idx} className="settings-pool-entry">
                         <span className="settings-pool-label">
-                          {entry.label || `${t("settings.keyLabel")} ${idx + 1}`}
+                          {entry.label ||
+                            `${t("settings.keyLabel")} ${idx + 1}`}
                         </span>
                         <span className="settings-pool-key">
                           {entry.key

@@ -35,6 +35,13 @@ export default {
   themeSystem: "システム",
   themeLight: "ライト",
   themeDark: "ダーク",
+
+  // Markdown styles
+  mdStyleDefault: "Default",
+  mdStyleNotion: "Notion",
+  mdStyleMaterial: "Material",
+  mdStyleNightowl: "Night Owl",
+  mdStyleSolarized: "Solarized",
   // Settings section titles
   sectionLlmProviders: "LLM プロバイダ",
   sectionToolApiKeys: "ツール API キー",

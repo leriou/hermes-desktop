@@ -1,17 +1,34 @@
-import { getAppVersion, getConfig, getConnectionConfig, getHermesHome, getHermesVersion, readLogs, refreshHermesVersion, runHermesBackup, runHermesDoctor, runHermesDump, runHermesImport, runHermesUpdate, setConfig, setConnectionConfig, setSshConfig, testRemoteConnection, testSshConnection } from "@renderer/lib/hermes-tauri";
+import {
+  getAppVersion,
+  getConfig,
+  getConnectionConfig,
+  getHermesHome,
+  getHermesVersion,
+  readLogs,
+  refreshHermesVersion,
+  runHermesBackup,
+  runHermesDoctor,
+  runHermesDump,
+  runHermesImport,
+  runHermesUpdate,
+  setConfig,
+  setConnectionConfig,
+  setSshConfig,
+  testRemoteConnection,
+  testSshConnection,
+} from "@renderer/lib/hermes-tauri";
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTheme } from "../../components/ThemeProvider";
-import { THEME_OPTIONS } from "../../constants";
+import {
+  THEME_OPTIONS,
+  MARKDOWN_STYLE_OPTIONS,
+  MARKDOWN_STYLE_STORAGE_KEY,
+  type MarkdownStyle,
+} from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import { APP_LOCALES, type AppLocale } from "@shared/i18n";
-import {
-  Check,
-  ChevronDown,
-  Download,
-  Upload,
-  FileText,
-} from "lucide-react";
+import { Check, ChevronDown, Download, Upload, FileText } from "lucide-react";
 import {
   getAnalyticsConsent,
   setAnalyticsConsent,
@@ -52,6 +69,21 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const { t, locale, setLocale } = useI18n();
   const [hermesHome, setHermesHome] = useState("");
   const { theme, setTheme } = useTheme();
+
+  const VALID_STYLES = new Set(MARKDOWN_STYLE_OPTIONS.map((o) => o.value));
+  const [mdStyle, setMdStyleState] = useState<MarkdownStyle>(() => {
+    const stored = getStoreItem(MARKDOWN_STYLE_STORAGE_KEY);
+    if (typeof stored === "string" && VALID_STYLES.has(stored)) {
+      return stored as MarkdownStyle;
+    }
+    return "default";
+  });
+
+  function setMdStyle(next: MarkdownStyle): void {
+    setMdStyleState(next);
+    setStoreItem(MARKDOWN_STYLE_STORAGE_KEY, next);
+    document.documentElement.setAttribute("data-md-style", next);
+  }
 
   // Hermes engine info — initialize from localStorage cache for instant display
   const [hermesVersion, setHermesVersion] = useState<string | null>(
@@ -189,11 +221,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
       );
     } else {
       const apiKey = getConnectionApiKeyForSave();
-      await setConnectionConfig(
-        connMode,
-        connRemoteUrl,
-        apiKey,
-      );
+      await setConnectionConfig(connMode, connRemoteUrl, apiKey);
       if (apiKey !== undefined) {
         const hasApiKey = apiKey.length > 0;
         setConnHasApiKey(hasApiKey);
@@ -235,10 +263,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
       }
       setConnTesting(true);
       setConnStatus(null);
-      const ok = await testRemoteConnection(
-        url,
-        getConnectionApiKeyForSave(),
-      );
+      const ok = await testRemoteConnection(url, getConnectionApiKeyForSave());
       setConnTesting(false);
       setConnStatus(ok ? "Connected successfully!" : "Could not reach server");
     }
@@ -694,16 +719,31 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
                 className={`settings-theme-option ${theme === opt.value ? "active" : ""}`}
                 onClick={() => setTheme(opt.value)}
               >
-                {opt.value === "system"
-                  ? t("settings.theme.system")
-                  : opt.value === "light"
-                    ? t("settings.theme.light")
-                    : t("settings.theme.dark")}
+                {t(opt.label)}
               </button>
             ))}
           </div>
           <div className="settings-field-hint">
             {t("settings.appearanceHint")}
+          </div>
+        </div>
+        <div className="settings-field">
+          <label className="settings-field-label">
+            {t("settings.mdStyle.label")}
+          </label>
+          <div className="settings-theme-options">
+            {MARKDOWN_STYLE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`settings-theme-option ${mdStyle === opt.value ? "active" : ""}`}
+                onClick={() => setMdStyle(opt.value)}
+              >
+                {t(opt.label)}
+              </button>
+            ))}
+          </div>
+          <div className="settings-field-hint">
+            {t("settings.mdStyle.hint")}
           </div>
         </div>
         <div className="settings-field">
@@ -788,11 +828,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
             value={httpProxy}
             onChange={(e) => setHttpProxy(e.target.value)}
             onBlur={async () => {
-              await setConfig(
-                "network.proxy",
-                httpProxy.trim(),
-                profile,
-              );
+              await setConfig("network.proxy", httpProxy.trim(), profile);
               setNetworkSaved(true);
               setTimeout(() => setNetworkSaved(false), 2000);
             }}

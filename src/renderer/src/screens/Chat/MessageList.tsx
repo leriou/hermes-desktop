@@ -6,7 +6,12 @@ import { ToolGroupRow } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { buildRenderableTranscript } from "./renderTranscript";
-import type { ChatMessage, SystemEventMessage, SystemStatusMessage, ToolGroupMessage } from "./types";
+import type {
+  ChatMessage,
+  SystemEventMessage,
+  SystemStatusMessage,
+  ToolGroupMessage,
+} from "./types";
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -39,15 +44,27 @@ function TypingIndicator({
   );
 }
 
-function SystemStatusRow({ msg }: { msg: SystemStatusMessage }): React.JSX.Element {
+function SystemStatusRow({
+  msg,
+}: {
+  msg: SystemStatusMessage;
+}): React.JSX.Element {
   const isMultiLine = msg.content && msg.content.includes("\n");
 
   if (isMultiLine) {
     return (
-      <div className={`chat-system-status-block chat-system-status-block-${msg.tone}`}>
+      <div
+        className={`chat-system-status-block chat-system-status-block-${msg.tone}`}
+      >
         <div className="chat-system-status-block-header">
           <span className="chat-system-status-block-icon">
-            {msg.tone === "success" ? "✓" : msg.tone === "warning" ? "⚠" : msg.tone === "error" ? "✗" : "ℹ"}
+            {msg.tone === "success"
+              ? "✓"
+              : msg.tone === "warning"
+                ? "⚠"
+                : msg.tone === "error"
+                  ? "✗"
+                  : "ℹ"}
           </span>
           <span className="chat-system-status-block-title">{msg.title}</span>
         </div>
@@ -68,17 +85,38 @@ function SystemStatusRow({ msg }: { msg: SystemStatusMessage }): React.JSX.Eleme
   );
 }
 
-function SystemEventRow({ msg }: { msg: SystemEventMessage }): React.JSX.Element {
-  const icon = msg.tone === "success" ? "✓" : msg.tone === "warning" ? "!" : msg.tone === "error" ? "×" : "i";
+function SystemEventRow({
+  msg,
+}: {
+  msg: SystemEventMessage;
+}): React.JSX.Element {
+  const icon =
+    msg.tone === "success"
+      ? "✓"
+      : msg.tone === "warning"
+        ? "!"
+        : msg.tone === "error"
+          ? "×"
+          : "i";
   return (
     <div className="chat-system-event-rail">
-      <span className={`chat-system-event-rail-dot chat-system-event-rail-dot-${msg.tone}`}>{icon}</span>
-      <details className={`chat-system-event chat-system-event-${msg.tone} chat-system-event-${msg.event}`}>
+      <span
+        className={`chat-system-event-rail-dot chat-system-event-rail-dot-${msg.tone}`}
+      >
+        {icon}
+      </span>
+      <details
+        className={`chat-system-event chat-system-event-${msg.tone} chat-system-event-${msg.event}`}
+      >
         <summary className="chat-system-event-summary">
           <span className="chat-system-event-label">{msg.title}</span>
-          {msg.code && <span className="chat-system-event-code">{msg.code}</span>}
+          {msg.code && (
+            <span className="chat-system-event-code">{msg.code}</span>
+          )}
         </summary>
-        {msg.content && <div className="chat-system-event-content">{msg.content}</div>}
+        {msg.content && (
+          <div className="chat-system-event-content">{msg.content}</div>
+        )}
       </details>
     </div>
   );
@@ -117,12 +155,7 @@ export const MessageList = memo(function MessageList({
           );
         }
         if (k === "tool_group") {
-          return (
-            <ToolGroupRow
-              key={msg.id}
-              msg={msg as ToolGroupMessage}
-            />
-          );
+          return <ToolGroupRow key={msg.id} msg={msg as ToolGroupMessage} />;
         }
         if (k === "subagent") {
           return (
@@ -141,10 +174,14 @@ export const MessageList = memo(function MessageList({
           );
         }
         if (k === "system_status") {
-          return <SystemStatusRow key={msg.id} msg={msg as SystemStatusMessage} />;
+          return (
+            <SystemStatusRow key={msg.id} msg={msg as SystemStatusMessage} />
+          );
         }
         if (k === "system_event") {
-          return <SystemEventRow key={msg.id} msg={msg as SystemEventMessage} />;
+          return (
+            <SystemEventRow key={msg.id} msg={msg as SystemEventMessage} />
+          );
         }
         if (k === "live_assistant") {
           const liveMsg = msg as Extract<

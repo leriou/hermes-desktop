@@ -50,9 +50,13 @@ describe("ToolGroupRow", () => {
     expect(screen.getByText("npm test")).toBeInTheDocument();
     expect(screen.getByText("npm run typecheck:web")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "查看第 1 次 shell 调用详情" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "查看第 1 次 shell 调用详情" }),
+    );
 
-    expect(screen.getByRole("dialog", { name: "shell 调用详情" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "shell 调用详情" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("call-1")).toBeInTheDocument();
     expect(screen.getByText("succeeded")).toBeInTheDocument();
     expect(screen.getByText("Args")).toBeInTheDocument();
@@ -76,7 +80,9 @@ describe("ToolGroupRow", () => {
     };
 
     render(<ToolGroupRow msg={pendingGroup} />);
-    fireEvent.click(screen.getByRole("button", { name: "查看第 1 次 shell 调用详情" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "查看第 1 次 shell 调用详情" }),
+    );
 
     expect(screen.getByText("running")).toBeInTheDocument();
     expect(screen.getByText("Progress")).toBeInTheDocument();

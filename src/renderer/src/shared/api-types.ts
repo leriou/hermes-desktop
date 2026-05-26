@@ -110,7 +110,11 @@ export interface KanbanCreateTaskInput {
 }
 
 export type KanbanResult = { success: boolean; error?: string };
-export type KanbanDataResult<T> = { success: boolean; data?: T; error?: string };
+export type KanbanDataResult<T> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+};
 
 // ── Result helpers ────────────────────────────────────────────────────────
 
@@ -131,7 +135,9 @@ export interface HermesAPI {
   validateHermesHome: (dir: string) => Promise<boolean>;
   adoptHermesHome: (dir: string) => Promise<boolean>;
   quitApp: () => Promise<void>;
-  onInstallProgress: (callback: (progress: InstallProgress) => void) => () => void;
+  onInstallProgress: (
+    callback: (progress: InstallProgress) => void,
+  ) => () => void;
 
   // Hermes engine info
   getHermesVersion: () => Promise<string | null>;
@@ -153,15 +159,24 @@ export interface HermesAPI {
   getConfig: (key: string, profile?: string) => Promise<string | null>;
   setConfig: (key: string, value: string, profile?: string) => Promise<boolean>;
   getHermesHome: (profile?: string) => Promise<string>;
-  getModelConfig: (profile?: string) => Promise<{ provider: string; model: string; baseUrl: string }>;
-  getModelAliases: (profile?: string) => Promise<{
-    name: string;
-    model: string;
-    provider: string;
-    baseUrl: string;
-    contextLength?: number;
-  }[]>;
-  setModelConfig: (provider: string, model: string, baseUrl: string, profile?: string) => Promise<boolean>;
+  getModelConfig: (
+    profile?: string,
+  ) => Promise<{ provider: string; model: string; baseUrl: string }>;
+  getModelAliases: (profile?: string) => Promise<
+    {
+      name: string;
+      model: string;
+      provider: string;
+      baseUrl: string;
+      contextLength?: number;
+    }[]
+  >;
+  setModelConfig: (
+    provider: string,
+    model: string,
+    baseUrl: string,
+    profile?: string,
+  ) => Promise<boolean>;
 
   // Connection mode (local / remote / ssh)
   isRemoteMode: () => Promise<boolean>;
@@ -180,10 +195,27 @@ export interface HermesAPI {
       localPort: number;
     };
   }>;
-  setConnectionConfig: (mode: "local" | "remote" | "ssh", remoteUrl: string, apiKey?: string) => Promise<boolean>;
-  setSshConfig: (host: string, port: number, username: string, keyPath: string, remotePort: number, localPort: number) => Promise<boolean>;
+  setConnectionConfig: (
+    mode: "local" | "remote" | "ssh",
+    remoteUrl: string,
+    apiKey?: string,
+  ) => Promise<boolean>;
+  setSshConfig: (
+    host: string,
+    port: number,
+    username: string,
+    keyPath: string,
+    remotePort: number,
+    localPort: number,
+  ) => Promise<boolean>;
   testRemoteConnection: (url: string, apiKey?: string) => Promise<boolean>;
-  testSshConnection: (host: string, port: number, username: string, keyPath: string, remotePort: number) => Promise<boolean>;
+  testSshConnection: (
+    host: string,
+    port: number,
+    username: string,
+    keyPath: string,
+    remotePort: number,
+  ) => Promise<boolean>;
   isSshTunnelActive: () => Promise<boolean>;
   startSshTunnel: () => Promise<boolean>;
   stopSshTunnel: () => Promise<boolean>;
@@ -199,10 +231,18 @@ export interface HermesAPI {
   ) => Promise<{ response: string; sessionId?: string }>;
   abortChat: () => Promise<void>;
   copyToClipboard: (text: string) => Promise<void>;
-  onContextMenuCopyChat: (callback: (format: "text" | "markdown") => void) => () => void;
-  onContextMenuSelectBubble: (callback: (point: { x: number; y: number }) => void) => () => void;
+  onContextMenuCopyChat: (
+    callback: (format: "text" | "markdown") => void,
+  ) => () => void;
+  onContextMenuSelectBubble: (
+    callback: (point: { x: number; y: number }) => void,
+  ) => () => void;
   getPathForFile: (file: File) => string;
-  stageAttachment: (sessionId: string, filename: string, base64Bytes: string) => Promise<string>;
+  stageAttachment: (
+    sessionId: string,
+    filename: string,
+    base64Bytes: string,
+  ) => Promise<string>;
   clearStagedAttachments: (sessionId: string) => Promise<void>;
   discoverProviderModels: (
     provider: string,
@@ -217,14 +257,16 @@ export interface HermesAPI {
   onChatChunk: (callback: (chunk: string) => void) => () => void;
   onChatDone: (callback: (sessionId?: string) => void) => () => void;
   onChatToolProgress: (callback: (tool: string) => void) => () => void;
-  onChatUsage: (callback: (usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    cost?: number;
-    rateLimitRemaining?: number;
-    rateLimitReset?: number;
-  }) => void) => () => void;
+  onChatUsage: (
+    callback: (usage: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      cost?: number;
+      rateLimitRemaining?: number;
+      rateLimitReset?: number;
+    }) => void,
+  ) => () => void;
   onChatUsageReset?: (callback: () => void) => () => void;
   onChatError: (callback: (error: string) => void) => () => void;
 
@@ -235,53 +277,124 @@ export interface HermesAPI {
 
   // Platform toggles
   getPlatformEnabled: (profile?: string) => Promise<Record<string, boolean>>;
-  setPlatformEnabled: (platform: string, enabled: boolean, profile?: string) => Promise<boolean>;
+  setPlatformEnabled: (
+    platform: string,
+    enabled: boolean,
+    profile?: string,
+  ) => Promise<boolean>;
 
   // Sessions
-  listSessions: (profile?: string, limit?: number, offset?: number) => Promise<Array<{
-    id: string;
-    source: string;
-    startedAt: number;
-    endedAt: number | null;
-    messageCount: number;
-    model: string;
-    title: string | null;
-    preview: string;
-  }>>;
-  getSessionMessages: (sessionId: string, profile?: string) => Promise<Array<
-    | { kind: "user"; id: number; content: string; timestamp: number; attachments?: Attachment[] }
-    | { kind: "assistant"; id: number; content: string; timestamp: number; attachments?: Attachment[] }
-    | { kind: "reasoning"; id: number; assistantId: number; text: string; timestamp: number }
-    | { kind: "tool_call"; id: number; assistantId: number; callId: string; name: string; args: string; timestamp: number }
-    | { kind: "tool_result"; id: number; callId: string; name: string; content: string; timestamp: number; attachments?: Attachment[] }
-  >>;
+  listSessions: (
+    profile?: string,
+    limit?: number,
+    offset?: number,
+  ) => Promise<
+    Array<{
+      id: string;
+      source: string;
+      startedAt: number;
+      endedAt: number | null;
+      messageCount: number;
+      model: string;
+      title: string | null;
+      preview: string;
+    }>
+  >;
+  getSessionMessages: (
+    sessionId: string,
+    profile?: string,
+  ) => Promise<
+    Array<
+      | {
+          kind: "user";
+          id: number;
+          content: string;
+          timestamp: number;
+          attachments?: Attachment[];
+        }
+      | {
+          kind: "assistant";
+          id: number;
+          content: string;
+          timestamp: number;
+          attachments?: Attachment[];
+        }
+      | {
+          kind: "reasoning";
+          id: number;
+          assistantId: number;
+          text: string;
+          timestamp: number;
+        }
+      | {
+          kind: "tool_call";
+          id: number;
+          assistantId: number;
+          callId: string;
+          name: string;
+          args: string;
+          timestamp: number;
+        }
+      | {
+          kind: "tool_result";
+          id: number;
+          callId: string;
+          name: string;
+          content: string;
+          timestamp: number;
+          attachments?: Attachment[];
+        }
+    >
+  >;
 
   // Profiles
-  listProfiles: () => Promise<Array<{
-    name: string;
-    path: string;
-    isDefault: boolean;
-    isActive: boolean;
-    model: string;
-    provider: string;
-    hasEnv: boolean;
-    hasSoul: boolean;
-    skillCount: number;
-    gatewayRunning: boolean;
-  }>>;
+  listProfiles: () => Promise<
+    Array<{
+      name: string;
+      path: string;
+      isDefault: boolean;
+      isActive: boolean;
+      model: string;
+      provider: string;
+      hasEnv: boolean;
+      hasSoul: boolean;
+      skillCount: number;
+      gatewayRunning: boolean;
+    }>
+  >;
   createProfile: (name: string, clone: boolean) => Promise<Result>;
   deleteProfile: (name: string) => Promise<Result>;
   setActiveProfile: (name: string) => Promise<boolean>;
 
   // Memory
   readMemory: (profile?: string) => Promise<{
-    memory: { content: string; exists: boolean; lastModified: number | null; entries: any[]; charCount: number; charLimit: number };
-    user: { content: string; exists: boolean; lastModified: number | null; charCount: number; charLimit: number };
+    memory: {
+      content: string;
+      exists: boolean;
+      lastModified: number | null;
+      entries: any[];
+      charCount: number;
+      charLimit: number;
+    };
+    user: {
+      content: string;
+      exists: boolean;
+      lastModified: number | null;
+      charCount: number;
+      charLimit: number;
+    };
     stats: { totalSessions: number; totalMessages: number };
   }>;
   addMemoryEntry: (content: string, profile?: string) => Promise<Result>;
-  updateMemoryEntry: (index: number, content: string, profile?: string) => Promise<Result>;
-  removeMemoryEntry: (index: number, profile?: string) => Promise<boolean | Result>;
+  updateMemoryEntry: (
+    index: number,
+    content: string,
+    profile?: string,
+  ) => Promise<Result>;
+  removeMemoryEntry: (
+    index: number,
+    profile?: string,
+  ) => Promise<boolean | Result>;
   writeUserProfile: (content: string, profile?: string) => Promise<Result>;
   writeMemory: (content: string, profile?: string) => Promise<Result>;
 
@@ -291,90 +404,164 @@ export interface HermesAPI {
   resetSoul: (profile?: string) => Promise<string>;
 
   // Tools
-  getToolsets: (profile?: string) => Promise<Array<{ key: string; label: string; description: string; enabled: boolean; source: string }>>;
-  setToolsetEnabled: (key: string, enabled: boolean, profile?: string) => Promise<boolean | Result>;
+  getToolsets: (
+    profile?: string,
+  ) => Promise<
+    Array<{
+      key: string;
+      label: string;
+      description: string;
+      enabled: boolean;
+      source: string;
+    }>
+  >;
+  setToolsetEnabled: (
+    key: string,
+    enabled: boolean,
+    profile?: string,
+  ) => Promise<boolean | Result>;
 
   // Plugins
-  getPlugins: (profile?: string) => Promise<Array<{ name: string; description: string; enabled: boolean; version?: string; source?: string }>>;
-  setPluginEnabled: (name: string, enabled: boolean, profile?: string) => Promise<Result>;
+  getPlugins: (
+    profile?: string,
+  ) => Promise<
+    Array<{
+      name: string;
+      description: string;
+      enabled: boolean;
+      version?: string;
+      source?: string;
+    }>
+  >;
+  setPluginEnabled: (
+    name: string,
+    enabled: boolean,
+    profile?: string,
+  ) => Promise<Result>;
 
   // Skills
-  listInstalledSkills: (profile?: string) => Promise<Array<{ name: string; category: string; description: string; path: string }>>;
-  listBundledSkills: (profile?: string) => Promise<Array<{
-    name: string;
-    description: string;
-    category: string;
-    source: string;
-    installed: boolean;
-  }>>;
+  listInstalledSkills: (
+    profile?: string,
+  ) => Promise<
+    Array<{ name: string; category: string; description: string; path: string }>
+  >;
+  listBundledSkills: (profile?: string) => Promise<
+    Array<{
+      name: string;
+      description: string;
+      category: string;
+      source: string;
+      installed: boolean;
+    }>
+  >;
   getSkillContent: (skillPath: string) => Promise<string>;
   installSkill: (identifier: string, profile?: string) => Promise<Result>;
   uninstallSkill: (name: string, profile?: string) => Promise<Result>;
 
   // Session cache
-  listCachedSessions: (profile?: string, limit?: number, offset?: number) => Promise<Array<{
-    id: string;
-    title: string;
-    startedAt: number;
-    source: string;
-    messageCount: number;
-    model: string;
-  }>>;
-  syncSessionCache: (profile?: string) => Promise<Array<{
-    id: string;
-    title: string;
-    startedAt: number;
-    source: string;
-    messageCount: number;
-    model: string;
-  }>>;
+  listCachedSessions: (
+    profile?: string,
+    limit?: number,
+    offset?: number,
+  ) => Promise<
+    Array<{
+      id: string;
+      title: string;
+      startedAt: number;
+      source: string;
+      messageCount: number;
+      model: string;
+    }>
+  >;
+  syncSessionCache: (profile?: string) => Promise<
+    Array<{
+      id: string;
+      title: string;
+      startedAt: number;
+      source: string;
+      messageCount: number;
+      model: string;
+    }>
+  >;
   updateSessionTitle: (sessionId: string, title: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
 
   // Session search
-  searchSessions: (query: string, limit?: number, profile?: string) => Promise<Array<{
-    sessionId: string;
-    title: string | null;
-    startedAt: number;
-    source: string;
-    messageCount: number;
-    model: string;
-    snippet: string;
-  }>>;
+  searchSessions: (
+    query: string,
+    limit?: number,
+    profile?: string,
+  ) => Promise<
+    Array<{
+      sessionId: string;
+      title: string | null;
+      startedAt: number;
+      source: string;
+      messageCount: number;
+      model: string;
+      snippet: string;
+    }>
+  >;
 
   // Credential Pool (profile-aware)
-  getCredentialPool: (profile?: string) => Promise<Record<string, Array<{ key: string; label: string }>>>;
-  setCredentialPool: (provider: string, entries: Array<{ key: string; label: string }>, profile?: string) => Promise<boolean | Result>;
+  getCredentialPool: (
+    profile?: string,
+  ) => Promise<Record<string, Array<{ key: string; label: string }>>>;
+  setCredentialPool: (
+    provider: string,
+    entries: Array<{ key: string; label: string }>,
+    profile?: string,
+  ) => Promise<boolean | Result>;
 
   // Models
-  listModels: (profile?: string) => Promise<Array<{
-    id: string;
-    name: string;
-    provider: string;
-    model: string;
-    baseUrl: string;
-    createdAt?: number;
-    aliases?: string[];
-  }>>;
+  listModels: (profile?: string) => Promise<
+    Array<{
+      id: string;
+      name: string;
+      provider: string;
+      model: string;
+      baseUrl: string;
+      createdAt?: number;
+      aliases?: string[];
+    }>
+  >;
   listTemplates: () => Promise<any>;
-  addModel: (name: string, provider: string, model: string, baseUrl: string, alias?: string, profile?: string) => Promise<Result | {
-    id: string;
-    name: string;
-    provider: string;
-    model: string;
-    baseUrl: string;
-    createdAt: number;
-  }>;
+  addModel: (
+    name: string,
+    provider: string,
+    model: string,
+    baseUrl: string,
+    alias?: string,
+    profile?: string,
+  ) => Promise<
+    | Result
+    | {
+        id: string;
+        name: string;
+        provider: string;
+        model: string;
+        baseUrl: string;
+        createdAt: number;
+      }
+  >;
   removeModel: (id: string, profile?: string) => Promise<boolean | Result>;
-  updateModel: (id: string, fields: Record<string, string>, profile?: string) => Promise<boolean | Result>;
+  updateModel: (
+    id: string,
+    fields: Record<string, string>,
+    profile?: string,
+  ) => Promise<boolean | Result>;
 
   // Updates
   checkForUpdates: () => Promise<string | null>;
   downloadUpdate: () => Promise<boolean>;
   installUpdate: () => Promise<void>;
   getAppVersion: () => Promise<string>;
-  onUpdateAvailable: (callback: (info: { version: string; releaseNotes: string }) => void) => () => void;
-  onUpdateDownloadProgress: (callback: (info: { percent: number }) => void) => () => void;
+  onUpdateAvailable: (
+    callback: (info: { version: string; releaseNotes: string }) => void,
+  ) => () => void;
+  onUpdateDownloadProgress: (
+    callback: (info: { percent: number }) => void,
+  ) => () => void;
   onUpdateDownloaded: (callback: () => void) => () => void;
   onUpdateError: (callback: (message: string) => void) => () => void;
 
@@ -383,44 +570,76 @@ export interface HermesAPI {
   onMenuSearchSessions: (callback: () => void) => () => void;
 
   // Cron Jobs
-  listCronJobs: (includeDisabled?: boolean, profile?: string) => Promise<Array<{
-    id: string;
-    name: string;
-    schedule: string;
-    prompt: string;
-    state: "active" | "paused" | "completed";
-    enabled: boolean;
-    next_run_at: string | null;
-    last_run_at: string | null;
-    last_status: string | null;
-    last_error: string | null;
-    repeat: { times: number | null; completed: number } | null;
-    deliver: string[];
-    skills: string[];
-    script: string | null;
-  }>>;
-  createCronJob: (schedule: string, prompt?: string, name?: string, deliver?: string, profile?: string) => Promise<Result>;
-  updateCronJob: (jobId: string, schedule?: string, prompt?: string, name?: string, deliver?: string, profile?: string) => Promise<Result>;
+  listCronJobs: (
+    includeDisabled?: boolean,
+    profile?: string,
+  ) => Promise<
+    Array<{
+      id: string;
+      name: string;
+      schedule: string;
+      prompt: string;
+      state: "active" | "paused" | "completed";
+      enabled: boolean;
+      next_run_at: string | null;
+      last_run_at: string | null;
+      last_status: string | null;
+      last_error: string | null;
+      repeat: { times: number | null; completed: number } | null;
+      deliver: string[];
+      skills: string[];
+      script: string | null;
+    }>
+  >;
+  createCronJob: (
+    schedule: string,
+    prompt?: string,
+    name?: string,
+    deliver?: string,
+    profile?: string,
+  ) => Promise<Result>;
+  updateCronJob: (
+    jobId: string,
+    schedule?: string,
+    prompt?: string,
+    name?: string,
+    deliver?: string,
+    profile?: string,
+  ) => Promise<Result>;
   removeCronJob: (jobId: string, profile?: string) => Promise<Result>;
   pauseCronJob: (jobId: string, profile?: string) => Promise<Result>;
   resumeCronJob: (jobId: string, profile?: string) => Promise<Result>;
   triggerCronJob: (jobId: string, profile?: string) => Promise<Result>;
-  listCronHistory: (profile?: string) => Promise<Array<{
-    jobId: string;
-    jobName: string;
-    runAt: string;
-    status: "ok" | "fail" | "empty";
-    size: number;
-    path: string;
-  }>>;
+  listCronHistory: (profile?: string) => Promise<
+    Array<{
+      jobId: string;
+      jobName: string;
+      runAt: string;
+      status: "ok" | "fail" | "empty";
+      size: number;
+      path: string;
+    }>
+  >;
   readCronOutput: (path: string, profile?: string) => Promise<string>;
 
   // Kanban
-  kanbanListBoards: (includeArchived?: boolean, profile?: string) => Promise<KanbanDataResult<KanbanBoard[]> & { unsupportedMode?: boolean }>;
+  kanbanListBoards: (
+    includeArchived?: boolean,
+    profile?: string,
+  ) => Promise<KanbanDataResult<KanbanBoard[]> & { unsupportedMode?: boolean }>;
   kanbanCurrentBoard: (profile?: string) => Promise<KanbanDataResult<string>>;
   kanbanSwitchBoard: (slug: string, profile?: string) => Promise<KanbanResult>;
-  kanbanCreateBoard: (slug: string, name?: string, switchAfter?: boolean, profile?: string) => Promise<KanbanResult>;
-  kanbanRemoveBoard: (slug: string, hardDelete?: boolean, profile?: string) => Promise<KanbanResult>;
+  kanbanCreateBoard: (
+    slug: string,
+    name?: string,
+    switchAfter?: boolean,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanRemoveBoard: (
+    slug: string,
+    hardDelete?: boolean,
+    profile?: string,
+  ) => Promise<KanbanResult>;
   kanbanListTasks: (filters?: {
     status?: string;
     assignee?: string;
@@ -428,44 +647,93 @@ export interface HermesAPI {
     includeArchived?: boolean;
     profile?: string;
   }) => Promise<KanbanDataResult<KanbanTask[]>>;
-  kanbanGetTask: (taskId: string, profile?: string) => Promise<KanbanDataResult<KanbanTaskDetail>>;
-  kanbanCreateTask: (input: KanbanCreateTaskInput, profile?: string) => Promise<KanbanDataResult<{ id: string }>>;
+  kanbanGetTask: (
+    taskId: string,
+    profile?: string,
+  ) => Promise<KanbanDataResult<KanbanTaskDetail>>;
+  kanbanCreateTask: (
+    input: KanbanCreateTaskInput,
+    profile?: string,
+  ) => Promise<KanbanDataResult<{ id: string }>>;
   selectFolder: () => Promise<string | null>;
   selectHermesFolder: () => Promise<string | null>;
-  kanbanAssignTask: (taskId: string, assignee: string | null, profile?: string) => Promise<KanbanResult>;
-  kanbanCompleteTask: (taskId: string, result?: string, profile?: string) => Promise<KanbanResult>;
-  kanbanBlockTask: (taskId: string, reason?: string, profile?: string) => Promise<KanbanResult>;
-  kanbanUnblockTask: (taskId: string, profile?: string) => Promise<KanbanResult>;
-  kanbanArchiveTask: (taskId: string, profile?: string) => Promise<KanbanResult>;
-  kanbanSpecifyTask: (taskId: string, profile?: string) => Promise<KanbanResult>;
-  kanbanReclaimTask: (taskId: string, reason?: string, profile?: string) => Promise<KanbanResult>;
-  kanbanCommentTask: (taskId: string, body: string, profile?: string) => Promise<KanbanResult>;
-  kanbanDispatchOnce: (dryRun?: boolean, profile?: string) => Promise<KanbanDataResult<unknown>>;
+  kanbanAssignTask: (
+    taskId: string,
+    assignee: string | null,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanCompleteTask: (
+    taskId: string,
+    result?: string,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanBlockTask: (
+    taskId: string,
+    reason?: string,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanUnblockTask: (
+    taskId: string,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanArchiveTask: (
+    taskId: string,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanSpecifyTask: (
+    taskId: string,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanReclaimTask: (
+    taskId: string,
+    reason?: string,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanCommentTask: (
+    taskId: string,
+    body: string,
+    profile?: string,
+  ) => Promise<KanbanResult>;
+  kanbanDispatchOnce: (
+    dryRun?: boolean,
+    profile?: string,
+  ) => Promise<KanbanDataResult<unknown>>;
 
   // Shell
   openExternal: (url: string) => Promise<void>;
 
   // Backup / Import
-  runHermesBackup: (profile?: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+  runHermesBackup: (
+    profile?: string,
+  ) => Promise<{ success: boolean; path?: string; error?: string }>;
   runHermesImport: (archivePath: string, profile?: string) => Promise<Result>;
 
   // Debug dump
   runHermesDump: () => Promise<string>;
 
   // Memory providers
-  discoverMemoryProviders: (profile?: string) => Promise<Array<{
-    name: string;
-    description: string;
-    installed: boolean;
-    active: boolean;
-    envVars: string[];
-  }>>;
+  discoverMemoryProviders: (profile?: string) => Promise<
+    Array<{
+      name: string;
+      description: string;
+      installed: boolean;
+      active: boolean;
+      envVars: string[];
+    }>
+  >;
 
   // MCP servers
-  listMcpServers: (profile?: string) => Promise<Array<{ name: string; type: string; enabled: boolean; detail: string }>>;
+  listMcpServers: (
+    profile?: string,
+  ) => Promise<
+    Array<{ name: string; type: string; enabled: boolean; detail: string }>
+  >;
 
   // Log viewer
-  readLogs: (logFile?: string, lines?: number) => Promise<{ content: string; path: string }>;
+  readLogs: (
+    logFile?: string,
+    lines?: number,
+  ) => Promise<{ content: string; path: string }>;
 
   // Routing / Fallback config
   getRoutingConfig: (profile?: string) => Promise<{
@@ -485,12 +753,18 @@ export interface HermesAPI {
   ) => Promise<boolean>;
 
   // Config YAML editor
-  readConfigYaml: (profile?: string) => Promise<{ content: string; path: string }>;
+  readConfigYaml: (
+    profile?: string,
+  ) => Promise<{ content: string; path: string }>;
   writeConfigYaml: (content: string, profile?: string) => Promise<boolean>;
 
   // TUI Gateway — session management
   tuiSlashExec: (sessionId: string, command: string) => Promise<any>;
-  tuiCommandDispatch: (sessionId: string, name: string, arg?: string) => Promise<any>;
+  tuiCommandDispatch: (
+    sessionId: string,
+    name: string,
+    arg?: string,
+  ) => Promise<any>;
   tuiCompress: (sessionId: string, focusTopic?: string) => Promise<any>;
   tuiSetGoal: (sessionId: string, goal: string) => Promise<any>;
   tuiSetModel: (sessionId: string, model: string) => Promise<any>;
@@ -498,19 +772,45 @@ export interface HermesAPI {
   tuiCreateSession: (model?: string) => Promise<{ session_id: string }>;
   tuiResumeSession: (sessionId: string) => Promise<any>;
   tuiSessionHistory: (sessionId: string) => Promise<any>;
-  tuiSubmitPrompt: (sessionId: string, text: string, profile?: string) => Promise<void>;
+  tuiSubmitPrompt: (
+    sessionId: string,
+    text: string,
+    profile?: string,
+  ) => Promise<void>;
   tuiInterrupt: (sessionId: string) => Promise<void>;
   tuiUndo: (sessionId: string) => Promise<void>;
 
   // TUI Gateway — tools, approval, session status, completion
   tuiToolsList: (sessionId?: string) => Promise<any>;
   tuiToolsShow: (name?: string, sessionId?: string) => Promise<any>;
-  tuiToolsConfigure: (name: string, enabled: boolean, sessionId?: string) => Promise<any>;
-  tuiApprovalRespond: (sessionId: string, response: string, all?: boolean) => Promise<any>;
-  tuiClarifyRespond: (sessionId: string, answer: string, requestId?: string) => Promise<any>;
-  tuiSudoRespond: (sessionId: string, password: string, requestId?: string) => Promise<any>;
-  tuiSecretRespond: (sessionId: string, value: string, requestId?: string) => Promise<any>;
-  tuiSessionTitle: (sessionId: string) => Promise<{ title: string; session_key: string }>;
+  tuiToolsConfigure: (
+    name: string,
+    enabled: boolean,
+    sessionId?: string,
+  ) => Promise<any>;
+  tuiApprovalRespond: (
+    sessionId: string,
+    response: string,
+    all?: boolean,
+  ) => Promise<any>;
+  tuiClarifyRespond: (
+    sessionId: string,
+    answer: string,
+    requestId?: string,
+  ) => Promise<any>;
+  tuiSudoRespond: (
+    sessionId: string,
+    password: string,
+    requestId?: string,
+  ) => Promise<any>;
+  tuiSecretRespond: (
+    sessionId: string,
+    value: string,
+    requestId?: string,
+  ) => Promise<any>;
+  tuiSessionTitle: (
+    sessionId: string,
+  ) => Promise<{ title: string; session_key: string }>;
   tuiSessionStatus: (sessionId: string) => Promise<any>;
   tuiSessionUsage: (sessionId: string) => Promise<any>;
   tuiSessionBranch: (sessionId: string, name?: string) => Promise<any>;
@@ -518,5 +818,7 @@ export interface HermesAPI {
   tuiCommandsCatalog: () => Promise<any>;
   voiceTts: (text: string) => Promise<any>;
 
-  onTuiEvent: (callback: (params: { type: string; payload: any; sid?: string }) => void) => () => void;
+  onTuiEvent: (
+    callback: (params: { type: string; payload: any; sid?: string }) => void,
+  ) => () => void;
 }

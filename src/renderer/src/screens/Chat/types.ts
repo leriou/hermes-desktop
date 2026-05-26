@@ -1,7 +1,4 @@
-export type {
-  Attachment,
-  AttachmentKind,
-} from "@shared/attachments";
+export type { Attachment, AttachmentKind } from "@shared/attachments";
 
 import type { Attachment } from "@shared/attachments";
 
@@ -86,7 +83,12 @@ export interface SystemEventMessage {
   id: string;
   kind: "system_event";
   role: "system";
-  event: "model_switch" | "context_compress" | "provider_error" | "gateway_error" | "status";
+  event:
+    | "model_switch"
+    | "context_compress"
+    | "provider_error"
+    | "gateway_error"
+    | "status";
   tone: "info" | "success" | "warning" | "error";
   title: string;
   content?: string;

@@ -1,4 +1,16 @@
-import { addMemoryEntry, discoverMemoryProviders, getConfig, getEnv, openExternal, readMemory, removeMemoryEntry, setConfig, setEnv, updateMemoryEntry, writeUserProfile } from "@renderer/lib/hermes-tauri";
+import {
+  addMemoryEntry,
+  discoverMemoryProviders,
+  getConfig,
+  getEnv,
+  openExternal,
+  readMemory,
+  removeMemoryEntry,
+  setConfig,
+  setEnv,
+  updateMemoryEntry,
+  writeUserProfile,
+} from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash, Refresh } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
@@ -133,10 +145,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
   async function handleAddEntry(): Promise<void> {
     if (!newEntry.trim()) return;
     setError("");
-    const result = await addMemoryEntry(
-      newEntry.trim(),
-      profile,
-    );
+    const result = await addMemoryEntry(newEntry.trim(), profile);
     if (result.success) {
       setNewEntry("");
       setShowAdd(false);
@@ -171,10 +180,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
 
   async function handleSaveUserProfile(): Promise<void> {
     setError("");
-    const result = await writeUserProfile(
-      userContent,
-      profile,
-    );
+    const result = await writeUserProfile(userContent, profile);
     if (result.success) {
       setUserEditing(false);
       setUserSaved(true);
@@ -500,9 +506,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
                       <button
                         className="btn-ghost"
                         style={{ padding: 2, opacity: 0.6 }}
-                        onClick={() =>
-                          openExternal(PROVIDER_URLS[p.name])
-                        }
+                        onClick={() => openExternal(PROVIDER_URLS[p.name])}
                         title={t("memory.openProviderWebsite")}
                       >
                         <ExternalLink size={12} />
@@ -565,11 +569,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
                         className="btn btn-secondary btn-sm"
                         onClick={async () => {
                           setActivating(p.name);
-                          await setConfig(
-                            "memory.provider",
-                            "",
-                            profile,
-                          );
+                          await setConfig("memory.provider", "", profile);
                           setMemoryProvider(null);
                           setProviders((prev) =>
                             prev.map((pr) => ({ ...pr, active: false })),
@@ -585,11 +585,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
                         className="btn btn-primary btn-sm"
                         onClick={async () => {
                           setActivating(p.name);
-                          await setConfig(
-                            "memory.provider",
-                            p.name,
-                            profile,
-                          );
+                          await setConfig("memory.provider", p.name, profile);
                           setMemoryProvider(p.name);
                           setProviders((prev) =>
                             prev.map((pr) => ({

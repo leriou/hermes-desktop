@@ -9,23 +9,37 @@ describe("InteractionCenter", () => {
     const { container } = render(
       <InteractionCenter
         pendingSudo={{ requestId: "sudo-1" }}
-        pendingSecret={{ requestId: "secret-1", envVar: "OPENAI_API_KEY", prompt: "API key" }}
+        pendingSecret={{
+          requestId: "secret-1",
+          envVar: "OPENAI_API_KEY",
+          prompt: "API key",
+        }}
         onSudoRespond={onSudoRespond}
         onSecretRespond={onSecretRespond}
       />,
     );
 
     expect(container.querySelector(".chat-interaction-center")).not.toBeNull();
-    expect(container.querySelectorAll(".chat-interaction-card")).toHaveLength(2);
+    expect(container.querySelectorAll(".chat-interaction-card")).toHaveLength(
+      2,
+    );
 
-    const sudoInput = container.querySelector(".chat-sudo-card input") as HTMLInputElement;
+    const sudoInput = container.querySelector(
+      ".chat-sudo-card input",
+    ) as HTMLInputElement;
     fireEvent.change(sudoInput, { target: { value: "pw" } });
-    fireEvent.click(container.querySelector(".chat-sudo-card button") as HTMLButtonElement);
+    fireEvent.click(
+      container.querySelector(".chat-sudo-card button") as HTMLButtonElement,
+    );
     expect(onSudoRespond).toHaveBeenCalledWith("pw");
 
-    const secretInput = container.querySelector(".chat-secret-card input") as HTMLInputElement;
+    const secretInput = container.querySelector(
+      ".chat-secret-card input",
+    ) as HTMLInputElement;
     fireEvent.change(secretInput, { target: { value: "secret" } });
-    fireEvent.click(container.querySelector(".chat-secret-card button") as HTMLButtonElement);
+    fireEvent.click(
+      container.querySelector(".chat-secret-card button") as HTMLButtonElement,
+    );
     expect(onSecretRespond).toHaveBeenCalledWith("secret");
   });
 

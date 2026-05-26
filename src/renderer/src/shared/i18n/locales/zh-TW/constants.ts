@@ -34,6 +34,13 @@ export default {
   themeSystem: "跟隨系統",
   themeLight: "淺色",
   themeDark: "深色",
+
+  // Markdown styles
+  mdStyleDefault: "Default",
+  mdStyleNotion: "Notion",
+  mdStyleMaterial: "Material",
+  mdStyleNightowl: "Night Owl",
+  mdStyleSolarized: "Solarized",
   // Settings section titles
   sectionLlmProviders: "LLM 供應商",
   sectionToolApiKeys: "工具 API Key",

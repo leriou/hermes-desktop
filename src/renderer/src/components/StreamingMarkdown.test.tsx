@@ -6,7 +6,9 @@ describe("StreamingMarkdown", () => {
   it("renders a complete table block before the whole message finishes", () => {
     const { container } = render(
       <StreamingMarkdown>
-        {"before\n\n| Name | Status |\n| --- | --- |\n| build | pass |\n\ncontinuing..."}
+        {
+          "before\n\n| Name | Status |\n| --- | --- |\n| build | pass |\n\ncontinuing..."
+        }
       </StreamingMarkdown>,
     );
 

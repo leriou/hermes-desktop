@@ -4,7 +4,8 @@ import { ApprovalModal } from "./ApprovalModal";
 import { DEFAULT_APPROVAL_POLICY } from "./approvalPolicy";
 
 const request = {
-  command: "python scripts/migrate.py --force --project /Users/xmli/code/hermes-desktop",
+  command:
+    "python scripts/migrate.py --force --project /Users/xmli/code/hermes-desktop",
   description: "Run a local migration",
   patternKey: "python",
   patternKeys: ["python", "migration"],
@@ -28,9 +29,13 @@ describe("ApprovalModal", () => {
     );
 
     expect(container.querySelector(".chat-approval-modal")).not.toBeNull();
-    expect(container.querySelector(".chat-approval-command-full")?.textContent).toContain("--project");
+    expect(
+      container.querySelector(".chat-approval-command-full")?.textContent,
+    ).toContain("--project");
 
-    fireEvent.click(container.querySelector(".chat-approval-approve") as HTMLButtonElement);
+    fireEvent.click(
+      container.querySelector(".chat-approval-approve") as HTMLButtonElement,
+    );
     expect(onDecision).toHaveBeenCalledWith("approve", "manual");
   });
 
@@ -40,7 +45,12 @@ describe("ApprovalModal", () => {
     render(
       <ApprovalModal
         request={request}
-        policy={{ ...DEFAULT_APPROVAL_POLICY, mode: "countdown", timeoutSeconds: 2, timeoutAction: "deny" }}
+        policy={{
+          ...DEFAULT_APPROVAL_POLICY,
+          mode: "countdown",
+          timeoutSeconds: 2,
+          timeoutAction: "deny",
+        }}
         submitting={false}
         onDecision={onDecision}
         onPolicyChange={vi.fn()}
@@ -73,8 +83,14 @@ describe("ApprovalModal", () => {
       />,
     );
 
-    expect(container.querySelector(".chat-approval-judgment")?.textContent).toContain("Judgment");
-    expect(container.querySelector(".chat-approval-judgment")?.textContent).toContain("high");
-    expect(container.querySelector(".chat-approval-judgment")?.textContent).toContain("90%");
+    expect(
+      container.querySelector(".chat-approval-judgment")?.textContent,
+    ).toContain("Judgment");
+    expect(
+      container.querySelector(".chat-approval-judgment")?.textContent,
+    ).toContain("high");
+    expect(
+      container.querySelector(".chat-approval-judgment")?.textContent,
+    ).toContain("90%");
   });
 });

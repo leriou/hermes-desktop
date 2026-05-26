@@ -1,4 +1,3 @@
-
 import { getStoreItem, setStoreItem, removeStoreItem } from "./store";
 
 interface CacheEntry<T> {
@@ -87,7 +86,9 @@ export const cache = {
         evict();
         persistToLS();
       }
-    } catch { /* not serializable — don't cache */ }
+    } catch {
+      /* not serializable — don't cache */
+    }
     return data;
   },
 
@@ -105,7 +106,9 @@ export const cache = {
             evict();
             persistToLS();
           }
-        } catch { /* not serializable */ }
+        } catch {
+          /* not serializable */
+        }
       })
       .catch(() => {
         /* prefetch failures are silent */
@@ -125,7 +128,9 @@ export const cache = {
     try {
       const json = JSON.stringify(data);
       if (json.length > MAX_ENTRY_SIZE) return;
-    } catch { return; }
+    } catch {
+      return;
+    }
     store.set(key, { data, ts: Date.now(), ttl: ttlMs });
     evict();
     persistToLS();

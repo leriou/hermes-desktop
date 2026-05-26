@@ -1,4 +1,12 @@
-import { getAppVersion, getConfig, getHermesVersion, getToolsets, listInstalledSkills, readMemory, readSoul } from "@renderer/lib/hermes-tauri";
+import {
+  getAppVersion,
+  getConfig,
+  getHermesVersion,
+  getToolsets,
+  listInstalledSkills,
+  readMemory,
+  readSoul,
+} from "@renderer/lib/hermes-tauri";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useI18n } from "../../../components/useI18n";
 import { SLASH_COMMANDS } from "../slashCommands";
@@ -141,10 +149,7 @@ export function useLocalCommands({
         }
 
         case "/fast": {
-          const current = await getConfig(
-            "agent.service_tier",
-            profile,
-          );
+          const current = await getConfig("agent.service_tier", profile);
           const isOn = current === "fast" || current === "priority";
           const next = !isOn;
           await setFastMode(next);
@@ -201,7 +206,15 @@ export function useLocalCommands({
           return false;
       }
     },
-    [profile, t, setFastMode, onNewChat, onClear, addAgentMessage, addStatusMessage],
+    [
+      profile,
+      t,
+      setFastMode,
+      onNewChat,
+      onClear,
+      addAgentMessage,
+      addStatusMessage,
+    ],
   );
 
   return useMemo(

@@ -1,12 +1,14 @@
 export default {
   title: "Models",
-  subtitle: "Your configured model library. Models here appear in the chat model selector.",
+  subtitle:
+    "Your configured model library. Models here appear in the chat model selector.",
   searchPlaceholder: "Search models...",
   empty: "No models yet",
   noMatch: "No models match your search",
   emptyHint:
     "Use Providers > Model tab to discover and add models, or add manually below.",
-  addFromProviderHint: "To discover and add models from a provider, go to Providers > Model tab.",
+  addFromProviderHint:
+    "To discover and add models from a provider, go to Providers > Model tab.",
   deleteConfirm: "Delete?",
   displayName: "Display Name",
   modelId: "Model ID",

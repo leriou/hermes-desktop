@@ -1,4 +1,11 @@
-import { readMemory, readSoul, resetSoul, writeMemory, writeSoul, writeUserProfile } from "@renderer/lib/hermes-tauri";
+import {
+  readMemory,
+  readSoul,
+  resetSoul,
+  writeMemory,
+  writeSoul,
+  writeUserProfile,
+} from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Refresh } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
@@ -116,9 +123,7 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
         <div>
           <h2 className="soul-title">
             {t("persona.title")}
-            {saved && (
-              <span className="soul-saved">{t("common.saved")}</span>
-            )}
+            {saved && <span className="soul-saved">{t("common.saved")}</span>}
           </h2>
           <p className="soul-subtitle">{t("persona.subtitle")}</p>
         </div>
@@ -152,7 +157,9 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
           >
             {label}
             <span className="persona-tab-file">{file}</span>
-            <span className="persona-tab-chars">{charCounts[key].toLocaleString()}</span>
+            <span className="persona-tab-chars">
+              {charCounts[key].toLocaleString()}
+            </span>
           </button>
         ))}
       </div>

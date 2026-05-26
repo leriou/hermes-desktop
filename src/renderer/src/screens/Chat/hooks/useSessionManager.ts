@@ -1,5 +1,11 @@
 import { useState, useCallback, useRef } from "react";
-import type { ApprovalRequest, ChatMessage, ClarifyRequest, SudoRequest, SecretRequest } from "../types";
+import type {
+  ApprovalRequest,
+  ChatMessage,
+  ClarifyRequest,
+  SudoRequest,
+  SecretRequest,
+} from "../types";
 import type { SessionEntry, SessionStatus } from "../SessionSidebar";
 import { sessionDisplayPreview, sessionDisplayTitle } from "../sessionDisplay";
 
@@ -66,20 +72,28 @@ export function useSessionManager() {
   const [sessions, setSessions] = useState(initial.sessions);
   const [tabOrder, setTabOrder] = useState<string[]>(initial.tabOrder);
   const [activeTabId, setActiveTabId] = useState<string | null>(
-    initial.activeTabId
+    initial.activeTabId,
   );
   const sessionsRef = useRef(sessions);
   const activeTabIdRef = useRef<string | null>(initial.activeTabId);
 
-  const setSessionsState = useCallback((updater: React.SetStateAction<Map<string, SessionState>>) => {
-    setSessions((prev) => {
-      const next = typeof updater === "function"
-        ? (updater as (prev: Map<string, SessionState>) => Map<string, SessionState>)(prev)
-        : updater;
-      sessionsRef.current = next;
-      return next;
-    });
-  }, []);
+  const setSessionsState = useCallback(
+    (updater: React.SetStateAction<Map<string, SessionState>>) => {
+      setSessions((prev) => {
+        const next =
+          typeof updater === "function"
+            ? (
+                updater as (
+                  prev: Map<string, SessionState>,
+                ) => Map<string, SessionState>
+              )(prev)
+            : updater;
+        sessionsRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
 
   const setActiveTabIdState = useCallback((id: string | null) => {
     activeTabIdRef.current = id;
@@ -103,32 +117,38 @@ export function useSessionManager() {
     return id;
   }, [setActiveTabIdState, setSessionsState]);
 
-  const createTabWith = useCallback((initial: Partial<SessionState>): string => {
-    const id = generateTabId();
-    setSessionsState((prev) => {
-      const next = new Map(prev);
-      next.set(id, { ...emptySession(), ...initial });
-      return next;
-    });
-    setTabOrder((prev) => [id, ...prev]);
-    setActiveTabIdState(id);
-    return id;
-  }, [setActiveTabIdState, setSessionsState]);
+  const createTabWith = useCallback(
+    (initial: Partial<SessionState>): string => {
+      const id = generateTabId();
+      setSessionsState((prev) => {
+        const next = new Map(prev);
+        next.set(id, { ...emptySession(), ...initial });
+        return next;
+      });
+      setTabOrder((prev) => [id, ...prev]);
+      setActiveTabIdState(id);
+      return id;
+    },
+    [setActiveTabIdState, setSessionsState],
+  );
 
-  const switchTab = useCallback((id: string) => {
-    setActiveTabIdState(id);
-    setSessionsState((prev) => {
-      const existing = prev.get(id);
-      if (!existing || existing.unreadCount === 0) return prev;
-      const next = new Map(prev);
-      next.set(id, { ...existing, unreadCount: 0, updatedAt: Date.now() });
-      return next;
-    });
-    setTabOrder((prev) => {
-      if (prev[0] === id) return prev;
-      return [id, ...prev.filter((t) => t !== id)];
-    });
-  }, [setActiveTabIdState, setSessionsState]);
+  const switchTab = useCallback(
+    (id: string) => {
+      setActiveTabIdState(id);
+      setSessionsState((prev) => {
+        const existing = prev.get(id);
+        if (!existing || existing.unreadCount === 0) return prev;
+        const next = new Map(prev);
+        next.set(id, { ...existing, unreadCount: 0, updatedAt: Date.now() });
+        return next;
+      });
+      setTabOrder((prev) => {
+        if (prev[0] === id) return prev;
+        return [id, ...prev.filter((t) => t !== id)];
+      });
+    },
+    [setActiveTabIdState, setSessionsState],
+  );
 
   const closeTab = useCallback(
     (id: string) => {
@@ -154,7 +174,7 @@ export function useSessionManager() {
         return remaining;
       });
     },
-    [activeTabId, setActiveTabIdState, setSessionsState]
+    [activeTabId, setActiveTabIdState, setSessionsState],
   );
 
   const updateTab = useCallback(
@@ -163,11 +183,15 @@ export function useSessionManager() {
         const existing = prev.get(id);
         if (!existing) return prev;
         const next = new Map(prev);
-        next.set(id, { ...existing, ...patch, updatedAt: patch.updatedAt ?? Date.now() });
+        next.set(id, {
+          ...existing,
+          ...patch,
+          updatedAt: patch.updatedAt ?? Date.now(),
+        });
         return next;
       });
     },
-    [setSessionsState]
+    [setSessionsState],
   );
 
   const updateTabMessages = useCallback(
@@ -176,11 +200,15 @@ export function useSessionManager() {
         const existing = prev.get(id);
         if (!existing) return prev;
         const next = new Map(prev);
-        next.set(id, { ...existing, messages: updater(existing.messages), updatedAt: Date.now() });
+        next.set(id, {
+          ...existing,
+          messages: updater(existing.messages),
+          updatedAt: Date.now(),
+        });
         return next;
       });
     },
-    [setSessionsState]
+    [setSessionsState],
   );
 
   const findTabBySessionId = useCallback((sid: string): string | null => {
@@ -190,51 +218,61 @@ export function useSessionManager() {
     return null;
   }, []);
 
-  const getActiveTabId = useCallback((): string | null => activeTabIdRef.current, []);
+  const getActiveTabId = useCallback(
+    (): string | null => activeTabIdRef.current,
+    [],
+  );
 
   const getSidebarEntries = useCallback((): SessionEntry[] => {
     return tabOrder
       .map((id) => {
-      const s = sessions.get(id);
-      if (!s) {
+        const s = sessions.get(id);
+        if (!s) {
+          return {
+            id,
+            title: "",
+            model: "",
+            status: "idle" as SessionStatus,
+            updatedAt: Date.now(),
+            messageCount: 0,
+            preview: "",
+            unreadCount: 0,
+          };
+        }
+        const lastMsg = s.messages[s.messages.length - 1];
+        // During streaming, show streaming text as preview for live feedback
+        const streamingPreview = s.streamingText
+          ? s.streamingText.slice(-60)
+          : "";
+        const msgPreview = lastMsg
+          ? "content" in lastMsg
+            ? (lastMsg.content || "").slice(-60)
+            : "text" in lastMsg
+              ? (lastMsg.text || "").slice(-60)
+              : ""
+          : "";
+        const preview = streamingPreview || msgPreview;
         return {
           id,
-          title: "",
-          model: "",
-          status: "idle" as SessionStatus,
-          updatedAt: Date.now(),
-        messageCount: 0,
-        preview: "",
-        unreadCount: 0,
-        };
-      }
-      const lastMsg = s.messages[s.messages.length - 1];
-      // During streaming, show streaming text as preview for live feedback
-      const streamingPreview = s.streamingText ? s.streamingText.slice(-60) : "";
-      const msgPreview = lastMsg
-        ? "content" in lastMsg
-          ? (lastMsg.content || "").slice(-60)
-          : "text" in lastMsg
-            ? (lastMsg.text || "").slice(-60)
-            : ""
-        : "";
-      const preview = streamingPreview || msgPreview;
-      return {
-        id,
-        title: sessionDisplayTitle({ title: s.title, preview }),
-        model: s.model || "",
-        status: s.isLoading
-          ? ("streaming" as SessionStatus)
-          : s.toolProgress
+          title: sessionDisplayTitle({ title: s.title, preview }),
+          model: s.model || "",
+          status: s.isLoading
             ? ("streaming" as SessionStatus)
-            : ("idle" as SessionStatus),
-        updatedAt: s.updatedAt,
-        messageCount: s.messages.length,
-        preview: sessionDisplayPreview({ title: s.title, preview, model: s.model, messageCount: s.messages.length }),
-        dbSessionId: s.dbSessionId ?? s.hermesSessionId ?? undefined,
-        unreadCount: s.unreadCount,
-      };
-    })
+            : s.toolProgress
+              ? ("streaming" as SessionStatus)
+              : ("idle" as SessionStatus),
+          updatedAt: s.updatedAt,
+          messageCount: s.messages.length,
+          preview: sessionDisplayPreview({
+            title: s.title,
+            preview,
+            model: s.model,
+            messageCount: s.messages.length,
+          }),
+          dbSessionId: s.dbSessionId ?? s.hermesSessionId ?? undefined,
+          unreadCount: s.unreadCount,
+        };
+      })
       .filter((e) => e.messageCount > 0 || e.status === "streaming");
   }, [tabOrder, sessions]);
 

@@ -32,8 +32,7 @@ export function getToolMeta(name: string): ToolMeta {
   if (n === "fact_store") return { icon: "\u{1F4CB}", label: "Fact Store" };
   if (n.includes("byterover") || n.includes("brv_"))
     return { icon: "\u{1F50E}", label: "ByteRover" };
-  if (n.includes("mcp_zread"))
-    return { icon: "\u{1F4DA}", label: "ZRead" };
+  if (n.includes("mcp_zread")) return { icon: "\u{1F4DA}", label: "ZRead" };
   if (n === "skill_view" || n === "skill_manage")
     return { icon: "\u{1F9E9}", label: "Skill" };
   if (n === "web_extract" || n === "web_search" || n.includes("browse"))
@@ -103,7 +102,9 @@ export const ReasoningRow = memo(function ReasoningRow({
   msg,
   defaultOpen = false,
 }: {
-  msg: ReasoningMessage | { id: string; kind: "live_reasoning"; role: "agent"; text: string };
+  msg:
+    | ReasoningMessage
+    | { id: string; kind: "live_reasoning"; role: "agent"; text: string };
   defaultOpen?: boolean;
 }): React.JSX.Element {
   const { t } = useI18n();
@@ -171,9 +172,7 @@ export const ToolRow = memo(function ToolRow({
           }
         >
           {msg.fallbackWarning && (
-            <div className="chat-fallback-warning">
-              ⚠ {msg.fallbackWarning}
-            </div>
+            <div className="chat-fallback-warning">⚠ {msg.fallbackWarning}</div>
           )}
           {msg.args && (
             <div className="chat-tool-section">
@@ -199,7 +198,9 @@ export const ToolRow = memo(function ToolRow({
   // Compact mode: one-line status bar
   return (
     <>
-      <div className={`chat-tool-row ${pending ? "chat-tool-row--pending" : msg.success === false ? "chat-tool-row--fail" : "chat-tool-row--ok"}`}>
+      <div
+        className={`chat-tool-row ${pending ? "chat-tool-row--pending" : msg.success === false ? "chat-tool-row--fail" : "chat-tool-row--ok"}`}
+      >
         <span className="chat-tool-icon">{icon}</span>
         <span className="chat-tool-name">{label}</span>
         {pending && <span className="chat-tool-pending">running…</span>}
@@ -214,9 +215,7 @@ export const ToolRow = memo(function ToolRow({
         )}
       </div>
       {msg.fallbackWarning && (
-        <div className="chat-fallback-warning">
-          ⚠ {msg.fallbackWarning}
-        </div>
+        <div className="chat-fallback-warning">⚠ {msg.fallbackWarning}</div>
       )}
     </>
   );

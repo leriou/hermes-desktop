@@ -31,11 +31,17 @@ export function createSystemEvent(
 }
 
 export function systemEventFromError(error: unknown): SystemEventMessage {
-  const message = error instanceof Error ? error.message : String(error || "Unknown error");
+  const message =
+    error instanceof Error ? error.message : String(error || "Unknown error");
   const codeMatch = message.match(/\b(?:429|1305)\b/);
   if (codeMatch) {
     const code = codeMatch[0];
-    return createSystemEvent("provider_error", `Provider error ${code}`, message, { code });
+    return createSystemEvent(
+      "provider_error",
+      `Provider error ${code}`,
+      message,
+      { code },
+    );
   }
   return createSystemEvent("gateway_error", "Gateway error", message);
 }

@@ -1,4 +1,8 @@
-import { openExternal, setEnv, setModelConfig } from "@renderer/lib/hermes-tauri";
+import {
+  openExternal,
+  setEnv,
+  setModelConfig,
+} from "@renderer/lib/hermes-tauri";
 import { useState } from "react";
 import { ArrowRight, ExternalLink } from "../../assets/icons";
 import { PROVIDERS, LOCAL_PRESETS } from "../../constants";
@@ -76,11 +80,7 @@ function Setup({
       const configProvider = isLocal ? "custom" : provider.configProvider;
       const configBaseUrl = isLocal ? baseUrl.trim() : provider.baseUrl;
       const configModel = modelName.trim() || "";
-      await setModelConfig(
-        configProvider,
-        configModel,
-        configBaseUrl,
-      );
+      await setModelConfig(configProvider, configModel, configBaseUrl);
 
       onComplete();
     } catch {

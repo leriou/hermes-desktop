@@ -16,7 +16,13 @@ const request = {
 
 describe("approvalPolicy", () => {
   it("normalizes invalid client config back to safe manual defaults", () => {
-    expect(normalizeApprovalPolicy({ mode: "auto_approve", timeoutSeconds: 0, historyTtlMinutes: -1 })).toEqual({
+    expect(
+      normalizeApprovalPolicy({
+        mode: "auto_approve",
+        timeoutSeconds: 0,
+        historyTtlMinutes: -1,
+      }),
+    ).toEqual({
       ...DEFAULT_APPROVAL_POLICY,
       mode: "auto_approve",
     });
@@ -24,16 +30,36 @@ describe("approvalPolicy", () => {
 
   it("only auto approve mode creates an immediate client decision", () => {
     expect(getImmediateApprovalDecision(DEFAULT_APPROVAL_POLICY)).toBeNull();
-    expect(getImmediateApprovalDecision({ ...DEFAULT_APPROVAL_POLICY, mode: "countdown" })).toBeNull();
-    expect(getImmediateApprovalDecision({ ...DEFAULT_APPROVAL_POLICY, mode: "auto_approve" })).toEqual({
+    expect(
+      getImmediateApprovalDecision({
+        ...DEFAULT_APPROVAL_POLICY,
+        mode: "countdown",
+      }),
+    ).toBeNull();
+    expect(
+      getImmediateApprovalDecision({
+        ...DEFAULT_APPROVAL_POLICY,
+        mode: "auto_approve",
+      }),
+    ).toEqual({
       decision: "approve",
       source: "auto",
     });
   });
 
   it("records and prunes local approval history by ttl", () => {
-    const recent = createApprovalHistoryEntry(request, "approve", "manual", 1_000_000);
-    const old = createApprovalHistoryEntry(request, "deny", "timeout", 1_000_000 - 16 * 60_000);
+    const recent = createApprovalHistoryEntry(
+      request,
+      "approve",
+      "manual",
+      1_000_000,
+    );
+    const old = createApprovalHistoryEntry(
+      request,
+      "deny",
+      "timeout",
+      1_000_000 - 16 * 60_000,
+    );
 
     expect(recent).toMatchObject({
       command: request.command,
@@ -41,6 +67,8 @@ describe("approvalPolicy", () => {
       source: "manual",
       patternKeys: ["migration", "python"],
     });
-    expect(pruneApprovalHistory([old, recent], 1_000_000, 15)).toEqual([recent]);
+    expect(pruneApprovalHistory([old, recent], 1_000_000, 15)).toEqual([
+      recent,
+    ]);
   });
 });
