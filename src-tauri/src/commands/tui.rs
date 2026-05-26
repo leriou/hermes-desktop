@@ -136,7 +136,7 @@ pub async fn tui_undo(state: State<'_, AppState>, session_id: String) -> Result<
 #[command] pub async fn tui_set_model(state: State<'_, AppState>, session_id: String, model: String) -> Result<Value, String> {
     let gateway = state.gateway.lock().await;
     let gw = gateway.as_ref().ok_or("Gateway not running")?;
-    gw.call("slash.exec", json!({ "session_id": session_id, "command": format!("/model {}", model) })).await.map_err(|e| e.to_string())
+    gw.call("config.set", json!({ "session_id": session_id, "key": "model", "value": model })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_tools_list(state: State<'_, AppState>) -> Result<Value, String> {

@@ -2,8 +2,10 @@ import type { ApprovalHistoryEntry } from "./approvalPolicy";
 
 export function ApprovalHistoryPanel({
   entries,
+  onDismiss,
 }: {
   entries: ApprovalHistoryEntry[];
+  onDismiss: () => void;
 }): React.JSX.Element | null {
   if (entries.length === 0) return null;
   const recent = entries.slice(-5).reverse();
@@ -12,7 +14,16 @@ export function ApprovalHistoryPanel({
       className="chat-approval-history"
       aria-label="最近审批记录"
     >
-      <div className="chat-approval-history-title">最近审批</div>
+      <div className="chat-approval-history-title-row">
+        <span className="chat-approval-history-title">最近审批</span>
+        <button
+          className="chat-approval-history-dismiss"
+          onClick={onDismiss}
+          aria-label="关闭"
+        >
+          ✕
+        </button>
+      </div>
       {recent.map((entry) => (
         <div
           key={entry.id}

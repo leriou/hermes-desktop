@@ -121,7 +121,7 @@ function Chat({
     () => loadApprovalPolicy(),
   );
   const [approvalHistory, setApprovalHistory] = useState(() =>
-    loadApprovalHistory(),
+    loadApprovalHistory(sessionId),
   );
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
   const [dismissedApproval, setDismissedApproval] =
@@ -227,10 +227,10 @@ function Chat({
         Date.now(),
         normalized.historyTtlMinutes,
       );
-      saveApprovalHistory(pruned);
+      saveApprovalHistory(sessionId, pruned);
       return pruned;
     });
-  }, []);
+  }, [sessionId]);
 
   const visibleApproval =
     pendingApproval && pendingApproval !== dismissedApproval
@@ -263,12 +263,17 @@ function Chat({
           Date.now(),
           approvalPolicy.historyTtlMinutes,
         );
-        saveApprovalHistory(next);
+        saveApprovalHistory(sessionId, next);
         return next;
       });
     },
     [approvalJudgment, approvalPolicy.historyTtlMinutes],
   );
+
+  const handleDismissApprovalHistory = useCallback(() => {
+    setApprovalHistory([]);
+    saveApprovalHistory(sessionId, []);
+  }, [sessionId]);
 
   const handleApprovalDecision = useCallback(
     async (decision: ApprovalDecision, source: ApprovalDecisionSource) => {
@@ -1098,7 +1103,7 @@ function Chat({
           onSudoRespond={handleSudoRespond}
           onSecretRespond={handleSecretRespond}
         />
-        <ApprovalHistoryPanel entries={approvalHistory} />
+        <ApprovalHistoryPanel entries={approvalHistory} onDismiss={handleDismissApprovalHistory} />
         {session.hermesSessionId && (
           <TuiToolbar
             onSetGoal={handleTuiGoal}

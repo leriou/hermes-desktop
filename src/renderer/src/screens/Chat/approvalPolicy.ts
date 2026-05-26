@@ -34,7 +34,10 @@ export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
 };
 
 export const APPROVAL_POLICY_KEY = "hermes:approval-policy:v1";
-export const APPROVAL_HISTORY_KEY = "hermes:approval-history:v1";
+
+export function approvalHistoryKey(sessionId: string): string {
+  return `hermes:approval-history:${sessionId}:v1`;
+}
 
 export function normalizeApprovalPolicy(value: unknown): ApprovalPolicy {
   const input = (
@@ -121,11 +124,12 @@ export function saveApprovalPolicy(policy: ApprovalPolicy): void {
 }
 
 export function loadApprovalHistory(
+  sessionId: string,
   now = Date.now(),
   ttlMinutes = DEFAULT_APPROVAL_POLICY.historyTtlMinutes,
 ): ApprovalHistoryEntry[] {
   try {
-    const raw = getStoreItem(APPROVAL_HISTORY_KEY);
+    const raw = getStoreItem(approvalHistoryKey(sessionId));
     const parsed = raw ? JSON.parse(raw) : [];
     return pruneApprovalHistory(
       Array.isArray(parsed) ? parsed : [],
@@ -137,6 +141,9 @@ export function loadApprovalHistory(
   }
 }
 
-export function saveApprovalHistory(entries: ApprovalHistoryEntry[]): void {
-  setStoreItem(APPROVAL_HISTORY_KEY, JSON.stringify(entries));
+export function saveApprovalHistory(
+  sessionId: string,
+  entries: ApprovalHistoryEntry[],
+): void {
+  setStoreItem(approvalHistoryKey(sessionId), JSON.stringify(entries));
 }

@@ -2874,11 +2874,32 @@ body {
   border-radius: 6px;
 }
 
-.chat-approval-history-title {
+.chat-approval-history-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 5px;
+}
+
+.chat-approval-history-title {
   color: var(--text-muted);
   font-size: 11px;
   text-transform: uppercase;
+}
+
+.chat-approval-history-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.chat-approval-history-dismiss:hover {
+  opacity: 1;
 }
 
 .chat-approval-history-row {
