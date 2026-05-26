@@ -29,6 +29,8 @@ import { SessionSidebar } from "../Chat/SessionSidebar";
 import { useSessionManager } from "../Chat/hooks/useSessionManager";
 import { useChatInbox } from "../Chat/hooks/useChatInbox";
 import { baseSessionTitle } from "../Chat/sessionDisplay";
+import { rewriteTranscript } from "../Chat/renderTranscript";
+import { getStoreItem } from "@renderer/utils/store";
 import RemoteNotice from "../../components/RemoteNotice";
 import VerifyWarningBanner from "../../components/VerifyWarningBanner";
 import hermeslogo from "../../assets/hermes.png";
@@ -380,6 +382,10 @@ function Layout({
         }
       } catch {
         /* ignore */
+      }
+
+      if (chatMessages.length > 0 && getStoreItem("hermes-rewrite-enabled") === "true") {
+        chatMessages = rewriteTranscript(chatMessages);
       }
 
       // Show messages immediately before waiting for Gateway

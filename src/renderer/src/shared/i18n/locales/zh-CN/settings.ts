@@ -25,6 +25,10 @@ export default {
     label: "Markdown 风格",
     hint: "选择消息中代码块和格式化文本的视觉风格",
   },
+  rewrite: {
+    label: "对话重绘",
+    hint: "回答完成后自动重排：将工具调用归组在一起，最终回答放在末尾，提升可读性",
+  },
   notDetected: "未检测到",
   updatedSuccessfully: "更新成功！",
   updateSuccess: "Hermes 更新成功。",

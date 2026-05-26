@@ -241,7 +241,7 @@ describe("Chat command wiring", () => {
     });
   });
 
-  it("routes goal, model, compress, steer and alias picker commands to the expected APIs", async () => {
+  it("routes goal, model, compress, steer commands to the expected APIs", async () => {
     const api = installHermesAPI();
     const setMessages = vi.fn();
     const onSessionStateChange = vi.fn();
@@ -259,10 +259,6 @@ describe("Chat command wiring", () => {
         onSessionStateChange={onSessionStateChange}
       />,
     );
-
-    await waitFor(() => {
-      expect(api.getModelAliases).toHaveBeenCalled();
-    });
 
     const textarea = view.container.querySelector(
       "textarea",
@@ -311,31 +307,6 @@ describe("Chat command wiring", () => {
         "steer",
         "nudge",
       );
-    });
-
-    // Test alias picker trigger
-    const modelTrigger = view.container.querySelector(
-      ".chat-model-trigger",
-    ) as HTMLButtonElement;
-    await act(async () => {
-      fireEvent.click(modelTrigger);
-    });
-    const aliasBtn = Array.from(
-      view.container.querySelectorAll(".chat-model-option"),
-    ).find((el) =>
-      (el as HTMLButtonElement).textContent?.includes("Fast Alias"),
-    ) as HTMLButtonElement;
-    await act(async () => {
-      fireEvent.click(aliasBtn);
-    });
-    await waitFor(() => {
-      expect(api.setModelConfig).toHaveBeenCalledWith(
-        "openai",
-        "gpt-4o-mini",
-        "",
-        undefined,
-      );
-      expect(api.tuiSetModel).toHaveBeenCalledWith("rt-1", "Fast Alias");
     });
   });
 });

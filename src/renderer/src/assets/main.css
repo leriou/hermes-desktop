@@ -1789,7 +1789,7 @@ body {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 /* Empty state */
@@ -4015,14 +4015,14 @@ body {
 .tool-timeline {
   display: flex;
   flex-direction: column;
-  padding: 4px 8px;
+  padding: 2px 8px;
 }
 
 .tool-timeline-item {
   display: flex;
   align-items: center;
-  padding: 8px 0;
-  min-height: 36px;
+  padding: 4px 0;
+  min-height: 28px;
   transition: background 0.15s ease;
 }
 
@@ -4168,7 +4168,7 @@ body {
 .chat-tool-single-footprint {
   display: flex;
   align-items: center;
-  margin: 2px 16px 2px 52px;
+  margin: -4px 16px -4px 52px;
   padding: 4px 0;
   min-height: 28px;
   background: transparent;

@@ -153,6 +153,61 @@ export function buildRenderableTranscript({
   return items;
 }
 
+/**
+ * Rewrite a transcript so tools and answers are separated within each turn.
+ * Applied after message.complete (live) and when loading history (DB).
+ */
+export function rewriteTranscript(messages: ChatMessage[]): ChatMessage[] {
+  if (messages.length <= 2) return messages;
+
+  const turns: ChatMessage[][] = [];
+  let current: ChatMessage[] = [];
+
+  for (const msg of messages) {
+    if (isBubble(msg) && msg.role === "user" && current.length > 0) {
+      turns.push(current);
+      current = [msg];
+    } else {
+      current.push(msg);
+    }
+  }
+  if (current.length > 0) turns.push(current);
+
+  return turns.flatMap(rewriteTurn);
+}
+
+function rewriteTurn(turn: ChatMessage[]): ChatMessage[] {
+  if (turn.length <= 2) return turn;
+
+  const first = turn[0];
+  const rest = turn.slice(1);
+
+  const tools: ChatMessage[] = [];
+  const reasoning: ChatMessage[] = [];
+  const texts: ChatMessage[] = [];
+  const system: ChatMessage[] = [];
+  const other: ChatMessage[] = [];
+
+  for (const msg of rest) {
+    const k = kindOf(msg);
+    if (k === "tool_call" || k === "tool_result" || k === "tool_group" || k === "subagent") {
+      tools.push(msg);
+    } else if (k === "reasoning") {
+      reasoning.push(msg);
+    } else if (isBubble(msg) && msg.role === "agent") {
+      texts.push(msg);
+    } else if (k === "system_status" || k === "system_event") {
+      system.push(msg);
+    } else {
+      other.push(msg);
+    }
+  }
+
+  if (tools.length === 0 && texts.length <= 1) return turn;
+
+  return [first, ...system, ...tools, ...reasoning, ...texts, ...other];
+}
+
 export function isReasoningItem(
   item: RenderTranscriptItem,
 ): item is

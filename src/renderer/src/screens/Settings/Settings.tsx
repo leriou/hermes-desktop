@@ -85,6 +85,14 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     document.documentElement.setAttribute("data-md-style", next);
   }
 
+  const [rewriteEnabled, setRewriteEnabledState] = useState(
+    () => getStoreItem("hermes-rewrite-enabled") === "true",
+  );
+  function setRewriteEnabled(next: boolean): void {
+    setRewriteEnabledState(next);
+    setStoreItem("hermes-rewrite-enabled", next ? "true" : "false");
+  }
+
   // Hermes engine info — initialize from localStorage cache for instant display
   const [hermesVersion, setHermesVersion] = useState<string | null>(
     getCachedVersion,
@@ -744,6 +752,25 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
           </div>
           <div className="settings-field-hint">
             {t("settings.mdStyle.hint")}
+          </div>
+        </div>
+        <div className="settings-field">
+          <label className="settings-field-label">
+            {t("settings.rewrite.label")}
+            <label
+              className="tools-toggle"
+              style={{ marginLeft: 12, verticalAlign: "middle" }}
+            >
+              <input
+                type="checkbox"
+                checked={rewriteEnabled}
+                onChange={(e) => setRewriteEnabled(e.target.checked)}
+              />
+              <span className="tools-toggle-track" />
+            </label>
+          </label>
+          <div className="settings-field-hint">
+            {t("settings.rewrite.hint")}
           </div>
         </div>
         <div className="settings-field">

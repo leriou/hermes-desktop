@@ -12,6 +12,8 @@ import type {
 import type { SessionState } from "./useSessionManager";
 import { shortModelName } from "../sessionDisplay";
 import { createSystemEvent, systemEventFromError } from "../systemEvents";
+import { rewriteTranscript } from "../renderTranscript";
+import { getStoreItem } from "@renderer/utils/store";
 import {
   normalizeApprovalRequest,
   normalizeClarifyRequest,
@@ -149,7 +151,7 @@ export function useChatInbox({
   const activeTabIdRef = useRef(activeTabId);
   const chatVisibleRef = useRef(chatVisible);
   const pendingChunksRef = useRef(new Map<string, string>());
-  const flushFramesRef = useRef(new Map<string, number>());
+  const flushFramesRef = useRef(new Map<string, unknown>());
 
   useEffect(() => {
     sessionsRef.current = sessions;
@@ -181,12 +183,11 @@ export function useChatInbox({
     }
 
     function commitStreaming(tabId: string, sid?: string): void {
-      // Force-flush any pending chunks that haven't been rAF'd yet.
-      // Without this, a message.delta followed immediately by tool.start in the
-      // same frame loses the text because rAF hasn't fired.
+      // Force-flush any pending chunks that haven't been flushed yet.
+      // Without this, a message.delta followed immediately by tool.start
+      // in the same microtask loses the text.
       const pendingFrame = flushFramesRef.current.get(tabId);
       if (pendingFrame) {
-        window.cancelAnimationFrame(pendingFrame);
         flushFramesRef.current.delete(tabId);
       }
       const pendingChunk = pendingChunksRef.current.get(tabId) ?? "";
@@ -238,11 +239,21 @@ export function useChatInbox({
     }
 
     function scheduleFlush(tabId: string): void {
+      // Use microtask instead of rAF for lower-latency streaming.
+      // rAF (16ms cadence) causes visible character drops — deltas that
+      // arrive within the same frame are buffered and only appear after
+      // message.complete triggers a full re-render.  Microtasks fire as
+      // soon as the current JS execution context clears, giving
+      // sub-millisecond flush latency without thrashing the DOM.
       if (flushFramesRef.current.has(tabId)) return;
-      const frame = window.requestAnimationFrame(() => {
-        flush(tabId);
+      const marker: unique symbol = Symbol("flush") as any;
+      flushFramesRef.current.set(tabId, marker as any);
+      void Promise.resolve().then(() => {
+        if (flushFramesRef.current.get(tabId) === marker) {
+          flushFramesRef.current.delete(tabId);
+          flush(tabId);
+        }
       });
-      flushFramesRef.current.set(tabId, frame);
     }
 
     const cleanup = onTuiEvent((rawEvent: RawTuiEvent) => {
@@ -293,7 +304,6 @@ export function useChatInbox({
         case "message.complete": {
           const frame = flushFramesRef.current.get(tabId);
           if (frame) {
-            window.cancelAnimationFrame(frame);
             flushFramesRef.current.delete(tabId);
           }
           // Capture any unflushed chunks before discarding
@@ -349,6 +359,9 @@ export function useChatInbox({
                 todos: currentTodos,
                 timestamp: Date.now(),
               });
+            }
+            if (getStoreItem("hermes-rewrite-enabled") === "true") {
+              return rewriteTranscript(next);
             }
             return next;
           });
@@ -416,7 +429,7 @@ export function useChatInbox({
                 role: "agent",
                 callId: toolId,
                 name: toolName,
-                args: optionalJsonText(payload.args),
+                args: optionalJsonText(payload.args) || stringField(payload, "args_text"),
               },
             ]);
             if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
@@ -438,6 +451,7 @@ export function useChatInbox({
             const current = sessionsRef.current.get(tabId);
             let resultText =
               optionalJsonText(payload.result_text) ||
+              stringField(payload, "summary") ||
               stringField(payload, "error");
             if (resultText.length > 8000) {
               resultText =
@@ -734,8 +748,6 @@ export function useChatInbox({
     });
 
     return () => {
-      for (const frame of flushFramesRef.current.values())
-        window.cancelAnimationFrame(frame);
       flushFramesRef.current.clear();
       if (typeof cleanup === "function") {
         cleanup();

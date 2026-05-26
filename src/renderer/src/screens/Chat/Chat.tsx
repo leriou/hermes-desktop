@@ -973,34 +973,6 @@ function Chat({
     ],
   );
 
-  const handleSelectAlias = useCallback(
-    async (alias: {
-      name: string;
-      model: string;
-      provider: string;
-      baseUrl: string;
-    }) => {
-      await modelConfig.selectAlias(alias);
-      const id = session.hermesSessionId ?? sessionId;
-      if (id) {
-        try {
-          setIsLoading(true);
-          await executeGatewayCommand(id, `/model ${alias.name}`);
-        } catch (err) {
-          addErrorEvent(err);
-          setIsLoading(false);
-        }
-      }
-    },
-    [
-      modelConfig.selectAlias,
-      session.hermesSessionId,
-      sessionId,
-      addErrorEvent,
-      executeGatewayCommand,
-    ],
-  );
-
   const handleSudoRespond = useCallback(
     async (password: string) => {
       const sid = session.hermesSessionId ?? sessionId;
@@ -1121,9 +1093,7 @@ function Chat({
             displayModel={modelConfig.displayModel}
             modelGroups={modelConfig.modelGroups}
             onOpen={modelConfig.reload}
-            onSelectAlias={handleSelectAlias}
             onSelectModel={handleSelectModel}
-            aliases={modelConfig.aliases}
           />
           <ChatStatusBar
             usage={usage}

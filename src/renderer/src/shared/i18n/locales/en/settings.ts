@@ -29,6 +29,10 @@ export default {
     label: "Markdown Style",
     hint: "Choose the visual style for code blocks and formatted text in messages",
   },
+  rewrite: {
+    label: "Transcript Rewrite",
+    hint: "Automatically reorganize completed responses: group tool calls together and move the final answer to the end for better readability",
+  },
   notDetected: "Not detected",
   updatedSuccessfully: "Updated successfully!",
   updateSuccess: "Hermes updated successfully.",
