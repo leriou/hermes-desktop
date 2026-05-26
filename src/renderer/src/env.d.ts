@@ -8,3 +8,8 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  hermesAPI: Record<string, (...args: any[]) => any>;
+  __TAURI_INTERNALS__?: unknown;
+}

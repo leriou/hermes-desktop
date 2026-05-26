@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, useEffect, startTransition, memo } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Copy } from "lucide-react";
@@ -71,10 +71,15 @@ const CodeBlock = memo(function CodeBlock({
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [highlighted, setHighlighted] = useState(false);
   const code = String(children).replace(/\n$/, "");
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "";
   const isDiff = language === "diff";
+
+  useEffect(() => {
+    startTransition(() => setHighlighted(true));
+  }, [code]);
 
   const lines = code.split("\n");
   const truncated = !expanded && lines.length > MAX_RENDER_LINES;
@@ -98,7 +103,7 @@ const CodeBlock = memo(function CodeBlock({
       </div>
       {isDiff ? (
         <DiffView code={displayCode} />
-      ) : (
+      ) : highlighted ? (
         <SyntaxHighlighter
           style={oneDark}
           language={LANG_MAP[language] ? language : "text"}
@@ -114,6 +119,10 @@ const CodeBlock = memo(function CodeBlock({
         >
           {displayCode}
         </SyntaxHighlighter>
+      ) : (
+        <pre className="chat-code-placeholder">
+          <code>{displayCode}</code>
+        </pre>
       )}
       {truncated && (
         <button

@@ -302,7 +302,7 @@ function Layout({
             ? items.slice(items.length - MAX_RESUME_MESSAGES)
             : items;
           chatMessages = sliced
-            .map((it): ChatMessage | null => {
+            .map((it: any): ChatMessage | null => {
               const ts = it.timestamp ? Math.round(it.timestamp * 1000) : undefined;
               switch (it.kind) {
                 case "user":

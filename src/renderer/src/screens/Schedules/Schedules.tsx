@@ -111,7 +111,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
   const loadHistory = useCallback(async (): Promise<void> => {
     setHistoryLoading(true);
     try {
-      const list = await cache.getOrFetch(`schedules:history:${profile ?? "default"}`, 30_000, () =>
+      const list = await cache.getOrFetch<HistoryEntry[]>(`schedules:history:${profile ?? "default"}`, 30_000, () =>
         window.hermesAPI.listCronHistory(profile),
       );
       setHistory(list ?? []);

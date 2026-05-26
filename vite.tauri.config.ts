@@ -10,7 +10,14 @@ export default defineConfig({
       "@renderer": resolve("src/renderer/src"),
     },
   },
-  plugins: [tailwindcss(), react()],
+  plugins: [
+    tailwindcss(),
+    react({
+      babel: {
+        plugins: [["babel-plugin-react-compiler", { target: "19" }]],
+      },
+    }),
+  ],
   server: {
     port: 19642,
     strictPort: true,
@@ -20,6 +27,8 @@ export default defineConfig({
   build: {
     outDir: resolve("out/renderer"),
     emptyOutDir: true,
+    target: "safari17",
+    cssTarget: "safari17",
     modulePreload: {
       polyfill: false,
     },

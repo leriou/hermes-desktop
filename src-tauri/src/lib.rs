@@ -45,6 +45,18 @@ pub fn run() {
 
       menu::setup_menu(app.handle())?;
 
+      #[cfg(target_os = "macos")]
+      {
+        use tauri::Manager;
+        use tauri::window::{Effect, EffectsBuilder};
+        let window = app.get_webview_window("main").unwrap();
+        window.set_effects(
+          EffectsBuilder::new()
+            .effect(Effect::UnderPageBackground)
+            .build(),
+        )?;
+      }
+
       // Pre-warm the TUI Gateway in the background
       let app_handle = app.handle().clone();
       tauri::async_runtime::spawn(async move {

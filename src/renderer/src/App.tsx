@@ -17,8 +17,7 @@ function App(): React.JSX.Element {
     "local" | "remote" | "ssh"
   >("local");
   const [verifyWarning, setVerifyWarning] = useState(false);
-  const isMac = window.electron?.process?.platform === "darwin" ||
-    ((window as any).__TAURI_INTERNALS__ && navigator.userAgent.includes("Macintosh"));
+  const isMac = !!(window as any).__TAURI_INTERNALS__ && navigator.userAgent.includes("Macintosh");
   const runInstallCheck = useCallback(async () => {
     let next: Screen = "welcome";
     let error: string | null = null;

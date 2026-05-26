@@ -2390,6 +2390,29 @@ body {
 .sm-code-streaming {
   border-right: 2px solid var(--accent);
 }
+.sm-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+.sm-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.sm-table th,
+.sm-table td {
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+  vertical-align: top;
+}
+.sm-table th {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 650;
+}
 .sm-inline-code {
   background: var(--code-bg);
   padding: 2px 5px;

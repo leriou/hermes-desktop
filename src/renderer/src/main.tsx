@@ -89,6 +89,16 @@ function showContextMenu(x: number, y: number, items: MenuItem[]): void {
   menu.style.top = `${Math.min(y, maxY)}px`;
 }
 
+async function probeGPU(): Promise<boolean> {
+  if (!("gpu" in navigator)) return false;
+  try {
+    const adapter = await (navigator as any).gpu.requestAdapter();
+    return !!adapter;
+  } catch {
+    return false;
+  }
+}
+
 async function boot(): Promise<void> {
   // Inject the Tauri adapter before React renders so that
   // window.hermesAPI is available when App's useEffect fires.
@@ -96,6 +106,11 @@ async function boot(): Promise<void> {
     const { hermesAPI } = await import("./lib/hermes-tauri");
     (window as any).hermesAPI = hermesAPI;
     setupTauriContextMenu();
+  }
+
+  const gpuAvailable = await probeGPU();
+  if (gpuAvailable) {
+    document.documentElement.dataset.gpu = "available";
   }
 
   initAnalytics();

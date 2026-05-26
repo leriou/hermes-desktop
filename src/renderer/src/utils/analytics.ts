@@ -54,9 +54,9 @@ export function initAnalytics(): void {
     persistence: "localStorage",
     loaded: () => {
       posthog.identify(getOrCreateAnonymousId(), {
-        app_version: window.electron?.process?.versions?.electron || "unknown",
-        platform: window.electron?.process?.platform || "unknown",
-        node_version: window.electron?.process?.versions?.node || "unknown",
+        app_version: "tauri",
+        platform: navigator.platform || "unknown",
+        node_version: "unknown",
       });
     },
   });
