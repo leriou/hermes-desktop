@@ -435,3 +435,22 @@ pub fn get_related_session_ids(app: Option<&AppHandle>, session_id: &str, profil
 
     Ok(json!(unique))
 }
+
+pub fn delete_session_chain(app: Option<&AppHandle>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
+    let db_path = state_db_path(app, profile).ok_or("state.db not found")?;
+    let ids = get_related_session_ids(app, session_id, None::<String>)
+        .and_then(|v| Ok(v))
+        .unwrap_or_else(|_| json!([session_id]));
+
+    let ids_arr = ids.as_array().cloned().unwrap_or_else(|| vec![json!(session_id)]);
+
+    let conn = rusqlite::Connection::open(&db_path).map_err(|e| e.to_string())?;
+    for id_val in &ids_arr {
+        let sid = id_val.as_str().unwrap_or(session_id);
+        conn.execute("DELETE FROM messages WHERE session_id = ?1", rusqlite::params![sid])
+            .map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM sessions WHERE id = ?1", rusqlite::params![sid])
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(json!(ids_arr.len()))
+}

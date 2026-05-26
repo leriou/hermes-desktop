@@ -40,21 +40,23 @@ pub async fn delete_session(state: State<'_, AppState>, session_id: String) -> R
 
 #[command]
 pub async fn list_cached_sessions(state: State<'_, AppState>, app: AppHandle, profile: Option<String>, limit: Option<u32>, offset: Option<u32>) -> Result<Value, String> {
-    let lim = limit.unwrap_or(1000) as usize;
+    // Always prefer local DB — it has all sessions including inactive segments
+    if let Ok(result) = crate::session_utils::list_sessions(Some(&app), profile.clone(), limit, offset) {
+        return Ok(result);
+    }
+    // Fallback to Gateway if DB read fails
     let gateway = state.gateway.lock().await;
     if let Some(gw) = gateway.as_ref() {
         if gw.is_running().await {
+            let lim = limit.unwrap_or(1000) as usize;
             if let Ok(sessions) = gw.call("session.list", json!({ "limit": lim, "offset": offset })).await {
                 let mut list = snake_to_camel_sessions(sessions);
                 list = list.into_iter().take(lim).collect();
-                eprintln!("[sessions:cached] Gateway returned {} sessions", list.len());
                 return Ok(json!(list));
             }
         }
     }
-    drop(gateway);
-    eprintln!("[sessions:cached] Gateway not running, using CLI fallback");
-    crate::session_utils::list_sessions(Some(&app), profile, limit, offset)
+    Ok(json!([]))
 }
 
 #[command]
@@ -548,4 +550,9 @@ pub async fn get_skill_content(path: String) -> Result<Value, String> {
 #[command]
 pub async fn get_related_session_ids(app: AppHandle, session_id: String, profile: Option<String>) -> Result<Value, String> {
     crate::session_utils::get_related_session_ids(Some(&app), &session_id, profile)
+}
+
+#[command]
+pub async fn delete_session_chain(app: AppHandle, session_id: String, profile: Option<String>) -> Result<Value, String> {
+    crate::session_utils::delete_session_chain(Some(&app), &session_id, profile)
 }

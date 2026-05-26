@@ -2,7 +2,7 @@ import {
   abortChat,
   clearStagedAttachments,
   copyToClipboard,
-  deleteSession,
+  deleteSessionChain,
   getSessionMessages,
   getSessionMessagesBefore,
   isRemoteMode,
@@ -802,7 +802,7 @@ function Chat({
     }
     const idToDelete = session.hermesSessionId ?? sessionId;
     if (idToDelete) {
-      void deleteSession(idToDelete);
+      void deleteSessionChain(idToDelete, profile);
       void clearStagedAttachments(idToDelete);
     }
     setMessages([]);

@@ -385,7 +385,6 @@ function Layout({
       // Show messages immediately before waiting for Gateway
       // Set hermesSessionId upfront so gateway replay events get filtered out
       const initialPatch = {
-        messages: chatMessages,
         hermesSessionId: targetResumeSessionId,
         dbSessionId: targetResumeSessionId,
         relatedSessionIds,
@@ -399,9 +398,15 @@ function Layout({
       );
       let targetTabId = existingTabId;
       if (!targetTabId) {
-        targetTabId = sessionManager.createTabWith(initialPatch);
+        targetTabId = sessionManager.createTabWith({ ...initialPatch, messages: chatMessages });
       } else {
-        sessionManager.updateTab(targetTabId, initialPatch);
+        // Only overwrite messages if the tab has none (fresh resume)
+        const existing = sessionManager.sessions.get(targetTabId);
+        const msgs = existing && existing.messages.length > 0 ? undefined : chatMessages;
+        sessionManager.updateTab(targetTabId, {
+          ...initialPatch,
+          ...(msgs !== undefined ? { messages: msgs } : {}),
+        });
         sessionManager.switchTab(targetTabId);
       }
       goTo("chat");

@@ -481,6 +481,9 @@ export function getSessionMessagesBefore(
 export function deleteSession(sessionId: string): Promise<void> {
   return invoke("delete_session", { sessionId });
 }
+export function deleteSessionChain(sessionId: string, profile?: string): Promise<number> {
+  return invoke("delete_session_chain", { sessionId, profile });
+}
 export function listCachedSessions(
   profile?: string,
   limit?: number,
