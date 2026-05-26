@@ -101,8 +101,10 @@ const CollapsibleSection = memo(function CollapsibleSection({
 
 export const ReasoningRow = memo(function ReasoningRow({
   msg,
+  defaultOpen = false,
 }: {
-  msg: ReasoningMessage;
+  msg: ReasoningMessage | { id: string; kind: "live_reasoning"; role: "agent"; text: string };
+  defaultOpen?: boolean;
 }): React.JSX.Element {
   const { t } = useI18n();
   const lineCount = msg.text.split("\n").length;
@@ -111,6 +113,7 @@ export const ReasoningRow = memo(function ReasoningRow({
       <HermesAvatar />
       <CollapsibleSection
         variant="reasoning"
+        defaultOpen={defaultOpen}
         header={
           <span className="chat-history-label">
             <span className="chat-history-title">{t("chat.thinking")}</span>

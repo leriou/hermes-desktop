@@ -28,6 +28,7 @@ import shell from "react-syntax-highlighter/dist/esm/languages/prism/shell-sessi
 import xml from "react-syntax-highlighter/dist/esm/languages/prism/xml-doc";
 import powershell from "react-syntax-highlighter/dist/esm/languages/prism/powershell";
 import { useI18n } from "./useI18n";
+import { StreamingMarkdown } from "./StreamingMarkdown";
 
 const LANG_MAP: Record<string, typeof bash> = {
   bash, c, cpp, css, diff, go, java, javascript, json, kotlin,
@@ -193,10 +194,14 @@ const MD_COMPONENTS: Record<string, React.ComponentType<any>> = {
 
 const AgentMarkdown = memo(function AgentMarkdown({
   children,
+  streaming = false,
 }: {
   children: string;
   streaming?: boolean;
 }): React.JSX.Element {
+  if (streaming) {
+    return <StreamingMarkdown>{children}</StreamingMarkdown>;
+  }
   return (
     <Markdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
       {children}

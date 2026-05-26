@@ -2,22 +2,17 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useChatActions } from "./useChatActions";
 
-describe("useChatActions", () => {
-  beforeEach(() => {
-    Object.defineProperty(window, "hermesAPI", {
-      configurable: true,
-      value: {
-        startGateway: vi.fn().mockResolvedValue(undefined),
-        tuiCreateSession: vi.fn().mockResolvedValue({ session_id: "sid-1" }),
-        tuiSubmitPrompt: vi.fn().mockResolvedValue(undefined),
-        tuiResumeSession: vi.fn().mockResolvedValue({ session_id: "sid-1" }),
-        tuiSteer: vi.fn().mockResolvedValue({ result: { status: "queued" } }),
-        tuiInterrupt: vi.fn().mockResolvedValue(undefined),
-        tuiClarifyRespond: vi.fn().mockResolvedValue(undefined),
-      },
-    });
-  });
+vi.mock("@renderer/lib/hermes-tauri", () => ({
+  startGateway: vi.fn().mockResolvedValue(undefined),
+  tuiCreateSession: vi.fn().mockResolvedValue({ session_id: "sid-1" }),
+  tuiSubmitPrompt: vi.fn().mockResolvedValue(undefined),
+  tuiResumeSession: vi.fn().mockResolvedValue({ session_id: "sid-1" }),
+  tuiSteer: vi.fn().mockResolvedValue({ result: { status: "queued" } }),
+  tuiInterrupt: vi.fn().mockResolvedValue(undefined),
+  tuiClarifyRespond: vi.fn().mockResolvedValue(undefined),
+}));
 
+describe("useChatActions", () => {
   function baseArgs(isLoading: boolean) {
     return {
       hermesSessionId: "sid-1",
@@ -46,12 +41,13 @@ describe("useChatActions", () => {
     );
 
     await result.current.handleSend("/queue follow up");
-    expect(window.hermesAPI.tuiSubmitPrompt).not.toHaveBeenCalled();
+    const { tuiSubmitPrompt } = await import("@renderer/lib/hermes-tauri");
+    expect(tuiSubmitPrompt).not.toHaveBeenCalled();
 
     rerender({ loading: false });
 
     await waitFor(() => {
-      expect(window.hermesAPI.tuiSubmitPrompt).toHaveBeenCalledWith("sid-1", "follow up");
+      expect(tuiSubmitPrompt).toHaveBeenCalledWith("sid-1", "follow up");
     });
   });
 });

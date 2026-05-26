@@ -555,6 +555,7 @@ function Layout({
                     sessionTitle={tab.title}
                     isLoading={tab.isLoading}
                     streamingText={tab.streamingText}
+                    streamingReasoning={tab.streamingReasoning}
                     usage={tab.usage}
                     toolProgress={tab.toolProgress}
                     pendingApproval={tab.pendingApproval}
@@ -579,6 +580,7 @@ function Layout({
                         ...(patch.pendingSecret !== undefined ? { pendingSecret: patch.pendingSecret } : {}),
                         ...(patch.usage !== undefined ? { usage: patch.usage } : {}),
                         ...(patch.streamingText !== undefined ? { streamingText: patch.streamingText } : {}),
+                        ...(patch.streamingReasoning !== undefined ? { streamingReasoning: patch.streamingReasoning } : {}),
                       });
                     }}
                   />

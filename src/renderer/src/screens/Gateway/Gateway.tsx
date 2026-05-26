@@ -44,7 +44,7 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
   // Poll gateway status (10s interval to reduce IPC overhead)
   useEffect(() => {
     const interval = setInterval(async () => {
-      const status = await window.hermesAPI.gatewayStatus();
+      const status = await gatewayStatus();
       setGatewayRunning(status);
     }, 10000);
     return () => clearInterval(interval);

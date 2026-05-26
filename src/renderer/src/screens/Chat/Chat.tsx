@@ -52,6 +52,7 @@ interface ChatProps {
   sessionTitle?: string;
   isLoading?: boolean;
   streamingText?: string;
+  streamingReasoning?: string;
   usage?: import("./types").UsageState | null;
   toolProgress?: string | null;
   pendingApproval?: import("./types").ApprovalRequest | null;
@@ -76,6 +77,7 @@ interface ChatProps {
     pendingSecret?: import("./types").SecretRequest | null;
     usage?: import("./types").UsageState | null;
     streamingText?: string;
+    streamingReasoning?: string;
   }) => void;
 }
 
@@ -87,6 +89,7 @@ function Chat({
   sessionTitle: externalTitle,
   isLoading = false,
   streamingText = "",
+  streamingReasoning = "",
   usage = null,
   toolProgress = null,
   pendingApproval = null,
@@ -547,6 +550,7 @@ function Chat({
       pendingSudo: null,
       pendingSecret: null,
       streamingText: "",
+      streamingReasoning: "",
       isLoading: false,
     });
   }, [isLoading, session.hermesSessionId, sessionId, setMessages, dispatch, onSessionStateChange]);
@@ -862,6 +866,7 @@ function Chat({
             isLoading={isLoading}
             toolProgress={toolProgress}
             streamingText={streamingText}
+            streamingReasoning={streamingReasoning}
           />
         )}
         <div ref={bottomRef} />

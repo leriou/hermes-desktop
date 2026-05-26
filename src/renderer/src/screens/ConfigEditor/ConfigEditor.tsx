@@ -421,8 +421,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
                 setShowDiff(false);
                 setSaving(true);
                 setError("");
-                window.hermesAPI
-                  .writeConfigYaml(content, profile)
+                writeConfigYaml(content, profile)
                   .then(() => {
                     setOriginal(content);
                     setSaved(true);

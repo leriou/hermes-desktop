@@ -5,15 +5,15 @@ import { SubagentRow } from "./SubagentRow";
 import { ToolGroupRow } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
-import { mergeContinuationLabels } from "./sessionDisplay";
-import type { ChatMessage, SystemEventMessage, SystemStatusMessage, ToolCallMessage, ToolGroupMessage } from "./types";
-
+import { buildRenderableTranscript } from "./renderTranscript";
+import type { ChatMessage, SystemEventMessage, SystemStatusMessage, ToolGroupMessage } from "./types";
 
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading: boolean;
   toolProgress: string | null;
   streamingText?: string;
+  streamingReasoning?: string;
 }
 
 function TypingIndicator({
@@ -37,80 +37,6 @@ function TypingIndicator({
       </div>
     </div>
   );
-}
-
-function isBubble(m: ChatMessage): m is import("./types").ChatBubbleMessage {
-  const k = (m as { kind?: string }).kind;
-  return !k || k === "user" || k === "assistant";
-}
-
-function kindOf(m: ChatMessage): string | undefined {
-  return (m as { kind?: string }).kind;
-}
-
-/**
- * Two-pass grouping:
- *   1. Merge any `tool_result` messages into their matching `tool_call`
- *      (history data comes as alternating call/result pairs).
- *   2. Group strictly consecutive `tool_call` messages that share the
- *      same tool name into a `ToolGroupMessage`.
- */
-function groupToolCalls(messages: ChatMessage[]): ChatMessage[] {
-  // Pass 1: merge tool_results into their tool_call, stripping tool_results
-  const merged: ChatMessage[] = [];
-  const callMap = new Map<string, ToolCallMessage>();
-
-  for (const msg of messages) {
-    if (kindOf(msg) === "tool_call") {
-      const tc = { ...msg } as ToolCallMessage;
-      callMap.set(tc.callId, tc);
-      merged.push(tc);
-    } else if (kindOf(msg) === "tool_result") {
-      const tr = msg as import("./types").ToolResultMessage;
-      const tc = callMap.get(tr.callId);
-      if (tc) {
-        tc.result = tr.content;
-        tc.success = true;
-      }
-      // tool_result consumed — don't push to merged
-    } else {
-      merged.push(msg);
-    }
-  }
-
-  // Pass 2: group consecutive tool_calls with the same name
-  const result: ChatMessage[] = [];
-  let i = 0;
-  while (i < merged.length) {
-    if (kindOf(merged[i]) !== "tool_call") {
-      result.push(merged[i]);
-      i++;
-      continue;
-    }
-
-    const first = merged[i] as ToolCallMessage;
-    const name = first.name;
-    const calls: ToolCallMessage[] = [first];
-    i++;
-
-    while (i < merged.length) {
-      const next = merged[i];
-      if (kindOf(next) !== "tool_call") break;
-      if ((next as ToolCallMessage).name !== name) break;
-      calls.push(next as ToolCallMessage);
-      i++;
-    }
-
-    result.push({
-      kind: "tool_group",
-      id: `group-${calls.map((c) => c.id).join("-")}`,
-      role: "agent",
-      toolName: name,
-      calls,
-    });
-  }
-
-  return result;
 }
 
 function SystemStatusRow({ msg }: { msg: SystemStatusMessage }): React.JSX.Element {
@@ -163,36 +89,30 @@ export const MessageList = memo(function MessageList({
   isLoading,
   toolProgress,
   streamingText,
+  streamingReasoning,
 }: MessageListProps): React.JSX.Element {
-  const processed = useMemo(
-    () => groupToolCalls(mergeContinuationLabels(messages)),
-    [messages],
-  );
-
   const visibleMessages = useMemo(
     () =>
-      processed.filter((m) => {
-        if (!isBubble(m)) return true;
-        return ((m.content as string) || "").trim().length > 0;
+      buildRenderableTranscript({
+        messages,
+        isLoading,
+        toolProgress,
+        streamingText,
+        streamingReasoning,
       }),
-    [processed],
+    [messages, isLoading, toolProgress, streamingText, streamingReasoning],
   );
-
-  let lastBubble: ChatMessage | undefined;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (isBubble(messages[i])) { lastBubble = messages[i]; break; }
-  }
-  const lastMessageIsAgent = !!lastBubble && lastBubble.role === "agent";
 
   return (
     <>
       {visibleMessages.map((msg, i) => {
         const k = (msg as { kind?: string }).kind;
-        if (k === "reasoning") {
+        if (k === "reasoning" || k === "live_reasoning") {
           return (
             <ReasoningRow
               key={msg.id}
-              msg={msg as Extract<ChatMessage, { kind: "reasoning" }>}
+              msg={msg as any}
+              defaultOpen={k === "live_reasoning"}
             />
           );
         }
@@ -226,6 +146,43 @@ export const MessageList = memo(function MessageList({
         if (k === "system_event") {
           return <SystemEventRow key={msg.id} msg={msg as SystemEventMessage} />;
         }
+        if (k === "live_assistant") {
+          const liveMsg = msg as Extract<
+            import("./renderTranscript").RenderTranscriptItem,
+            { kind: "live_assistant" }
+          >;
+          return (
+            <div key={liveMsg.id} className="chat-message chat-message-agent">
+              <HermesAvatar />
+              <div className="chat-bubble chat-bubble-agent">
+                <StreamingMarkdown>{liveMsg.content}</StreamingMarkdown>
+              </div>
+            </div>
+          );
+        }
+        if (k === "typing") {
+          const typingMsg = msg as Extract<
+            import("./renderTranscript").RenderTranscriptItem,
+            { kind: "typing" }
+          >;
+          return (
+            <TypingIndicator
+              key={typingMsg.id}
+              toolProgress={typingMsg.toolProgress}
+            />
+          );
+        }
+        if (k === "tool_progress") {
+          const progressMsg = msg as Extract<
+            import("./renderTranscript").RenderTranscriptItem,
+            { kind: "tool_progress" }
+          >;
+          return (
+            <div key={progressMsg.id} className="chat-tool-progress-inline">
+              {progressMsg.content}
+            </div>
+          );
+        }
         const bubble = msg as Extract<ChatMessage, { role: "user" | "agent" }>;
         return (
           <MessageRow
@@ -236,24 +193,6 @@ export const MessageList = memo(function MessageList({
           />
         );
       })}
-
-      {isLoading && streamingText && (
-        <div className="chat-message chat-message-agent">
-          <HermesAvatar />
-          <div className="chat-bubble chat-bubble-agent">
-            <StreamingMarkdown>{streamingText}</StreamingMarkdown>
-          </div>
-        </div>
-      )}
-
-      {isLoading && !lastMessageIsAgent && !streamingText && (
-        <TypingIndicator toolProgress={toolProgress} />
-      )}
-
-      {isLoading && toolProgress && lastMessageIsAgent && (
-        <div className="chat-tool-progress-inline">{toolProgress}</div>
-      )}
-
     </>
   );
 });

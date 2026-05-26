@@ -1,4 +1,4 @@
-import { cancelOAuthLogin, onOAuthLoginProgress } from "@renderer/lib/hermes-tauri";
+import { cancelOAuthLogin, oauthLogin, onOAuthLoginProgress } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useRef } from "react";
 import { X } from "../assets/icons";
 import { useI18n } from "./useI18n";
@@ -40,8 +40,7 @@ function OAuthLoginModal({
     });
     if (!startedRef.current) {
       startedRef.current = true;
-      window.hermesAPI
-        .oauthLogin(provider, profile)
+      oauthLogin(provider, profile)
         .then((res) => {
           if (res.success) {
             setStatus("success");

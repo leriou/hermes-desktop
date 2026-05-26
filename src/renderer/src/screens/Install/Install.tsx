@@ -1,4 +1,4 @@
-import { adoptHermesHome, onInstallProgress, openExternal, quitApp, selectHermesFolder, validateHermesHome } from "@renderer/lib/hermes-tauri";
+import { adoptHermesHome, inspectInstallTarget, onInstallProgress, openExternal, quitApp, selectHermesFolder, startInstall, validateHermesHome } from "@renderer/lib/hermes-tauri";
 import { useEffect, useState, useRef } from "react";
 import { ArrowRight, Copy, Send } from "../../assets/icons";
 
@@ -55,8 +55,7 @@ function Install({
   // confirmation can say exactly what to expect (fresh / update / replace).
   useEffect(() => {
     let mounted = true;
-    window.hermesAPI
-      .inspectInstallTarget()
+    inspectInstallTarget()
       .then((info) => {
         if (mounted) setTarget(info);
       })
@@ -76,8 +75,7 @@ function Install({
       if (isMounted) setProgress(p);
     });
 
-    window.hermesAPI
-      .startInstall()
+    startInstall()
       .then((result) => {
         if (!isMounted) return;
         if (result.success) {

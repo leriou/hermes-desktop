@@ -24,7 +24,7 @@ describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
     cache.clear();
   });
 
-  it("calls window.hermesAPI.installSkill(skill.name, profile) when Install is clicked on a Browse card", async () => {
+  it("calls the hermes-tauri installSkill function(skill.name, profile) when Install is clicked on a Browse card", async () => {
     const installSkill = vi.fn().mockResolvedValue({ success: true });
     const listInstalledSkills = vi.fn().mockResolvedValue([]);
     const listBundledSkills = vi.fn().mockResolvedValue([

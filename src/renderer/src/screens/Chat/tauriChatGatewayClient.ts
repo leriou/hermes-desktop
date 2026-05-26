@@ -1,6 +1,7 @@
 import type { ApprovalDecision } from "./approvalPolicy";
+import * as hermesAPI from "@renderer/lib/hermes-tauri";
 
-type HermesApi = typeof window.hermesAPI;
+type HermesApi = typeof hermesAPI;
 type GatewayPayload = any;
 
 export interface TauriChatGatewayClient {
@@ -28,7 +29,7 @@ export interface TauriChatGatewayClient {
   respondSecret(sessionId: string, value: string, requestId?: string): Promise<void>;
 }
 
-export function createTauriChatGatewayClient(api: HermesApi = window.hermesAPI): TauriChatGatewayClient {
+export function createTauriChatGatewayClient(api: HermesApi = hermesAPI): TauriChatGatewayClient {
   return {
     async start(): Promise<void> {
       await api.startGateway();

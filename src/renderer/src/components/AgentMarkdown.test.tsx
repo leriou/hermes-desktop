@@ -28,4 +28,15 @@ describe("AgentMarkdown", () => {
     expect(container.querySelector(".chat-code-block")).not.toBeNull();
     expect(container.querySelector(".chat-code-placeholder")?.textContent).toContain("const value = 1;");
   });
+
+  it("uses the lightweight streaming renderer when streaming", () => {
+    const { container } = render(
+      <AgentMarkdown streaming>
+        {"**Live** response"}
+      </AgentMarkdown>,
+    );
+
+    expect(container.querySelector(".sm-streaming")).not.toBeNull();
+    expect(container.textContent).toContain("Live response");
+  });
 });

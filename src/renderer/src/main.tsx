@@ -103,8 +103,6 @@ async function probeGPU(): Promise<boolean> {
 
 async function boot(): Promise<void> {
   await initStore();
-  // Inject the Tauri adapter before React renders so that
-  // window.hermesAPI is available when App's useEffect fires.
   if ((window as any).__TAURI_INTERNALS__) {
     (window as any).hermesAPI = hermesAPI;
     setupTauriContextMenu();

@@ -1,8 +1,7 @@
 /**
  * Canonical API type definitions for the Hermes Desktop app.
  *
- * The Tauri invoke adapter must satisfy this interface.
- * The renderer consumes it via `window.hermesAPI`.
+ * The Tauri invoke adapter in hermes-tauri.ts must satisfy this interface.
  */
 
 import type { AppLocale } from "./i18n/types";
