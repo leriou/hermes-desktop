@@ -1,5 +1,5 @@
-// Shared attachment constants + helpers used by renderer, preload, and main.
-// Do not import renderer-only or main-only modules from this file.
+// Shared attachment constants + helpers.
+// Do not import renderer-only modules from this file.
 
 export type AttachmentKind = "image" | "text-file" | "path-ref";
 
