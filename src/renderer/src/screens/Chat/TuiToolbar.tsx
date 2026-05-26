@@ -5,6 +5,8 @@ interface TuiToolbarProps {
   onSetModel: (model: string) => void;
   onSteer: (prompt: string) => void;
   onCompress: () => void;
+  onUndo: () => void;
+  onBranch: (name: string) => void;
   steerEnabled?: boolean;
 }
 
@@ -52,9 +54,11 @@ export const TuiToolbar = memo(function TuiToolbar({
   onSetModel,
   onSteer,
   onCompress,
+  onUndo,
+  onBranch,
   steerEnabled = false,
 }: TuiToolbarProps): React.JSX.Element {
-  const [open, setOpen] = useState<"goal" | "model" | "steer" | "compress" | null>(null);
+  const [open, setOpen] = useState<"goal" | "model" | "steer" | "compress" | "branch" | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,7 +82,7 @@ export const TuiToolbar = memo(function TuiToolbar({
   }, [open]);
 
   const toggle = useCallback(
-    (which: "goal" | "model" | "steer" | "compress") => () =>
+    (which: "goal" | "model" | "steer" | "compress" | "branch") => () =>
       setOpen((prev) => (prev === which ? null : which)),
     [],
   );
@@ -105,6 +109,14 @@ export const TuiToolbar = memo(function TuiToolbar({
       onSteer(prompt);
     },
     [onSteer],
+  );
+
+  const handleBranch = useCallback(
+    (name: string) => {
+      setOpen(null);
+      onBranch(name);
+    },
+    [onBranch],
   );
 
   return (
@@ -184,6 +196,26 @@ export const TuiToolbar = memo(function TuiToolbar({
               </button>
             </div>
           </div>
+        )}
+      </div>
+      <div className="tui-toolbar-item">
+        <button className="tui-btn" onClick={onUndo}>
+          ↶ Undo
+        </button>
+      </div>
+      <div className="tui-toolbar-item">
+        <button
+          className={`tui-btn ${open === "branch" ? "tui-btn-active" : ""}`}
+          onClick={toggle("branch")}
+        >
+          ⎇ Branch
+        </button>
+        {open === "branch" && (
+          <PopoverInput
+            placeholder="Branch name..."
+            submitLabel="Create"
+            onSubmit={handleBranch}
+          />
         )}
       </div>
     </div>

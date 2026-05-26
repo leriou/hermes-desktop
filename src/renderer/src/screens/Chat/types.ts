@@ -82,6 +82,18 @@ export interface SystemStatusMessage {
   timestamp?: number;
 }
 
+export interface SystemEventMessage {
+  id: string;
+  kind: "system_event";
+  role: "system";
+  event: "model_switch" | "context_compress" | "provider_error" | "gateway_error" | "status";
+  tone: "info" | "success" | "warning" | "error";
+  title: string;
+  content?: string;
+  code?: string;
+  timestamp?: number;
+}
+
 export interface SubagentMessage {
   id: string;
   kind: "subagent";
@@ -101,6 +113,7 @@ export type ChatMessage =
   | ToolResultMessage
   | ToolGroupMessage
   | SystemStatusMessage
+  | SystemEventMessage
   | SubagentMessage;
 
 export interface ModelGroup {

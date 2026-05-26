@@ -268,7 +268,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     function handleSend(): void {
       const text = input.trim();
       const hasPayload = text.length > 0 || attachments.length > 0;
-      if (!hasPayload || isLoading) return;
+      if (!hasPayload) return;
       setSlashMenuOpen(false);
       setModelMenuOpen(false);
       const sendAttachments = attachments;
@@ -456,7 +456,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     }
 
     const canSend =
-      (input.trim().length > 0 || attachments.length > 0) && !isLoading;
+      input.trim().length > 0 || attachments.length > 0;
 
     return (
       <>
@@ -573,7 +573,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             rows={1}
             autoFocus
           />
-          {isLoading ? (
+          {isLoading && !canSend ? (
             <button
               className="chat-send-btn chat-stop-btn"
               onClick={onAbort}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ChatInputHandle } from "../ChatInput";
 import type { Attachment, ChatMessage, ClarifyRequest } from "../types";
+import { describeBusyInput } from "../busyInput";
 
 interface LocalCommands {
   isLocal: (text: string) => boolean;
@@ -28,8 +29,6 @@ interface UseChatActionsResult {
   handleSend: (text: string, attachments?: Attachment[]) => Promise<void>;
   handleQuickAsk: (text: string, attachments?: Attachment[]) => Promise<void>;
   handleAbort: () => void;
-  handleApprove: () => void;
-  handleDeny: () => void;
 }
 
 export function useChatActions({
@@ -51,6 +50,7 @@ export function useChatActions({
   const hermesSessionIdRef = useRef(hermesSessionId);
   const dbSessionIdRef = useRef(dbSessionId ?? null);
   const abortRequestedRef = useRef(false);
+  const queuedInputRef = useRef<Array<{ text: string; attachments?: Attachment[] }>>([]);
 
   useEffect(() => {
     isLoadingRef.current = isLoading;
@@ -147,11 +147,69 @@ export function useChatActions({
       }
 
       if (isLoadingRef.current) {
-        // Interrupt current response, then submit new prompt
         const sid = hermesSessionIdRef.current;
+        const action = describeBusyInput(text, "steer");
+        if (action.kind === "queue") {
+          if (action.text) {
+            queuedInputRef.current.push({ text: action.text, attachments });
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `queued-${Date.now()}`,
+                kind: "system_status",
+                role: "agent",
+                title: "Queued for next turn",
+                content: action.displayText,
+                tone: "info",
+                timestamp: Date.now(),
+              },
+            ]);
+          }
+          return;
+        }
+
+        if (action.kind === "steer" && sid) {
+          try {
+            const result = await window.hermesAPI.tuiSteer(sid, action.text);
+            const payload = result?.result ?? result ?? {};
+            if (payload.status === "queued") {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: `steer-${Date.now()}`,
+                  kind: "system_status",
+                  role: "agent",
+                  title: "Steer queued",
+                  content: action.displayText,
+                  tone: "success",
+                  timestamp: Date.now(),
+                },
+              ]);
+              return;
+            }
+          } catch {
+            // Fall back to queue semantics so in-flight input is never dropped.
+          }
+          queuedInputRef.current.push({ text: action.text, attachments });
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `queued-${Date.now()}`,
+              kind: "system_status",
+              role: "agent",
+              title: "Queued for next turn",
+              content: action.displayText,
+              tone: "info",
+              timestamp: Date.now(),
+            },
+          ]);
+          return;
+        }
+
         if (sid) {
-          await window.hermesAPI.tuiInterrupt(sid);
-          setIsLoading(false);
+          window.hermesAPI.tuiInterrupt(sid).catch(err => {
+            console.error("[useChatActions] Pipelined interrupt failed:", err);
+          });
         }
       }
 
@@ -248,6 +306,13 @@ export function useChatActions({
     [localCommands, pushUser, onSessionStarted, setIsLoading, setMessages, pendingClarify, setPendingClarify, setHermesSessionId, executeGatewayCommand],
   );
 
+  useEffect(() => {
+    if (isLoading || queuedInputRef.current.length === 0) return;
+    const next = queuedInputRef.current.shift();
+    if (!next) return;
+    void handleSend(next.text, next.attachments);
+  }, [handleSend, isLoading]);
+
   const handleQuickAsk = useCallback(
     async (text: string, attachments?: Attachment[]): Promise<void> => {
       if (!text || isLoadingRef.current) return;
@@ -303,21 +368,5 @@ export function useChatActions({
     setTimeout(() => chatInputRef.current?.focus(), 50);
   }, [chatInputRef, setIsLoading]);
 
-  const handleApprove = useCallback(() => {
-    if (!hermesSessionIdRef.current) return;
-    chatInputRef.current?.clear();
-    setIsLoading(true);
-    pushUser("✅ Approve", "user-approve");
-    window.hermesAPI.tuiApprovalRespond(hermesSessionIdRef.current, "approve").catch(() => setIsLoading(false));
-  }, [chatInputRef, pushUser, setIsLoading]);
-
-  const handleDeny = useCallback(() => {
-    if (!hermesSessionIdRef.current) return;
-    chatInputRef.current?.clear();
-    setIsLoading(true);
-    pushUser("❌ Deny", "user-deny");
-    window.hermesAPI.tuiApprovalRespond(hermesSessionIdRef.current, "deny").catch(() => setIsLoading(false));
-  }, [chatInputRef, pushUser, setIsLoading]);
-
-  return { handleSend, handleQuickAsk, handleAbort, handleApprove, handleDeny };
+  return { handleSend, handleQuickAsk, handleAbort };
 }

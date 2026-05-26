@@ -18,6 +18,7 @@ export function buildChatTranscript(
   return mergeContinuationLabels(messages)
     .filter((m) => "content" in m && typeof m.content === "string")
     .filter((m) => (m as { kind?: string }).kind !== "system_status")
+    .filter((m) => (m as { kind?: string }).kind !== "system_event")
     .map((m) => {
       const msg = m as { role: "user" | "agent"; content: string };
       const speaker = msg.role === "user" ? "You" : "Hermes";

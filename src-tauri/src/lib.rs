@@ -38,10 +38,30 @@ pub fn run() {
         ssh_tunnel: SshTunnelManager::new(),
     })
     .setup(|app| {
+      use tauri::Manager;
+
       let python_path = python::get_python_path(Some(app.handle()));
       println!("Detected Python path: {:?}", python_path);
 
       menu::setup_menu(app.handle())?;
+
+      // Pre-warm the TUI Gateway in the background
+      let app_handle = app.handle().clone();
+      tauri::async_runtime::spawn(async move {
+        let gateway = Arc::new(TuiGateway::new(app_handle.clone(), None));
+        eprintln!("[SETUP] Pre-warming TUI Gateway...");
+        match gateway.clone().start().await {
+          Ok(_) => {
+            let state = app_handle.state::<AppState>();
+            let mut lock = state.gateway.lock().await;
+            *lock = Some(gateway);
+            eprintln!("[SETUP] TUI Gateway pre-warmed successfully");
+          }
+          Err(e) => {
+            eprintln!("[SETUP] TUI Gateway pre-warm failed: {}", e);
+          }
+        }
+      });
 
       // Test event delivery — frontend should see this 2s after startup
       let handle = app.handle().clone();

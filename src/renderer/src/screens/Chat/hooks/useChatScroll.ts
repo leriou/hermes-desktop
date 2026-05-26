@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ChatMessage } from "../types";
+import { isNearScrollBottom } from "../scrollState";
+
+const STREAM_SCROLL_INTERVAL_MS = 80;
 
 export function useChatScroll(messages: ChatMessage[], isLoading: boolean): {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -10,6 +13,7 @@ export function useChatScroll(messages: ChatMessage[], isLoading: boolean): {
   const userScrolledUpRef = useRef(false);
   const prevMessageCountRef = useRef(messages.length);
   const streamingRafRef = useRef<number>(0);
+  const streamingTimerRef = useRef<number>(0);
 
   const scrollToBottom = useCallback((force?: boolean, instant?: boolean) => {
     if (!force && userScrolledUpRef.current) return;
@@ -27,8 +31,7 @@ export function useChatScroll(messages: ChatMessage[], isLoading: boolean): {
     if (!container) return;
     function handleScroll(): void {
       const el = container!;
-      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-      userScrolledUpRef.current = !atBottom;
+      userScrolledUpRef.current = !isNearScrollBottom(el);
     }
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
@@ -56,6 +59,10 @@ export function useChatScroll(messages: ChatMessage[], isLoading: boolean): {
         cancelAnimationFrame(streamingRafRef.current);
         streamingRafRef.current = 0;
       }
+      if (streamingTimerRef.current) {
+        clearTimeout(streamingTimerRef.current);
+        streamingTimerRef.current = 0;
+      }
       return;
     }
     function tick(): void {
@@ -63,13 +70,20 @@ export function useChatScroll(messages: ChatMessage[], isLoading: boolean): {
       if (el && !userScrolledUpRef.current) {
         el.scrollTop = el.scrollHeight;
       }
-      streamingRafRef.current = requestAnimationFrame(tick);
+      streamingTimerRef.current = window.setTimeout(() => {
+        streamingTimerRef.current = 0;
+        streamingRafRef.current = requestAnimationFrame(tick);
+      }, STREAM_SCROLL_INTERVAL_MS);
     }
     streamingRafRef.current = requestAnimationFrame(tick);
     return () => {
       if (streamingRafRef.current) {
         cancelAnimationFrame(streamingRafRef.current);
         streamingRafRef.current = 0;
+      }
+      if (streamingTimerRef.current) {
+        clearTimeout(streamingTimerRef.current);
+        streamingTimerRef.current = 0;
       }
     };
   }, [isLoading]);

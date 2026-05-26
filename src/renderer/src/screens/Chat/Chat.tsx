@@ -3,6 +3,8 @@ import { ChatInput, type ChatInputHandle, type ModelOption } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { MessageList } from "./MessageList";
+import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
+import { ApprovalModal } from "./ApprovalModal";
 import { ModelPicker } from "./ModelPicker";
 import { TuiToolbar } from "./TuiToolbar";
 import { ChatStatusBar } from "./ChatStatusBar";
@@ -15,6 +17,20 @@ import { useSessionLifecycle } from "./hooks/useSessionLifecycle";
 import { useI18n } from "../../components/useI18n";
 import { buildChatTranscript } from "./transcriptUtils";
 import { shortModelName } from "./sessionDisplay";
+import { createSystemEvent, systemEventFromError } from "./systemEvents";
+import {
+  createApprovalHistoryEntry,
+  getImmediateApprovalDecision,
+  loadApprovalHistory,
+  loadApprovalPolicy,
+  normalizeApprovalPolicy,
+  pruneApprovalHistory,
+  saveApprovalHistory,
+  saveApprovalPolicy,
+  type ApprovalDecision,
+  type ApprovalDecisionSource,
+  type ApprovalPolicy,
+} from "./approvalPolicy";
 import type { ChatMessage } from "./types";
 
 export type { ChatMessage } from "./types";
@@ -78,6 +94,11 @@ function Chat({
   const [dragActive, setDragActive] = useState(false);
   const [remoteMode, setRemoteMode] = useState(false);
   const [verbose, setVerbose] = useState(() => localStorage.getItem("hermes-verbose") === "true");
+  const [approvalPolicy, setApprovalPolicyState] = useState<ApprovalPolicy>(() => loadApprovalPolicy());
+  const [approvalHistory, setApprovalHistory] = useState(() => loadApprovalHistory());
+  const [approvalSubmitting, setApprovalSubmitting] = useState(false);
+  const [dismissedApproval, setDismissedApproval] = useState<typeof pendingApproval>(null);
+  const approvalSubmittingRef = useRef(false);
   const dragCounter = useRef(0);
   const chatInputRef = useRef<ChatInputHandle>(null);
 
@@ -133,6 +154,74 @@ function Chat({
     },
     [setMessages],
   );
+
+  const addSystemEvent = useCallback(
+    (event: Parameters<typeof createSystemEvent>[0], title: string, content?: string, options?: Parameters<typeof createSystemEvent>[3]) => {
+      setMessages((prev) => [...prev, createSystemEvent(event, title, content, options)]);
+    },
+    [setMessages],
+  );
+
+  const addErrorEvent = useCallback(
+    (error: unknown) => {
+      setMessages((prev) => [...prev, systemEventFromError(error)]);
+    },
+    [setMessages],
+  );
+
+  const setApprovalPolicy = useCallback((next: ApprovalPolicy) => {
+    const normalized = normalizeApprovalPolicy(next);
+    setApprovalPolicyState(normalized);
+    saveApprovalPolicy(normalized);
+    setApprovalHistory((prev) => {
+      const pruned = pruneApprovalHistory(prev, Date.now(), normalized.historyTtlMinutes);
+      saveApprovalHistory(pruned);
+      return pruned;
+    });
+  }, []);
+
+  const visibleApproval = pendingApproval && pendingApproval !== dismissedApproval ? pendingApproval : null;
+
+  const recordApprovalDecision = useCallback(
+    (request: NonNullable<typeof pendingApproval>, decision: ApprovalDecision, source: ApprovalDecisionSource) => {
+      const entry = createApprovalHistoryEntry(request, decision, source, Date.now());
+      setApprovalHistory((prev) => {
+        const next = pruneApprovalHistory([...prev, entry], Date.now(), approvalPolicy.historyTtlMinutes);
+        saveApprovalHistory(next);
+        return next;
+      });
+    },
+    [approvalPolicy.historyTtlMinutes],
+  );
+
+  const handleApprovalDecision = useCallback(
+    async (decision: ApprovalDecision, source: ApprovalDecisionSource) => {
+      const request = visibleApproval;
+      const sid = session.hermesSessionId ?? sessionId;
+      if (!request || !sid || approvalSubmittingRef.current) return;
+      approvalSubmittingRef.current = true;
+      setApprovalSubmitting(true);
+      setDismissedApproval(request);
+      onSessionStateChange?.({ pendingApproval: null });
+      recordApprovalDecision(request, decision, source);
+      try {
+        await window.hermesAPI.tuiApprovalRespond(sid, decision, false);
+      } catch (err) {
+        addErrorEvent(err);
+      } finally {
+        approvalSubmittingRef.current = false;
+        setApprovalSubmitting(false);
+      }
+    },
+    [addErrorEvent, onSessionStateChange, recordApprovalDecision, session.hermesSessionId, sessionId, visibleApproval],
+  );
+
+  useEffect(() => {
+    if (!visibleApproval) return;
+    const immediate = getImmediateApprovalDecision(approvalPolicy);
+    if (!immediate) return;
+    void handleApprovalDecision(immediate.decision, immediate.source);
+  }, [approvalPolicy, handleApprovalDecision, visibleApproval]);
 
   const syncSessionBinding = useCallback(
     async (runtimeSessionId: string | null) => {
@@ -267,10 +356,10 @@ function Chat({
         const summaryText = [payload.summary?.headline, payload.summary?.token_line, payload.summary?.note]
           .filter(Boolean)
           .join("\n");
-        addStatusMessage(
+        addSystemEvent(
+          "context_compress",
           "Session compressed",
           summaryText || "Older context was summarized. Continue chatting in the same thread.",
-          "success",
         );
         await syncSessionBinding(runtimeSessionId);
         setIsLoading(false);
@@ -285,11 +374,11 @@ function Chat({
           return true;
         }
         onSessionStateChange?.({ pendingModelSwitch: arg });
-        addStatusMessage("Switching model", shortModelName(arg), "info");
+        addSystemEvent("model_switch", "Switching model", shortModelName(arg), { tone: "info" });
         const result = await window.hermesAPI.tuiSetModel(runtimeSessionId, arg);
         const payload = result?.result ?? result ?? {};
         if (payload.warning) {
-          addStatusMessage("Model switch warning", String(payload.warning), "warning");
+          addSystemEvent("model_switch", "Model switch warning", String(payload.warning), { tone: "warning" });
         }
         return true;
       }
@@ -324,6 +413,7 @@ function Chat({
     },
     [
       addAgentMessage,
+      addSystemEvent,
       addStatusMessage,
       dispatch,
       gatewayMessagesToChat,
@@ -335,6 +425,7 @@ function Chat({
       session.sessionModel,
       setMessages,
       syncSessionBinding,
+      modelConfig,
     ],
   );
 
@@ -531,11 +622,11 @@ function Chat({
         setIsLoading(true);
         await executeGatewayCommand(id, `/model ${model}`);
       } catch (err) {
-        addStatusMessage("Model switch failed", (err as Error).message || String(err), "error");
+        addErrorEvent(err);
         setIsLoading(false);
       }
     },
-    [executeGatewayCommand, session.hermesSessionId, sessionId, addStatusMessage],
+    [executeGatewayCommand, session.hermesSessionId, sessionId, addErrorEvent],
   );
 
   const handleSelectModel = useCallback(
@@ -547,12 +638,12 @@ function Chat({
           setIsLoading(true);
           await executeGatewayCommand(id, `/model ${model}`);
         } catch (err) {
-          addStatusMessage("Model switch failed", (err as Error).message || String(err), "error");
+          addErrorEvent(err);
           setIsLoading(false);
         }
       }
     },
-    [modelConfig.selectModel, session.hermesSessionId, sessionId, addStatusMessage, executeGatewayCommand],
+    [modelConfig.selectModel, session.hermesSessionId, sessionId, addErrorEvent, executeGatewayCommand],
   );
 
   const handleSelectAlias = useCallback(
@@ -564,12 +655,12 @@ function Chat({
           setIsLoading(true);
           await executeGatewayCommand(id, `/model ${alias.name}`);
         } catch (err) {
-          addStatusMessage("Model switch failed", (err as Error).message || String(err), "error");
+          addErrorEvent(err);
           setIsLoading(false);
         }
       }
     },
-    [modelConfig.selectAlias, session.hermesSessionId, sessionId, addStatusMessage, executeGatewayCommand],
+    [modelConfig.selectAlias, session.hermesSessionId, sessionId, addErrorEvent, executeGatewayCommand],
   );
 
   const modelOptions = useMemo<ModelOption[]>(() => {
@@ -591,13 +682,13 @@ function Chat({
           setIsLoading(true);
           await executeGatewayCommand(id, `/model ${option.model}`);
         } catch (err) {
-          addStatusMessage("Model switch failed", (err as Error).message || String(err), "error");
+          addErrorEvent(err);
           setIsLoading(false);
           return;
         }
       }
     },
-    [modelConfig, session.hermesSessionId, sessionId, addStatusMessage, executeGatewayCommand],
+    [modelConfig, session.hermesSessionId, sessionId, addErrorEvent, executeGatewayCommand],
   );
 
   const handleSudoRespond = useCallback(async (password: string) => {
@@ -629,10 +720,50 @@ function Chat({
       setIsLoading(true);
       await executeGatewayCommand(id, "/compress");
     } catch (err) {
-      addStatusMessage("Compress failed", (err as Error).message || String(err), "error");
+      addErrorEvent(err);
       setIsLoading(false);
     }
-  }, [executeGatewayCommand, session.hermesSessionId, sessionId, addStatusMessage]);
+  }, [executeGatewayCommand, session.hermesSessionId, sessionId, addErrorEvent]);
+
+  const handleTuiUndo = useCallback(async () => {
+    const id = session.hermesSessionId ?? sessionId;
+    if (!id) return;
+    try {
+      setIsLoading(true);
+      await window.hermesAPI.tuiUndo(id);
+      const history = await window.hermesAPI.tuiSessionHistory(id);
+      const payload = history?.result ?? history ?? {};
+      if (Array.isArray(payload.messages)) {
+        setMessages(gatewayMessagesToChat(payload.messages));
+      }
+      addStatusMessage("Last turn undone", "Conversation state was restored from Hermes.", "success");
+      setIsLoading(false);
+    } catch (err) {
+      addStatusMessage("Undo failed", (err as Error).message || String(err), "error");
+      setIsLoading(false);
+    }
+  }, [session.hermesSessionId, sessionId, setMessages, gatewayMessagesToChat, addStatusMessage]);
+
+  const handleTuiBranch = useCallback(async (name: string) => {
+    const id = session.hermesSessionId ?? sessionId;
+    if (!id) return;
+    try {
+      setIsLoading(true);
+      const res = await window.hermesAPI.tuiSessionBranch(id, name || undefined);
+      const payload = res?.result ?? res ?? {};
+      const nextId = payload.session_id || payload.sid || payload.id;
+      if (nextId) {
+        dispatch({ type: "setHermesSessionId", value: nextId });
+        onSessionStateChange?.({ hermesSessionId: nextId });
+        await syncSessionBinding(nextId);
+      }
+      addStatusMessage("Session branched", name || "New branch", "success");
+      setIsLoading(false);
+    } catch (err) {
+      addStatusMessage("Branch failed", (err as Error).message || String(err), "error");
+      setIsLoading(false);
+    }
+  }, [session.hermesSessionId, sessionId, dispatch, onSessionStateChange, syncSessionBinding, addStatusMessage]);
 
   const handleTuiSteer = useCallback(
     async (prompt: string) => {
@@ -682,11 +813,8 @@ function Chat({
             messages={messages}
             isLoading={isLoading}
             toolProgress={toolProgress}
-            pendingApproval={pendingApproval}
             pendingSudo={pendingSudo}
             pendingSecret={pendingSecret}
-            onApprove={actions.handleApprove}
-            onDeny={actions.handleDeny}
             onSudoRespond={handleSudoRespond}
             onSecretRespond={handleSecretRespond}
             streamingText={streamingText}
@@ -696,12 +824,15 @@ function Chat({
       </div>
 
       <div className="chat-input-area">
+        <ApprovalHistoryPanel entries={approvalHistory} />
         {session.hermesSessionId && (
           <TuiToolbar
             onSetGoal={handleTuiGoal}
             onSetModel={handleTuiModel}
             onSteer={handleTuiSteer}
             onCompress={handleTuiCompress}
+            onUndo={handleTuiUndo}
+            onBranch={handleTuiBranch}
             steerEnabled={isLoading}
           />
         )}
@@ -742,6 +873,13 @@ function Chat({
           />
         </div>
       </div>
+      <ApprovalModal
+        request={visibleApproval}
+        policy={approvalPolicy}
+        submitting={approvalSubmitting}
+        onDecision={handleApprovalDecision}
+        onPolicyChange={setApprovalPolicy}
+      />
       {dragActive && (
         <div className="chat-drop-overlay" aria-hidden>
           <div className="chat-drop-overlay-inner">

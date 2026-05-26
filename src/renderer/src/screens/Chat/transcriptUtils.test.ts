@@ -57,4 +57,24 @@ describe("buildChatTranscript (issue #298)", () => {
     );
     expect(out).toBe("You: first\n\nHermes: continued");
   });
+
+  it("omits system events from exported conversation text", () => {
+    const out = buildChatTranscript(
+      [
+        msg("user", "first"),
+        {
+          id: "evt",
+          kind: "system_event",
+          role: "system",
+          event: "provider_error",
+          tone: "error",
+          title: "Provider error 429",
+          content: "Rate limit exceeded",
+        },
+        msg("agent", "continued"),
+      ],
+      "text",
+    );
+    expect(out).toBe("You: first\n\nHermes: continued");
+  });
 });

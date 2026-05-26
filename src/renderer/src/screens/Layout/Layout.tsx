@@ -379,13 +379,17 @@ function Layout({
               sessionManager.updateTab(currentTabId, {
                 messages: gatewayMessages,
                 hermesSessionId: tuiSessionId,
+                model: res.info?.model || "",
               });
             }
           } else {
             // Just update the Gateway session ID so user can send new messages
             const currentTabId = targetTabId;
             if (currentTabId) {
-              sessionManager.updateTab(currentTabId, { hermesSessionId: tuiSessionId });
+              sessionManager.updateTab(currentTabId, { 
+                hermesSessionId: tuiSessionId,
+                model: res.info?.model || "",
+              });
             }
           }
         }

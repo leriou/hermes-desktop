@@ -36,6 +36,16 @@ function installHermesAPI() {
         usage: { input: 1, output: 2, total: 3 },
       },
     }),
+    tuiUndo: vi.fn().mockResolvedValue({}),
+    tuiSessionHistory: vi.fn().mockResolvedValue({
+      result: {
+        messages: [
+          { role: "user", text: "after undo" },
+          { role: "assistant", text: "restored" },
+        ],
+      },
+    }),
+    tuiSessionBranch: vi.fn().mockResolvedValue({ result: { session_id: "branch-1" } }),
     tuiCommandDispatch: vi.fn().mockImplementation((_sid: string, name: string, arg?: string) => {
       if (name === "goal") {
         return Promise.resolve({
@@ -59,6 +69,7 @@ function installHermesAPI() {
     tuiSubmitPrompt: vi.fn().mockResolvedValue(undefined),
     tuiSessionTitle: vi.fn().mockResolvedValue({ title: "Chat title", session_key: "db-1" }),
     tuiClarifyRespond: vi.fn().mockResolvedValue(undefined),
+    tuiApprovalRespond: vi.fn().mockResolvedValue(undefined),
     tuiResumeSession: vi.fn().mockResolvedValue({ session_id: "rt-1" }),
     getModelConfig: vi.fn().mockResolvedValue({ model: "gpt-4o-mini", provider: "openai", baseUrl: "" }),
     listModels: vi.fn().mockResolvedValue([]),
@@ -107,6 +118,83 @@ describe("Chat command wiring", () => {
       configurable: true,
       value: vi.fn(),
     });
+  });
+
+  it("clears approval prompt immediately, records history, and sends one response", async () => {
+    const api = installHermesAPI();
+    const onSessionStateChange = vi.fn();
+
+    const view = render(
+      <Chat
+        messages={[{ id: "m1", role: "agent", content: "Need approval" }]}
+        setMessages={vi.fn() as any}
+        sessionId="rt-1"
+        pendingApproval={{
+          command: "python scripts/migrate.py --force",
+          description: "Run migration",
+          patternKey: "migration",
+          patternKeys: ["migration"],
+        }}
+        onSessionStateChange={onSessionStateChange}
+      />,
+    );
+
+    expect(view.container.querySelector(".chat-approval-modal")).not.toBeNull();
+
+    const approveButton = view.container.querySelector(".chat-approval-approve") as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(approveButton);
+      fireEvent.click(approveButton);
+    });
+
+    expect(onSessionStateChange).toHaveBeenCalledWith({ pendingApproval: null });
+    await waitFor(() => {
+      expect(api.tuiApprovalRespond).toHaveBeenCalledTimes(1);
+      expect(api.tuiApprovalRespond).toHaveBeenCalledWith("rt-1", "approve", false);
+    });
+
+    view.rerender(
+      <Chat
+        messages={[{ id: "m1", role: "agent", content: "Need approval" }]}
+        setMessages={vi.fn() as any}
+        sessionId="rt-1"
+        pendingApproval={null}
+        onSessionStateChange={onSessionStateChange}
+      />,
+    );
+    expect(view.container.querySelector(".chat-approval-modal")).toBeNull();
+    expect(view.container.querySelector(".chat-approval-history")?.textContent).toContain("Approved");
+  });
+
+  it("auto approves pending approval when client auto mode is enabled", async () => {
+    const api = installHermesAPI();
+    window.localStorage.getItem = vi.fn((key: string) => {
+      if (key === "hermes:approval-policy:v1") {
+        return JSON.stringify({ mode: "auto_approve", timeoutSeconds: 30, timeoutAction: "deny", historyTtlMinutes: 15 });
+      }
+      return null;
+    });
+    const onSessionStateChange = vi.fn();
+
+    render(
+      <Chat
+        messages={[{ id: "m1", role: "agent", content: "Need approval" }]}
+        setMessages={vi.fn() as any}
+        sessionId="rt-1"
+        pendingApproval={{
+          command: "cargo test",
+          description: "Run tests",
+          patternKey: "cargo",
+          patternKeys: ["cargo"],
+        }}
+        onSessionStateChange={onSessionStateChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(api.tuiApprovalRespond).toHaveBeenCalledWith("rt-1", "approve", false);
+    });
+    expect(onSessionStateChange).toHaveBeenCalledWith({ pendingApproval: null });
   });
 
   it("routes goal, toolbar model/compress/steer, and bottom-left alias picker to the expected APIs", async () => {
@@ -173,6 +261,28 @@ describe("Chat command wiring", () => {
       expect(api.tuiSessionTitle).toHaveBeenCalledWith("rt-1");
     });
 
+    await act(async () => {
+      fireEvent.click(toolbarButtons.find((b) => b.textContent?.includes("Undo"))!);
+    });
+    await waitFor(() => {
+      expect(api.tuiUndo).toHaveBeenCalledWith("rt-1");
+      expect(api.tuiSessionHistory).toHaveBeenCalledWith("rt-1");
+      expect(setMessages).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      fireEvent.click(toolbarButtons.find((b) => b.textContent?.includes("Branch"))!);
+    });
+    const branchInput = view.container.querySelector(".tui-popover-input") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(branchInput, { target: { value: "safer path" } });
+      fireEvent.keyDown(branchInput, { key: "Enter" });
+    });
+    await waitFor(() => {
+      expect(api.tuiSessionBranch).toHaveBeenCalledWith("rt-1", "safer path");
+      expect(onSessionStateChange).toHaveBeenCalledWith(expect.objectContaining({ hermesSessionId: "branch-1" }));
+    });
+
     const steerBtn = toolbarButtons.find((b) => b.textContent?.includes("Steer"))!;
     expect(steerBtn.disabled).toBe(true);
 
@@ -196,8 +306,8 @@ describe("Chat command wiring", () => {
       fireEvent.keyDown(textarea, { key: "Enter" });
     });
     await waitFor(() => {
-      expect(api.tuiCommandDispatch).toHaveBeenCalledWith("rt-1", "steer", "nudge");
-      expect(api.tuiSubmitPrompt).toHaveBeenCalledWith("rt-1", "nudge");
+      expect(api.tuiCommandDispatch).toHaveBeenCalledWith("branch-1", "steer", "nudge");
+      expect(api.tuiSubmitPrompt).toHaveBeenCalledWith("branch-1", "nudge");
     });
 
     const modelTrigger = view.container.querySelector(".chat-model-trigger") as HTMLButtonElement;
@@ -212,7 +322,7 @@ describe("Chat command wiring", () => {
     });
     await waitFor(() => {
       expect(api.setModelConfig).toHaveBeenCalledWith("openai", "gpt-4o-mini", "", undefined);
-      expect(api.tuiSetModel).toHaveBeenCalledWith("rt-1", "Fast Alias");
+      expect(api.tuiSetModel).toHaveBeenCalledWith("branch-1", "Fast Alias");
     });
   });
 });

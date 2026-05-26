@@ -4,21 +4,17 @@ import { ReasoningRow, ToolResultRow } from "./HistoryRow";
 import { SubagentRow } from "./SubagentRow";
 import { ToolGroupRow } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
+import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { mergeContinuationLabels } from "./sessionDisplay";
-import type { ApprovalRequest, ChatMessage, SudoRequest, SecretRequest, SystemStatusMessage, ToolCallMessage, ToolGroupMessage } from "./types";
+import type { ChatMessage, SudoRequest, SecretRequest, SystemEventMessage, SystemStatusMessage, ToolCallMessage, ToolGroupMessage } from "./types";
 
-const LIGHTWEIGHT_THRESHOLD = 15;
-const LIGHTWEIGHT_FROM_END = 8;
 
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading: boolean;
   toolProgress: string | null;
-  pendingApproval?: ApprovalRequest | null;
   pendingSudo?: SudoRequest | null;
   pendingSecret?: SecretRequest | null;
-  onApprove: () => void;
-  onDeny: () => void;
   onSudoRespond: (password: string) => void;
   onSecretRespond: (value: string) => void;
   streamingText?: string;
@@ -122,12 +118,42 @@ function groupToolCalls(messages: ChatMessage[]): ChatMessage[] {
 }
 
 function SystemStatusRow({ msg }: { msg: SystemStatusMessage }): React.JSX.Element {
+  const isMultiLine = msg.content && msg.content.includes("\n");
+
+  if (isMultiLine) {
+    return (
+      <div className={`chat-system-status-block chat-system-status-block-${msg.tone}`}>
+        <div className="chat-system-status-block-header">
+          <span className="chat-system-status-block-icon">
+            {msg.tone === "success" ? "✓" : msg.tone === "warning" ? "⚠" : msg.tone === "error" ? "✗" : "ℹ"}
+          </span>
+          <span className="chat-system-status-block-title">{msg.title}</span>
+        </div>
+        <div className="chat-system-status-block-content">
+          <AgentMarkdown>{msg.content!}</AgentMarkdown>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`chat-system-status chat-system-status-${msg.tone}`}>
       <span className="chat-system-status-title">{msg.title}</span>
       {msg.content && (
         <span className="chat-system-status-content">{msg.content}</span>
       )}
+    </div>
+  );
+}
+
+function SystemEventRow({ msg }: { msg: SystemEventMessage }): React.JSX.Element {
+  return (
+    <div className={`chat-system-event chat-system-event-${msg.tone} chat-system-event-${msg.event}`}>
+      <div className="chat-system-event-main">
+        <span className="chat-system-event-label">{msg.title}</span>
+        {msg.code && <span className="chat-system-event-code">{msg.code}</span>}
+      </div>
+      {msg.content && <div className="chat-system-event-content">{msg.content}</div>}
     </div>
   );
 }
@@ -182,11 +208,8 @@ export const MessageList = memo(function MessageList({
   messages,
   isLoading,
   toolProgress,
-  pendingApproval,
   pendingSudo,
   pendingSecret,
-  onApprove,
-  onDeny,
   onSudoRespond,
   onSecretRespond,
   streamingText,
@@ -215,9 +238,6 @@ export const MessageList = memo(function MessageList({
     <>
       {visibleMessages.map((msg, i) => {
         const k = (msg as { kind?: string }).kind;
-        const lightweight =
-          visibleMessages.length > LIGHTWEIGHT_THRESHOLD &&
-          i < visibleMessages.length - LIGHTWEIGHT_FROM_END;
         if (k === "reasoning") {
           return (
             <ReasoningRow
@@ -253,6 +273,9 @@ export const MessageList = memo(function MessageList({
         if (k === "system_status") {
           return <SystemStatusRow key={msg.id} msg={msg as SystemStatusMessage} />;
         }
+        if (k === "system_event") {
+          return <SystemEventRow key={msg.id} msg={msg as SystemEventMessage} />;
+        }
         const bubble = msg as Extract<ChatMessage, { role: "user" | "agent" }>;
         return (
           <MessageRow
@@ -260,9 +283,6 @@ export const MessageList = memo(function MessageList({
             msg={bubble}
             isLast={i === visibleMessages.length - 1}
             isLoading={isLoading}
-            onApprove={onApprove}
-            onDeny={onDeny}
-            lightweight={lightweight}
           />
         );
       })}
@@ -284,30 +304,11 @@ export const MessageList = memo(function MessageList({
         <div className="chat-tool-progress-inline">{toolProgress}</div>
       )}
 
-      {pendingApproval && !isLoading && (
-        <div className="chat-approval-bar">
-          <div className="chat-approval-info">
-            <span className="chat-approval-command">{pendingApproval.command}</span>
-            {pendingApproval.description && (
-              <span className="chat-approval-desc">{pendingApproval.description}</span>
-            )}
-          </div>
-          <div className="chat-approval-actions">
-            <button className="chat-approval-btn chat-approve" onClick={onApprove}>
-              Approve
-            </button>
-            <button className="chat-approval-btn chat-deny" onClick={onDeny}>
-              Deny
-            </button>
-          </div>
-        </div>
-      )}
-
-      {pendingSudo && !isLoading && (
+      {pendingSudo && (
         <SudoPromptBar onSubmit={onSudoRespond} />
       )}
 
-      {pendingSecret && !isLoading && (
+      {pendingSecret && (
         <SecretPromptBar req={pendingSecret} onSubmit={onSecretRespond} />
       )}
     </>

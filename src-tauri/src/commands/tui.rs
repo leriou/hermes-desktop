@@ -59,7 +59,11 @@ pub async fn tui_create_session(state: State<'_, AppState>, model: Option<String
         let gateway = state.gateway.lock().await;
         gateway.as_ref().cloned().ok_or("Gateway not running")?
     };
-    gw.call("session.create", json!({ "model": model })).await.map_err(|e| e.to_string())
+    let res = gw.call("session.create", json!({ "model": model })).await.map_err(|e| e.to_string())?;
+    if let Some(sid) = res.get("session_id").and_then(|v| v.as_str()) {
+        gw.set_active_session(sid.to_string());
+    }
+    Ok(res)
 }
 
 #[command]
@@ -68,9 +72,15 @@ pub async fn tui_resume_session(state: State<'_, AppState>, session_id: String) 
         let gateway = state.gateway.lock().await;
         gateway.as_ref().cloned().ok_or("Gateway not running")?
     };
-    let res = gw.call("session.resume", json!({ "session_id": session_id })).await.map_err(|e| e.to_string())?;
+    let mut res = gw.call("session.resume", json!({ "session_id": session_id })).await.map_err(|e| e.to_string())?;
+    gw.set_active_session(session_id.clone());
     if let Some(runtime_sid) = res.get("session_id").and_then(|v| v.as_str()) {
         gw.bind_session_alias(runtime_sid, &session_id);
+        if let Ok(status) = gw.call("session.status", json!({ "session_id": runtime_sid })).await {
+            if let Some(obj) = res.as_object_mut() {
+                obj.insert("status".to_string(), status);
+            }
+        }
     }
     Ok(res)
 }
@@ -181,7 +191,7 @@ pub async fn tui_undo(state: State<'_, AppState>, session_id: String) -> Result<
 #[command] pub async fn tui_complete_slash(state: State<'_, AppState>, session_id: String, text: String) -> Result<Value, String> {
     let gateway = state.gateway.lock().await;
     let gw = gateway.as_ref().ok_or("Gateway not running")?;
-    gw.call("slash.complete", json!({ "session_id": session_id, "text": text })).await.map_err(|e| e.to_string())
+    gw.call("complete.slash", json!({ "session_id": session_id, "text": text })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_commands_catalog(state: State<'_, AppState>) -> Result<Value, String> {

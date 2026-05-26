@@ -20,7 +20,7 @@ interface UseChatIPCArgs {
   isLoading: boolean;
 }
 
-const FLUSH_MS = 80;
+// const FLUSH_MS = 80;
 
 export function useChatIPC({
   hermesSessionId,
@@ -41,6 +41,7 @@ export function useChatIPC({
   const sidRef = useRef(hermesSessionId);
   const dbSidRef = useRef(dbSessionId ?? null);
   const loadingRef = useRef(isLoading);
+  const lastDeltaTime = useRef<number | null>(null);
   useEffect(() => {
     sidRef.current = hermesSessionId;
     dbSidRef.current = dbSessionId ?? null;
@@ -118,12 +119,12 @@ export function useChatIPC({
       callbacksRef.current.streamingTextRef.current += batch;
     }
 
-    function scheduleFlush(): void {
+    function scheduleFlush(delayMs = 40): void {
       if (flushTimer.current) return;
       flushTimer.current = setTimeout(() => {
         flushTimer.current = null;
         flush();
-      }, FLUSH_MS);
+      }, delayMs);
     }
 
     const cleanup = window.hermesAPI.onTuiEvent((event) => {
@@ -154,6 +155,7 @@ export function useChatIPC({
         case "message.start":
           cb.setIsLoading(true);
           cb.setToolProgress(null);
+          lastDeltaTime.current = null;
           break;
 
         case "message.delta": {
@@ -162,7 +164,22 @@ export function useChatIPC({
             // Ensure loading is true if we get data
             cb.setIsLoading(true);
             pendingChunks.current += text;
-            scheduleFlush();
+            
+            const now = Date.now();
+            let flushMs = 30;
+            if (lastDeltaTime.current !== null) {
+              const delta = now - lastDeltaTime.current;
+              if (delta < 20) {
+                flushMs = 70;
+              } else if (delta < 50) {
+                flushMs = 40;
+              } else {
+                flushMs = 20;
+              }
+            }
+            lastDeltaTime.current = now;
+            
+            scheduleFlush(flushMs);
           }
           break;
         }

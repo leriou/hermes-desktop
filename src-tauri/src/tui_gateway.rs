@@ -11,6 +11,9 @@ use crate::python;
 use std::time::Duration;
 use tokio::time::timeout;
 
+struct SendWrapper<T>(T);
+unsafe impl<T> Send for SendWrapper<T> {}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JsonRpcRequest {
     pub jsonrpc: String,
@@ -61,11 +64,12 @@ pub struct TuiGateway {
 }
 
 struct TuiGatewayInner {
-    child: Option<Child>,
     stdin_tx: Option<mpsc::Sender<String>>,
+    stop_tx: Option<oneshot::Sender<()>>,
     restart_count: u32,
     max_restarts: u32,
     is_stopping: bool,
+    active_session_id: Option<String>,
 }
 
 impl TuiGateway {
@@ -74,11 +78,12 @@ impl TuiGateway {
             app,
             profile,
             inner: Arc::new(TokioMutex::new(TuiGatewayInner {
-                child: None,
                 stdin_tx: None,
+                stop_tx: None,
                 restart_count: 0,
                 max_restarts: 5,
                 is_stopping: false,
+                active_session_id: None,
             })),
             pending_requests: Arc::new(StdMutex::new(HashMap::new())),
             session_aliases: Arc::new(StdMutex::new(HashMap::new())),
@@ -96,19 +101,25 @@ impl TuiGateway {
             .insert(runtime_sid.to_string(), persist_sid.to_string());
     }
 
+    pub fn set_active_session(&self, session_id: String) {
+        if let Ok(mut inner) = self.inner.try_lock() {
+            inner.active_session_id = Some(session_id);
+        }
+    }
+
     pub async fn start(self: Arc<Self>) -> Result<()> {
         {
             let inner = self.inner.lock().await;
-            if inner.child.is_some() {
+            if inner.stop_tx.is_some() {
                 return Ok(());
             }
         }
 
-        self.spawn_process().await?;
+        self.clone().spawn_process().await?;
 
         let (tx, rx) = oneshot::channel();
         let tx_arc = Arc::new(StdMutex::new(Some(tx)));
-        let ready_handler_id = self.app.listen("tui-event", move |event| {
+        let ready_handler_id = SendWrapper(self.app.listen("tui-event", move |event| {
             if let Ok(params) = serde_json::from_str::<EventParams>(event.payload()) {
                 if params.event_type == "gateway.ready" {
                     if let Some(tx) = tx_arc.lock().unwrap().take() {
@@ -116,10 +127,10 @@ impl TuiGateway {
                     }
                 }
             }
-        });
+        }));
 
         let res = timeout(Duration::from_secs(10), rx).await;
-        self.app.unlisten(ready_handler_id);
+        self.app.unlisten(ready_handler_id.0);
 
         match res {
             Ok(Ok(())) => {
@@ -136,7 +147,7 @@ impl TuiGateway {
         }
     }
 
-    async fn spawn_process(&self) -> Result<()> {
+    async fn spawn_process(self: Arc<Self>) -> Result<()> {
         let python_path = python::get_python_path(Some(&self.app));
         let repo_path = python::get_hermes_repo(Some(&self.app));
         let hermes_home = python::get_hermes_home_with_profile(Some(&self.app), self.profile.clone());
@@ -177,11 +188,13 @@ impl TuiGateway {
         let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to open stderr"))?;
 
         let (stdin_tx, mut stdin_rx) = mpsc::channel::<String>(32);
+        let (stop_tx, mut stop_rx) = oneshot::channel::<()>();
         
         {
             let mut inner = self.inner.lock().await;
             inner.stdin_tx = Some(stdin_tx);
-            inner.child = Some(child);
+            inner.stop_tx = Some(stop_tx);
+            inner.is_stopping = false;
         }
 
         tokio::spawn(async move {
@@ -262,14 +275,130 @@ impl TuiGateway {
             }
         });
 
+        // Monitor process exit for auto-reconnection
+        let self_clone = self.clone();
+        tokio::spawn(async move {
+            tokio::select! {
+                res = child.wait() => {
+                    match res {
+                        Ok(status) => eprintln!("[TUI GATEWAY] Process exited with status: {}", status),
+                        Err(e) => eprintln!("[TUI GATEWAY] Error waiting for process: {}", e),
+                    }
+                    TuiGateway::handle_exit(self_clone);
+                }
+                _ = &mut stop_rx => {
+                    eprintln!("[TUI GATEWAY] Stop signal received, terminating process");
+                    let _ = child.kill().await;
+                }
+            }
+        });
+
         Ok(())
+    }
+
+    async fn get_exit_params(&self) -> (bool, u32, u32, Option<String>) {
+        let mut inner = self.inner.lock().await;
+        inner.stdin_tx = None;
+        inner.stop_tx = None;
+        (inner.is_stopping, inner.restart_count, inner.max_restarts, inner.active_session_id.clone())
+    }
+
+    async fn increment_restart_count(&self) {
+        let mut inner = self.inner.lock().await;
+        inner.restart_count += 1;
+    }
+
+    async fn reset_restart_count(&self) {
+        let mut inner = self.inner.lock().await;
+        inner.restart_count = 0;
+    }
+
+    pub fn handle_exit(gateway: Arc<Self>) {
+        tokio::spawn(async move {
+            let (is_stopping, restart_count, max_restarts, active_session) = gateway.get_exit_params().await;
+
+            if is_stopping {
+                eprintln!("[TUI GATEWAY] Gateway stopped intentionally, no reconnection.");
+                return;
+            }
+
+            if restart_count >= max_restarts {
+                eprintln!("[TUI GATEWAY] Max restarts reached ({}), stopping reconnection.", max_restarts);
+                let _ = gateway.app.emit("tui-event", EventParams {
+                    event_type: "gateway.connection_lost".to_string(),
+                    session_id: None,
+                    payload: serde_json::json!({ "error": "Max restarts reached" }),
+                });
+                return;
+            }
+
+            let _ = gateway.app.emit("tui-event", EventParams {
+                event_type: "gateway.reconnecting".to_string(),
+                session_id: None,
+                payload: serde_json::json!({ "attempt": restart_count + 1 }),
+            });
+
+            let delay = Duration::from_secs(2u64.pow(restart_count));
+            eprintln!("[TUI GATEWAY] Unexpected exit, reconnecting in {:?}", delay);
+            tokio::time::sleep(delay).await;
+
+            gateway.increment_restart_count().await;
+
+            if let Err(e) = gateway.clone().spawn_process().await {
+                eprintln!("[TUI GATEWAY] Reconnect spawn failed: {}", e);
+                TuiGateway::handle_exit(gateway.clone());
+                return;
+            }
+
+            let (tx, rx) = oneshot::channel();
+            let tx_arc = Arc::new(StdMutex::new(Some(tx)));
+            let ready_handler_id = SendWrapper(gateway.app.listen("tui-event", move |event| {
+                if let Ok(params) = serde_json::from_str::<EventParams>(event.payload()) {
+                    if params.event_type == "gateway.ready" {
+                        if let Some(tx) = tx_arc.lock().unwrap().take() {
+                            let _ = tx.send(());
+                        }
+                    }
+                }
+            }));
+
+            let res = timeout(Duration::from_secs(10), rx).await;
+            gateway.app.unlisten(ready_handler_id.0);
+
+            match res {
+                Ok(Ok(())) => {
+                    eprintln!("[TUI GATEWAY] Reconnected successfully");
+                    gateway.reset_restart_count().await;
+                    if let Some(sid) = active_session {
+                        eprintln!("[TUI GATEWAY] Auto-resuming session: {}", sid);
+                        let gateway_c = gateway.clone();
+                        tokio::spawn(async move {
+                            if let Err(e) = gateway_c.call("session.resume", serde_json::json!({ "session_id": sid })).await {
+                                  eprintln!("[TUI GATEWAY] Auto-resume failed: {}", e);
+                            } else {
+                                  eprintln!("[TUI GATEWAY] Auto-resume complete");
+                                  let _ = gateway_c.app.emit("tui-event", EventParams {
+                                      event_type: "gateway.reconnected".to_string(),
+                                      session_id: Some(sid),
+                                      payload: serde_json::json!({ "success": true }),
+                                  });
+                            }
+                        });
+                    }
+                }
+                _ => {
+                    eprintln!("[TUI GATEWAY] Reconnect timeout, retrying...");
+                    TuiGateway::handle_exit(gateway.clone());
+                }
+            }
+        });
     }
 
     pub async fn stop(&self) {
         let mut inner = self.inner.lock().await;
         inner.is_stopping = true;
-        if let Some(mut child) = inner.child.take() {
-            let _ = child.kill().await;
+        if let Some(stop_tx) = inner.stop_tx.take() {
+            let _ = stop_tx.send(());
         }
     }
 
@@ -306,6 +435,6 @@ impl TuiGateway {
     }
 
     pub async fn is_running(&self) -> bool {
-        self.inner.lock().await.child.is_some()
+        self.inner.lock().await.stop_tx.is_some()
     }
 }

@@ -30,9 +30,6 @@ interface MessageRowProps {
   msg: ChatMessage;
   isLast: boolean;
   isLoading: boolean;
-  onApprove: () => void;
-  onDeny: () => void;
-  lightweight?: boolean;
 }
 
 function formatMsgTime(ts?: number): string {
@@ -55,9 +52,6 @@ export const MessageRow = memo(function MessageRow({
   msg,
   isLast,
   isLoading,
-  onApprove: _onApprove,
-  onDeny: _onDeny,
-  lightweight = false,
 }: MessageRowProps): React.JSX.Element {
   const { t } = useI18n();
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(
@@ -102,64 +96,60 @@ export const MessageRow = memo(function MessageRow({
       ) : (
         <HermesAvatar />
       )}
-      <div className={`chat-bubble chat-bubble-${msg.role}`}>
-        {hasAttachments && (
-          <div className="chat-message-attachments">
-            {msg.attachments!.map((att) => (
-              <AttachmentChip
-                key={att.id}
-                attachment={att}
-                onPreview={(a) => a.kind === "image" && setPreviewAttachment(a)}
-              />
+      <div className="chat-bubble-wrapper">
+        <div className={`chat-bubble chat-bubble-${msg.role}`}>
+          {hasAttachments && (
+            <div className="chat-message-attachments">
+              {msg.attachments!.map((att) => (
+                <AttachmentChip
+                  key={att.id}
+                  attachment={att}
+                  onPreview={(a) => a.kind === "image" && setPreviewAttachment(a)}
+                />
+              ))}
+            </div>
+          )}
+          {msg.content &&
+            (msg.role === "agent" ? (
+              <AgentMarkdown streaming={isStreaming}>{msg.content}</AgentMarkdown>
+            ) : (
+              msg.content
             ))}
+        </div>
+        {!isStreaming && (showToolbar || hasTimestamp || hasModel) && (
+          <div className={`chat-bubble-toolbar${!showToolbar ? " chat-bubble-toolbar--visible" : ""}`}>
+            {showToolbar && (
+              <button
+                className="chat-toolbar-btn"
+                onClick={handleCopy}
+                title={t("chat.copy")}
+              >
+                <Copy size={13} />
+                {copied ? t("chat.copied") : ""}
+              </button>
+            )}
+            {hasTimestamp && (
+              <span className="chat-toolbar-time">
+                {formatMsgTime(msg.timestamp!)}
+              </span>
+            )}
+            {hasModel && (
+              <span className="chat-model-badge" title={msg.model}>
+                {shortModelName(msg.model!)}
+              </span>
+            )}
+            {showToolbar && (
+              <button
+                className="chat-toolbar-btn"
+                onClick={handleTts}
+                title={t("chat.tts")}
+              >
+                <Volume2 size={13} />
+              </button>
+            )}
           </div>
         )}
-        {msg.content &&
-          (msg.role === "agent" ? (
-            lightweight ? (
-              <div className="markdown-body" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                {msg.content}
-              </div>
-            ) : (
-              <AgentMarkdown streaming={isStreaming}>{msg.content}</AgentMarkdown>
-            )
-          ) : (
-            msg.content
-          ))}
       </div>
-      {!isStreaming && (showToolbar || hasTimestamp || hasModel) && (
-        <div className={`chat-bubble-toolbar${!showToolbar ? " chat-bubble-toolbar--visible" : ""}`}>
-          {showToolbar && (
-            <button
-              className="chat-toolbar-btn"
-              onClick={handleCopy}
-              title={t("chat.copy")}
-            >
-              <Copy size={13} />
-              {copied ? t("chat.copied") : ""}
-            </button>
-          )}
-          {hasTimestamp && (
-            <span className="chat-toolbar-time">
-              {formatMsgTime(msg.timestamp!)}
-            </span>
-          )}
-          {hasModel && (
-            <span className="chat-model-badge" title={msg.model}>
-              {shortModelName(msg.model!)}
-            </span>
-          )}
-          {showToolbar && (
-            <button
-              className="chat-toolbar-btn"
-              onClick={handleTts}
-              title={t("chat.tts")}
-            >
-              <Volume2 size={13} />
-            </button>
-          )}
-        </div>
-      )}
       {previewAttachment && previewAttachment.dataUrl && (
         <div
           className="chat-image-preview-backdrop"
