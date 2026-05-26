@@ -28,7 +28,6 @@ interface UseChatInboxArgs {
   updateTabMessages: (id: string, updater: (prev: ChatMessage[]) => ChatMessage[]) => void;
 }
 
-// const FLUSH_MS = 80;
 const LIVE_EVENT_TYPES = new Set(["message.start", "message.delta", "tool.start", "thinking.delta", "reasoning.delta"]);
 
 function usageFromPayload(usage: any): UsageState {
@@ -90,8 +89,7 @@ export function useChatInbox({
   const activeTabIdRef = useRef(activeTabId);
   const chatVisibleRef = useRef(chatVisible);
   const pendingChunksRef = useRef(new Map<string, string>());
-  const flushTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const lastDeltaTimesRef = useRef(new Map<string, number>());
+  const flushFramesRef = useRef(new Map<string, number>());
 
   useEffect(() => {
     sessionsRef.current = sessions;
@@ -128,8 +126,8 @@ export function useChatInbox({
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     function flush(tabId: string): void {
+      flushFramesRef.current.delete(tabId);
       const batch = pendingChunksRef.current.get(tabId) ?? "";
       pendingChunksRef.current.delete(tabId);
       if (!batch) return;
@@ -142,13 +140,12 @@ export function useChatInbox({
       });
     }
 
-    function scheduleFlush(tabId: string, delayMs = 40): void {
-      if (flushTimersRef.current.has(tabId)) return;
-      const timer = setTimeout(() => {
-        flushTimersRef.current.delete(tabId);
+    function scheduleFlush(tabId: string): void {
+      if (flushFramesRef.current.has(tabId)) return;
+      const frame = window.requestAnimationFrame(() => {
         flush(tabId);
-      }, delayMs);
-      flushTimersRef.current.set(tabId, timer);
+      });
+      flushFramesRef.current.set(tabId, frame);
     }
 
     const cleanup = onTuiEvent((rawEvent: RawTuiEvent) => {
@@ -162,7 +159,6 @@ export function useChatInbox({
       switch (event.type) {
         case "message.start":
           updateTab(tabId, { isLoading: true, toolProgress: null, streamingReasoning: "" });
-          lastDeltaTimesRef.current.delete(tabId);
           break;
 
         case "message.delta": {
@@ -170,33 +166,16 @@ export function useChatInbox({
           if (text) {
             updateTab(tabId, { isLoading: true });
             pendingChunksRef.current.set(tabId, `${pendingChunksRef.current.get(tabId) ?? ""}${text}`);
-            
-            const now = Date.now();
-            let flushMs = 30;
-            const lastTime = lastDeltaTimesRef.current.get(tabId);
-            if (lastTime !== undefined) {
-              const delta = now - lastTime;
-              if (delta < 20) {
-                flushMs = 70;
-              } else if (delta < 50) {
-                flushMs = 40;
-              } else {
-                flushMs = 20;
-              }
-            }
-            lastDeltaTimesRef.current.set(tabId, now);
-            
-            scheduleFlush(tabId, flushMs);
+            scheduleFlush(tabId);
           }
           break;
         }
 
         case "message.complete": {
-          // Cancel any pending flush
-          const timer = flushTimersRef.current.get(tabId);
-          if (timer) {
-            clearTimeout(timer);
-            flushTimersRef.current.delete(tabId);
+          const frame = flushFramesRef.current.get(tabId);
+          if (frame) {
+            window.cancelAnimationFrame(frame);
+            flushFramesRef.current.delete(tabId);
           }
           // Capture any unflushed chunks before discarding
           const pendingChunk = pendingChunksRef.current.get(tabId) ?? "";
@@ -539,8 +518,8 @@ export function useChatInbox({
     });
 
     return () => {
-      for (const timer of flushTimersRef.current.values()) clearTimeout(timer);
-      flushTimersRef.current.clear();
+      for (const frame of flushFramesRef.current.values()) window.cancelAnimationFrame(frame);
+      flushFramesRef.current.clear();
       cleanup();
     };
   }, [findTabBySessionId, updateTab, updateTabMessages]);

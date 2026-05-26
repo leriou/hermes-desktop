@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useChatInbox } from "./useChatInbox";
 import type { SessionState } from "./useSessionManager";
@@ -219,5 +219,52 @@ describe("useChatInbox", () => {
       { id: "tool-result", kind: "tool_result", content: "tool output" },
       { role: "agent", content: "streaming answer" },
     ]);
+  });
+
+  it("coalesces live assistant deltas into the next animation frame", () => {
+    const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
+      const current = sessions.get(tabId);
+      if (current) sessions.set(tabId, { ...current, ...patch });
+    });
+    const frameCallbacks: FrameRequestCallback[] = [];
+    const requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+      frameCallbacks.push(callback);
+      return frameCallbacks.length;
+    });
+    const cancelAnimationFrame = vi.fn();
+    Object.defineProperty(window, "requestAnimationFrame", {
+      configurable: true,
+      value: requestAnimationFrame,
+    });
+    Object.defineProperty(window, "cancelAnimationFrame", {
+      configurable: true,
+      value: cancelAnimationFrame,
+    });
+    const sessions = new Map<string, SessionState>([["tab-1", sessionState()]]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages: vi.fn(),
+      }),
+    );
+
+    eventHandler?.({ type: "message.delta", session_id: "sid-1", payload: { text: "Hel" } });
+    eventHandler?.({ type: "message.delta", session_id: "sid-1", payload: { text: "lo" } });
+
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
+    expect(updateTab.mock.calls.some(([, patch]) => "streamingText" in patch)).toBe(false);
+
+    act(() => {
+      frameCallbacks[0]?.(performance.now());
+    });
+
+    expect(updateTab).toHaveBeenCalledWith("tab-1", expect.objectContaining({
+      streamingText: "Hello",
+    }));
   });
 });

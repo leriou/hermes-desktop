@@ -115,27 +115,99 @@ pub async fn adopt_hermes_home(app: AppHandle, dir: String) -> Result<bool, Stri
 
 #[command]
 pub async fn get_hermes_version(app: AppHandle) -> Result<Value, String> {
-    let version_file = python::get_hermes_repo(Some(&app)).join("VERSION");
-    if let Ok(content) = fs::read_to_string(version_file) {
-        let v = content.trim().to_string();
-        if !v.is_empty() { return Ok(json!(v)); }
-    }
-    let version_file = python::get_hermes_repo(Some(&app)).join("hermes_agent").join("VERSION");
-    if let Ok(content) = fs::read_to_string(version_file) {
-        let v = content.trim().to_string();
-        if !v.is_empty() { return Ok(json!(v)); }
-    }
-    let pyproject = python::get_hermes_repo(Some(&app)).join("pyproject.toml");
-    if let Ok(content) = fs::read_to_string(pyproject) {
-        for line in content.lines() {
-            let line = line.trim();
-            if line.starts_with("version") && line.contains('=') {
-                let v = line.split('=').nth(1).unwrap_or("").trim().trim_matches('"').trim_matches('\'');
-                if !v.is_empty() { return Ok(json!(v)); }
+    let raw_version = {
+        let mut found = None;
+        let version_file = python::get_hermes_repo(Some(&app)).join("VERSION");
+        if let Ok(content) = fs::read_to_string(version_file) {
+            let v = content.trim().to_string();
+            if !v.is_empty() { found = Some(v); }
+        }
+        if found.is_none() {
+            let version_file = python::get_hermes_repo(Some(&app)).join("hermes_agent").join("VERSION");
+            if let Ok(content) = fs::read_to_string(version_file) {
+                let v = content.trim().to_string();
+                if !v.is_empty() { found = Some(v); }
             }
         }
-    }
-    Ok(Value::Null)
+        if found.is_none() {
+            let pyproject = python::get_hermes_repo(Some(&app)).join("pyproject.toml");
+            if let Ok(content) = fs::read_to_string(pyproject) {
+                for line in content.lines() {
+                    let line = line.trim();
+                    if line.starts_with("version") && line.contains('=') {
+                        let v = line.split('=').nth(1).unwrap_or("").trim().trim_matches('"').trim_matches('\'');
+                        if !v.is_empty() {
+                            found = Some(v.to_string());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        found.unwrap_or_else(|| "0.0.0".to_string())
+    };
+
+    let python_path = python::get_python_path(Some(&app));
+    
+    // 1. Python version
+    let py_ver = match std::process::Command::new(&python_path)
+        .arg("--version")
+        .output() {
+            Ok(output) => {
+                let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if s.starts_with("Python ") {
+                    s.split_whitespace().nth(1).unwrap_or("—").to_string()
+                } else {
+                    let s_err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                    if s_err.starts_with("Python ") {
+                        s_err.split_whitespace().nth(1).unwrap_or("—").to_string()
+                    } else {
+                        "—".to_string()
+                    }
+                }
+            }
+            Err(_) => "—".to_string(),
+        };
+
+    // 2. OpenAI SDK version
+    let sdk_ver = match std::process::Command::new(&python_path)
+        .args(["-c", "import openai; print(openai.__version__)"])
+        .output() {
+            Ok(output) => {
+                let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !s.is_empty() && !s.contains("Error") {
+                    s
+                } else {
+                    "—".to_string()
+                }
+            }
+            Err(_) => "—".to_string(),
+        };
+
+    // 3. Date
+    let date_str = {
+        let repo_path = python::get_hermes_repo(Some(&app));
+        let pyproject_path = repo_path.join("pyproject.toml");
+        
+        #[cfg(target_os = "macos")]
+        {
+            if let Ok(out) = std::process::Command::new("stat")
+                .args(["-f", "%Sm", "-t", "%Y.%m.%d", &pyproject_path.to_string_lossy()])
+                .output() {
+                    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    if !s.is_empty() { s } else { "2026.05.26".to_string() }
+                } else {
+                    "2026.05.26".to_string()
+                }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            "2026.05.26".to_string()
+        }
+    };
+
+    let full_info = format!("Hermes Agent v{} ({}) Python: {} OpenAI SDK: {}", raw_version, date_str, py_ver, sdk_ver);
+    Ok(json!(full_info))
 }
 
 #[command]
