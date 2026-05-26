@@ -10,9 +10,9 @@ export function ApprovalHistoryPanel({
   return (
     <div
       className="chat-approval-history"
-      aria-label="Recent approval decisions"
+      aria-label="最近审批记录"
     >
-      <div className="chat-approval-history-title">Recent approvals</div>
+      <div className="chat-approval-history-title">最近审批</div>
       {recent.map((entry) => (
         <div
           key={entry.id}

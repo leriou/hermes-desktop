@@ -210,6 +210,12 @@ pub async fn tui_undo(state: State<'_, AppState>, session_id: String) -> Result<
     gw.call("clarify.respond", json!({ "session_id": session_id, "answer": answer, "request_id": request_id })).await.map_err(|e| e.to_string())
 }
 
+#[command] pub async fn tui_steer(state: State<'_, AppState>, session_id: String, text: String) -> Result<Value, String> {
+    let gateway = state.gateway.lock().await;
+    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    gw.call("session.steer", json!({ "session_id": session_id, "text": text })).await.map_err(|e| e.to_string())
+}
+
 #[command] pub async fn tui_session_title(state: State<'_, AppState>, session_id: String) -> Result<Value, String> {
     let gateway = state.gateway.lock().await;
     let gw = gateway.as_ref().ok_or("Gateway not running")?;
