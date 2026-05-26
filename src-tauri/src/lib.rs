@@ -27,12 +27,21 @@ use commands::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  #[cfg(target_os = "macos")]
+  {
+    // 强制 WebKit 采用 Apple Metal 图形引擎进行硬件加速绘图，释放 120Hz ProMotion 屏幕帧率
+    std::env::set_var("WebKitForceMetal", "1");
+    // 启用 WebKit GPU 加速的 Canvas/2D 绘图
+    std::env::set_var("WebKitCanvasAcceleratedDrawingEnabled", "1");
+  }
+
   tauri::Builder::default()
     .plugin(tauri_plugin_log::Builder::default().build())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_clipboard_manager::init())
     .plugin(tauri_plugin_window_state::Builder::default().build())
+    .plugin(tauri_plugin_store::Builder::default().build())
     .manage(AppState {
         gateway: Mutex::new(None),
         ssh_tunnel: SshTunnelManager::new(),

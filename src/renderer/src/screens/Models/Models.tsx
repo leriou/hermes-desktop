@@ -1,3 +1,4 @@
+import { addModel, listModels, listTemplates, removeModel, setEnv, updateModel } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Trash, Search, X, ArrowRight } from "../../assets/icons";
 import { PROVIDERS } from "../../constants";
@@ -76,10 +77,10 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
     setLoading(true);
     const [list, tmpl] = await Promise.all([
       cache.getOrFetch("models:list", 30_000, () =>
-        (window.hermesAPI.listModels(profile) as Promise<any[]>).then((r) => r ?? []),
+        (listModels(profile) as Promise<any[]>).then((r) => r ?? []),
       ),
       cache.getOrFetch("models:templates", 60_000, () =>
-        (window.hermesAPI.listTemplates() as Promise<any[]>).then((r) => r ?? []),
+        (listTemplates() as Promise<any[]>).then((r) => r ?? []),
       ),
     ]);
     setModels(list);
@@ -137,14 +138,14 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
     setFormError("");
 
     if (editingModel) {
-      await window.hermesAPI.updateModel(editingModel.id, {
+      await updateModel(editingModel.id, {
         name,
         provider: formProvider,
         model,
         baseUrl: formBaseUrl.trim(),
       }, profile);
     } else {
-      await window.hermesAPI.addModel(
+      await addModel(
         name,
         formProvider,
         model,
@@ -156,7 +157,7 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
 
     if (formApiKey.trim() && formProvider === "custom") {
       const envKey = resolveCustomEnvKey(formBaseUrl.trim());
-      await window.hermesAPI.setEnv(envKey, formApiKey.trim(), profile);
+      await setEnv(envKey, formApiKey.trim(), profile);
     }
 
     closeModal();
@@ -165,14 +166,14 @@ function Models({ visible, profile = "default", onNavigate }: ModelsProps = {}):
   }
 
   async function handleDelete(id: string): Promise<void> {
-    await window.hermesAPI.removeModel(id, profile);
+    await removeModel(id, profile);
     cache.invalidate("models:list");
     setConfirmDelete(null);
     await loadData();
   }
 
   async function handleQuickAdd(tmpl: TemplateModel): Promise<void> {
-    await window.hermesAPI.addModel(tmpl.name, tmpl.provider, tmpl.model, tmpl.baseUrl, undefined, profile);
+    await addModel(tmpl.name, tmpl.provider, tmpl.model, tmpl.baseUrl, undefined, profile);
     cache.invalidate("models:list");
     await loadData();
   }

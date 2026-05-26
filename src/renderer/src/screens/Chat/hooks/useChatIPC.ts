@@ -1,3 +1,4 @@
+import { onTuiEvent } from "@renderer/lib/hermes-tauri";
 import { useEffect, useRef, useCallback } from "react";
 import type { ApprovalRequest, ChatMessage, ClarifyRequest, UsageState } from "../types";
 
@@ -127,7 +128,7 @@ export function useChatIPC({
       }, delayMs);
     }
 
-    const cleanup = window.hermesAPI.onTuiEvent((event) => {
+    const cleanup = onTuiEvent((event) => {
       const { type, payload, sid } = event;
       const cb = callbacksRef.current;
       const currentRuntimeSid = sidRef.current;

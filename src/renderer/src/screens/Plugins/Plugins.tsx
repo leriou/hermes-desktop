@@ -1,3 +1,4 @@
+import { getPlugins, setPluginEnabled } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
 import { Refresh } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
@@ -25,7 +26,7 @@ function Plugins({ profile }: PluginsProps): React.JSX.Element {
     setLoading(true);
     setError("");
     const list = await cache.getOrFetch(`plugins:${profile ?? "default"}`, 20_000, async () =>
-      (await window.hermesAPI.getPlugins(profile)) ?? [],
+      (await getPlugins(profile)) ?? [],
     );
     list.sort((a, b) => {
       if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
@@ -49,7 +50,7 @@ function Plugins({ profile }: PluginsProps): React.JSX.Element {
         p.name === name ? { ...p, enabled: !currentEnabled } : p,
       ),
     );
-    const result = await window.hermesAPI.setPluginEnabled(
+    const result = await setPluginEnabled(
       name,
       !currentEnabled,
       profile,

@@ -1,3 +1,4 @@
+import { abortChat, downloadUpdate, getPlugins, getSessionMessages, installUpdate, isRemoteOnlyMode, listBundledSkills, listCachedSessions, listCronJobs, listInstalledSkills, listModels, listProfiles, listTemplates, onMenuNewChat, onMenuSearchSessions, onUpdateAvailable, onUpdateDownloadProgress, onUpdateDownloaded, onUpdateError, startGateway, tuiResumeSession, tuiSessionHistory } from "@renderer/lib/hermes-tauri";
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import Chat, { ChatMessage } from "../Chat/Chat";
 import { SessionSidebar } from "../Chat/SessionSidebar";
@@ -134,25 +135,25 @@ function Layout({
     const prefetchTabData = (): void => {
       const p = activeProfile;
       cache.prefetch("models:list", 30_000, () =>
-        (window.hermesAPI.listModels(p) as Promise<any[]>).then((r) => r ?? []),
+        (listModels(p) as Promise<any[]>).then((r) => r ?? []),
       );
       cache.prefetch("models:templates", 60_000, () =>
-        (window.hermesAPI.listTemplates() as Promise<any[]>).then((r) => r ?? []),
+        (listTemplates() as Promise<any[]>).then((r) => r ?? []),
       );
       cache.prefetch("agents:profiles", 20_000, () =>
-        (window.hermesAPI.listProfiles() ?? Promise.resolve([])),
+        (listProfiles() ?? Promise.resolve([])),
       );
       cache.prefetch(`skills:installed:${p}`, 20_000, () =>
-        (window.hermesAPI.listInstalledSkills(p) ?? Promise.resolve([])),
+        (listInstalledSkills(p) ?? Promise.resolve([])),
       );
       cache.prefetch(`skills:bundled:${p}`, 120_000, () =>
-        (window.hermesAPI.listBundledSkills(p) ?? Promise.resolve([])),
+        (listBundledSkills(p) ?? Promise.resolve([])),
       );
       cache.prefetch(`plugins:${p}`, 20_000, () =>
-        (window.hermesAPI.getPlugins(p) ?? Promise.resolve([])),
+        (getPlugins(p) ?? Promise.resolve([])),
       );
       cache.prefetch(`schedules:jobs:${p}`, 20_000, () =>
-        (window.hermesAPI.listCronJobs(true, p) ?? Promise.resolve([])),
+        (listCronJobs(true, p) ?? Promise.resolve([])),
       );
     };
     if ("requestIdleCallback" in window) {
@@ -164,12 +165,12 @@ function Layout({
 
   // Re-check remote mode on tab switch (picks up Settings changes)
   useEffect(() => {
-    window.hermesAPI.isRemoteOnlyMode().then(setRemoteMode);
+    isRemoteOnlyMode().then(setRemoteMode);
   }, [view]);
 
   // Ensure gateway is started with current profile
   useEffect(() => {
-    window.hermesAPI.startGateway(activeProfile);
+    startGateway(activeProfile);
   }, [activeProfile]);
 
   useEffect(() => {
@@ -188,22 +189,22 @@ function Layout({
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   useEffect(() => {
-    const cleanupAvailable = window.hermesAPI.onUpdateAvailable((info) => {
+    const cleanupAvailable = onUpdateAvailable((info) => {
       setUpdateVersion(info.version);
       setUpdateState("available");
       setUpdateError(null);
       setDownloadPercent(0);
     });
-    const cleanupProgress = window.hermesAPI.onUpdateDownloadProgress(
+    const cleanupProgress = onUpdateDownloadProgress(
       (info) => {
         setDownloadPercent(info.percent);
       },
     );
-    const cleanupDownloaded = window.hermesAPI.onUpdateDownloaded(() => {
+    const cleanupDownloaded = onUpdateDownloaded(() => {
       setUpdateState("ready");
       setUpdateError(null);
     });
-    const cleanupError = window.hermesAPI.onUpdateError((message) => {
+    const cleanupError = onUpdateError((message) => {
       setUpdateState("error");
       setUpdateError(message);
       setDownloadPercent(0);
@@ -222,29 +223,29 @@ function Layout({
       setDownloadPercent(0);
       setUpdateState("downloading");
       try {
-        const ok = await window.hermesAPI.downloadUpdate();
+        const ok = await downloadUpdate();
         if (!ok) setUpdateState("error");
       } catch (err) {
         setUpdateError(err instanceof Error ? err.message : String(err));
         setUpdateState("error");
       }
     } else if (updateState === "ready") {
-      await window.hermesAPI.installUpdate();
+      await installUpdate();
     }
   }
 
   const handleNewChat = useCallback(() => {
-    window.hermesAPI.abortChat();
+    abortChat();
     sessionManager.createTab();
     goTo("chat");
   }, [goTo, sessionManager]);
 
   // Listen for menu IPC events (Cmd+N, Cmd+K from app menu)
   useEffect(() => {
-    const cleanupNewChat = window.hermesAPI.onMenuNewChat(() => {
+    const cleanupNewChat = onMenuNewChat(() => {
       handleNewChat();
     });
-    const cleanupSearch = window.hermesAPI.onMenuSearchSessions(() => {
+    const cleanupSearch = onMenuSearchSessions(() => {
       goTo("sessions");
     });
     return () => {
@@ -270,7 +271,7 @@ function Layout({
 
       // 0. Look up the title from the cached session list
       try {
-        const cached = await window.hermesAPI.listCachedSessions(activeProfile);
+        const cached = await listCachedSessions(activeProfile);
         const found = cached.find((s: { id: string }) => s.id === sessionId);
         if (found?.title) sessionTitle = found.title;
         if (found) {
@@ -292,7 +293,7 @@ function Layout({
             cache.getOrFetch(
               `session-msgs:${id}`,
               30_000,
-              () => window.hermesAPI.getSessionMessages(id, activeProfile),
+              () => getSessionMessages(id, activeProfile),
             ),
           ),
         );
@@ -358,7 +359,7 @@ function Layout({
 
       // 2. Resume in TUI Gateway in background (may be slow on cold start)
       try {
-        const res = await window.hermesAPI.tuiResumeSession(targetResumeSessionId);
+        const res = await tuiResumeSession(targetResumeSessionId);
         if (res) {
           const tuiSessionId = res.session_id || targetResumeSessionId;
           // If resume returned messages and we had none, use them
@@ -415,7 +416,7 @@ function Layout({
       // 3. Last resort: read active session history from Gateway memory
       if (chatMessages.length === 0) {
         try {
-          const hist = await window.hermesAPI.tuiSessionHistory(targetResumeSessionId);
+          const hist = await tuiSessionHistory(targetResumeSessionId);
           if (hist?.result?.messages && Array.isArray(hist.result.messages)) {
             const memMessages: ChatMessage[] = [];
             for (const msg of hist.result.messages) {
@@ -526,7 +527,7 @@ function Layout({
           <div className="chat-pane">
             <SessionSidebar
               sessions={sessionManager.getSidebarEntries()}
-              activeId={sessionManager.activeTabId}
+              activeSessionId={sessionManager.activeTabId}
               activeDbSessionId={sessionManager.getActive()?.dbSessionId ?? null}
               onSelect={sessionManager.switchTab}
               onNewChat={handleNewChat}

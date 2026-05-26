@@ -1,3 +1,4 @@
+import { setConnectionConfig, setSshConfig, testRemoteConnection, testSshConnection } from "@renderer/lib/hermes-tauri";
 import { useState } from "react";
 import HermesLogo from "../../components/common/HermesLogo";
 import {
@@ -56,9 +57,9 @@ function Welcome({
     setRemoteTesting(true);
     setRemoteError(null);
     try {
-      const ok = await window.hermesAPI.testRemoteConnection(url, key);
+      const ok = await testRemoteConnection(url, key);
       if (ok) {
-        await window.hermesAPI.setConnectionConfig("remote", url, key);
+        await setConnectionConfig("remote", url, key);
         onRecheck();
       } else {
         setRemoteError(
@@ -84,7 +85,7 @@ function Welcome({
     setSshTesting(true);
     setSshError(null);
     try {
-      const ok = await window.hermesAPI.testSshConnection(
+      const ok = await testSshConnection(
         host,
         port,
         user,
@@ -92,7 +93,7 @@ function Welcome({
         remotePort,
       );
       if (ok) {
-        await window.hermesAPI.setSshConfig(
+        await setSshConfig(
           host,
           port,
           user,

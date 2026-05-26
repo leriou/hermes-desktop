@@ -1,16 +1,5 @@
-/**
- * Lightweight cache for prefetching read-heavy data.
- *
- * Two layers:
- *   - In-memory Map (fast, always available)
- *   - localStorage (survives page reloads, size-limited)
- *
- * Usage:
- *   const msgs = await cache.getOrFetch(`session-msgs:${id}`, 30_000, () =>
- *     window.hermesAPI.getSessionMessages(id),
- *   );
- *   cache.prefetch(`session-msgs:${id}`, 30_000, () => ...);
- */
+
+import { getStoreItem, setStoreItem, removeStoreItem } from "./store";
 
 interface CacheEntry<T> {
   data: T;
@@ -30,7 +19,7 @@ function loadFromLS(): void {
   if (loaded) return;
   loaded = true;
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = getStoreItem(LS_KEY);
     if (!raw) return;
     const entries: [string, { data: unknown; ts: number; ttl: number }][] =
       JSON.parse(raw);
@@ -60,7 +49,7 @@ function evict(): void {
 function persistToLS(): void {
   try {
     // Only persist entries that are still fresh and small enough.
-    // Skip large payloads (messages arrays etc.) — they'd blow localStorage quota.
+    // Skip large payloads (messages arrays etc.) — they'd blow store quota.
     const now = Date.now();
     const entries: [string, CacheEntry<unknown>][] = [];
     let approxSize = 0;
@@ -72,7 +61,7 @@ function persistToLS(): void {
       approxSize += json.length;
       if (approxSize > 512_000) break; // ~500KB cap
     }
-    localStorage.setItem(LS_KEY, JSON.stringify(entries));
+    setStoreItem(LS_KEY, JSON.stringify(entries));
   } catch {
     /* storage full — ignore */
   }
@@ -158,7 +147,7 @@ export const cache = {
   clear(): void {
     store.clear();
     try {
-      localStorage.removeItem(LS_KEY);
+      removeStoreItem(LS_KEY);
     } catch {
       /* ignore */
     }

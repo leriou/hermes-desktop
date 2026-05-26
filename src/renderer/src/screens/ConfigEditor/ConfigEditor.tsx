@@ -1,3 +1,4 @@
+import { readConfigYaml, writeConfigYaml } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import * as yaml from "js-yaml";
 import { Search, X, ChevronUp, ChevronDown } from "lucide-react";
@@ -51,7 +52,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
     setLoading(true);
     setError("");
     try {
-      const result = await window.hermesAPI.readConfigYaml(profile);
+      const result = await readConfigYaml(profile);
       setContent(result.content);
       setOriginal(result.content);
       setPath(result.path);
@@ -257,7 +258,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
     setError("");
     setSaved(false);
     try {
-      await window.hermesAPI.writeConfigYaml(content, profile);
+      await writeConfigYaml(content, profile);
       setOriginal(content);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

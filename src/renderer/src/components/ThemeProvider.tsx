@@ -15,6 +15,7 @@ const ThemeContext = createContext<ThemeContextValue>({
   setTheme: () => {},
 });
 
+import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { THEME_STORAGE_KEY as STORAGE_KEY } from "../constants";
 
 function getSystemTheme(): ResolvedTheme {
@@ -33,7 +34,7 @@ export function ThemeProvider({
   children: React.ReactNode;
 }): React.JSX.Element {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = getStoreItem(STORAGE_KEY);
     if (stored === "light" || stored === "dark" || stored === "system")
       return stored;
     return "system";
@@ -42,7 +43,7 @@ export function ThemeProvider({
 
   function setTheme(next: Theme): void {
     setThemeState(next);
-    localStorage.setItem(STORAGE_KEY, next);
+    setStoreItem(STORAGE_KEY, next);
   }
 
   // Listen for system preference changes

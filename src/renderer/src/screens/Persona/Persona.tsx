@@ -1,3 +1,4 @@
+import { readMemory, readSoul, resetSoul, writeMemory, writeSoul, writeUserProfile } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Refresh } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
@@ -23,8 +24,8 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
   const loadData = useCallback(async (): Promise<void> => {
     setLoading(true);
     const [soul, mem] = await Promise.all([
-      window.hermesAPI.readSoul(profile),
-      window.hermesAPI.readMemory(profile),
+      readSoul(profile),
+      readMemory(profile),
     ]);
     setSoulContent(soul);
     setMemoryContent((mem as { memory: { content: string } }).memory.content);
@@ -64,13 +65,13 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
     if (draft === null) return;
     setSaving(true);
     if (tab === "soul") {
-      await window.hermesAPI.writeSoul(draft, profile);
+      await writeSoul(draft, profile);
       setSoulContent(draft);
     } else if (tab === "user") {
-      await window.hermesAPI.writeUserProfile(draft, profile);
+      await writeUserProfile(draft, profile);
       setUserContent(draft);
     } else {
-      await window.hermesAPI.writeMemory(draft, profile);
+      await writeMemory(draft, profile);
       setMemoryContent(draft);
     }
     setDraft(null);
@@ -80,7 +81,7 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
   }
 
   async function handleResetSoul(): Promise<void> {
-    const newContent = await window.hermesAPI.resetSoul(profile);
+    const newContent = await resetSoul(profile);
     setSoulContent(newContent);
     setDraft(null);
     setSaved(true);

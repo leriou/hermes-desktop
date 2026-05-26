@@ -1,3 +1,4 @@
+import { openExternal, setEnv, setModelConfig } from "@renderer/lib/hermes-tauri";
 import { useState } from "react";
 import { ArrowRight, ExternalLink } from "../../assets/icons";
 import { PROVIDERS, LOCAL_PRESETS } from "../../constants";
@@ -66,16 +67,16 @@ function Setup({
 
     try {
       if (provider.needsKey && provider.envKey) {
-        await window.hermesAPI.setEnv(provider.envKey, apiKey.trim());
+        await setEnv(provider.envKey, apiKey.trim());
       } else if (isLocal && apiKey.trim()) {
         const envKey = resolveCustomEnvKey(baseUrl.trim());
-        await window.hermesAPI.setEnv(envKey, apiKey.trim());
+        await setEnv(envKey, apiKey.trim());
       }
 
       const configProvider = isLocal ? "custom" : provider.configProvider;
       const configBaseUrl = isLocal ? baseUrl.trim() : provider.baseUrl;
       const configModel = modelName.trim() || "";
-      await window.hermesAPI.setModelConfig(
+      await setModelConfig(
         configProvider,
         configModel,
         configBaseUrl,
@@ -244,7 +245,7 @@ function Setup({
 
             <button
               className="setup-link"
-              onClick={() => window.hermesAPI.openExternal(provider.url)}
+              onClick={() => openExternal(provider.url)}
             >
               {t("setup.noKeyHint")}
               <ExternalLink size={12} />

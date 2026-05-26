@@ -1,3 +1,4 @@
+import { copyToClipboard } from "@renderer/lib/hermes-tauri";
 import { memo } from "react";
 import { Trash2 as Trash, Plus, Zap, FolderOpen, X, Copy } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
@@ -87,7 +88,7 @@ export const ChatHeader = memo(function ChatHeader({
             <button
               className="btn-ghost chat-copy-id-btn"
               onClick={() => {
-                void window.hermesAPI.copyToClipboard(sessionId);
+                void copyToClipboard(sessionId);
               }}
               title={sessionId}
             >

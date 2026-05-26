@@ -1,3 +1,4 @@
+import { createCronJob, listCronHistory, listCronJobs, pauseCronJob, readCronOutput, removeCronJob, resumeCronJob, triggerCronJob, updateCronJob } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
@@ -98,7 +99,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
   const loadJobs = useCallback(async (): Promise<void> => {
     try {
       const list = await cache.getOrFetch(`schedules:jobs:${profile ?? "default"}`, 20_000, async () =>
-        (await window.hermesAPI.listCronJobs(true, profile)) ?? [],
+        (await listCronJobs(true, profile)) ?? [],
       );
       setJobs(list);
     } catch {
@@ -112,7 +113,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     setHistoryLoading(true);
     try {
       const list = await cache.getOrFetch<HistoryEntry[]>(`schedules:history:${profile ?? "default"}`, 30_000, () =>
-        window.hermesAPI.listCronHistory(profile),
+        listCronHistory(profile),
       );
       setHistory(list ?? []);
     } catch { /* ignore */ }
@@ -183,7 +184,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     setActionInProgress(editingJob.id);
     setError("");
     try {
-      const result = await window.hermesAPI.updateCronJob(
+      const result = await updateCronJob(
         editingJob.id,
         editSchedule.trim() || undefined,
         editPrompt.trim() || undefined,
@@ -236,7 +237,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     setActionInProgress("creating");
     setError("");
     try {
-      const result = await window.hermesAPI.createCronJob(
+      const result = await createCronJob(
         buildSchedule(),
         newPrompt.trim() || undefined,
         newName.trim() || undefined,
@@ -261,7 +262,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     setActionInProgress(jobId);
     setError("");
     try {
-      const result = await window.hermesAPI.removeCronJob(jobId, profile);
+      const result = await removeCronJob(jobId, profile);
       setConfirmDelete(null);
       if (result.success) {
         cache.invalidate(`schedules:jobs:${profile ?? "default"}`);
@@ -282,8 +283,8 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     try {
       const result =
         job.state === "paused"
-          ? await window.hermesAPI.resumeCronJob(job.id, profile)
-          : await window.hermesAPI.pauseCronJob(job.id, profile);
+          ? await resumeCronJob(job.id, profile)
+          : await pauseCronJob(job.id, profile);
       if (result.success) {
         cache.invalidate(`schedules:jobs:${profile ?? "default"}`);
         await loadJobs();
@@ -301,7 +302,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     setActionInProgress(jobId);
     setError("");
     try {
-      const result = await window.hermesAPI.triggerCronJob(jobId, profile);
+      const result = await triggerCronJob(jobId, profile);
       if (result.success) {
         cache.invalidate(`schedules:jobs:${profile ?? "default"}`);
         await loadJobs();
@@ -900,7 +901,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
                     setOutputLoading(true);
                     setOutputContent("");
                     try {
-                      const content = await window.hermesAPI.readCronOutput(h.path);
+                      const content = await readCronOutput(h.path);
                       setOutputContent(content || "(empty)");
                     } catch {
                       setOutputContent("(failed to read)");

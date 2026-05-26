@@ -1,3 +1,4 @@
+import { checkInstall, getConnectionConfig, setConnectionConfig, startSshTunnel, testRemoteConnection, verifyInstall } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
 import { ThemeProvider } from "./components/ThemeProvider";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -24,20 +25,20 @@ function App(): React.JSX.Element {
     let isRemote = false;
 
     try {
-      const conn = await window.hermesAPI.getConnectionConfig();
+      const conn = await getConnectionConfig();
       isRemote = conn.mode === "remote" || conn.mode === "ssh";
       setConnectionMode(conn.mode);
 
       if (conn.mode === "ssh" && conn.ssh) {
         try {
-          await window.hermesAPI.startSshTunnel();
+          await startSshTunnel();
           next = "main";
         } catch (tunnelErr) {
           error = `SSH tunnel failed to start: ${(tunnelErr as Error).message}`;
           next = "welcome";
         }
       } else if (conn.mode === "remote" && conn.remoteUrl) {
-        const ok = await window.hermesAPI.testRemoteConnection(conn.remoteUrl);
+        const ok = await testRemoteConnection(conn.remoteUrl);
         if (ok) {
           next = "main";
         } else {
@@ -45,7 +46,7 @@ function App(): React.JSX.Element {
           next = "welcome";
         }
       } else {
-        const status = await window.hermesAPI.checkInstall();
+        const status = await checkInstall();
         if (!status.installed) {
           next = "welcome";
         } else if (!status.hasApiKey) {
@@ -63,7 +64,7 @@ function App(): React.JSX.Element {
 
     // Background deep-verify after UI is up. Non-blocking.
     if ((next === "main" || next === "setup") && !isRemote) {
-      window.hermesAPI.verifyInstall().then((ok) => {
+      verifyInstall().then((ok) => {
         if (!ok) setVerifyWarning(true);
       });
     }
@@ -103,7 +104,7 @@ function App(): React.JSX.Element {
   }
 
   async function handleSwitchToLocal(): Promise<void> {
-    await window.hermesAPI.setConnectionConfig("local", "", "");
+    await setConnectionConfig("local", "", "");
     setConnectionMode("local");
     handleRecheck();
   }

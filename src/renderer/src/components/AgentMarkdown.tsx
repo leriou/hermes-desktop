@@ -1,3 +1,4 @@
+import { openExternal } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, startTransition, memo } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -160,7 +161,7 @@ const MD_COMPONENTS: Record<string, React.ComponentType<any>> = {
         } catch {
           return;
         }
-        window.hermesAPI.openExternal(href);
+        openExternal(href);
       }}
     >
       {children}

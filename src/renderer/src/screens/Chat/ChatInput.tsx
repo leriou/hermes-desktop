@@ -18,7 +18,7 @@ import {
   type AttachmentError,
 } from "./attachmentUtils";
 import { AttachmentChip } from "../../components/AttachmentChip";
-import type { Attachment } from "../../../../shared/attachments";
+import type { Attachment } from "@shared/attachments";
 import type { ClarifyRequest } from "./types";
 
 export interface ModelOption {

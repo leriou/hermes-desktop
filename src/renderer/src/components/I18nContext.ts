@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import type { AppLocale } from "../../../shared/i18n";
+import type { AppLocale } from "@shared/i18n";
 
 export type I18nContextValue = {
   locale: AppLocale;

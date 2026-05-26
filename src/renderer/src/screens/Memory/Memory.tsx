@@ -1,3 +1,4 @@
+import { addMemoryEntry, discoverMemoryProviders, getConfig, getEnv, openExternal, readMemory, removeMemoryEntry, setConfig, setEnv, updateMemoryEntry, writeUserProfile } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash, Refresh } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
@@ -111,10 +112,10 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
 
   const loadData = useCallback(async () => {
     const [d, provider, provs, env] = await Promise.all([
-      window.hermesAPI.readMemory(profile),
-      window.hermesAPI.getConfig("memory.provider", profile),
-      window.hermesAPI.discoverMemoryProviders(profile),
-      window.hermesAPI.getEnv(profile),
+      readMemory(profile),
+      getConfig("memory.provider", profile),
+      discoverMemoryProviders(profile),
+      getEnv(profile),
     ]);
     setData(d as MemoryData);
     setUserContent(d.user.content);
@@ -132,7 +133,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
   async function handleAddEntry(): Promise<void> {
     if (!newEntry.trim()) return;
     setError("");
-    const result = await window.hermesAPI.addMemoryEntry(
+    const result = await addMemoryEntry(
       newEntry.trim(),
       profile,
     );
@@ -148,7 +149,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
   async function handleSaveEdit(): Promise<void> {
     if (editingIndex === null) return;
     setError("");
-    const result = await window.hermesAPI.updateMemoryEntry(
+    const result = await updateMemoryEntry(
       editingIndex,
       editContent.trim(),
       profile,
@@ -163,14 +164,14 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
   }
 
   async function handleDeleteEntry(index: number): Promise<void> {
-    await window.hermesAPI.removeMemoryEntry(index, profile);
+    await removeMemoryEntry(index, profile);
     setConfirmDelete(null);
     await loadData();
   }
 
   async function handleSaveUserProfile(): Promise<void> {
     setError("");
-    const result = await window.hermesAPI.writeUserProfile(
+    const result = await writeUserProfile(
       userContent,
       profile,
     );
@@ -500,7 +501,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
                         className="btn-ghost"
                         style={{ padding: 2, opacity: 0.6 }}
                         onClick={() =>
-                          window.hermesAPI.openExternal(PROVIDER_URLS[p.name])
+                          openExternal(PROVIDER_URLS[p.name])
                         }
                         title={t("memory.openProviderWebsite")}
                       >
@@ -540,7 +541,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
                               }))
                             }
                             onBlur={async () => {
-                              await window.hermesAPI.setEnv(
+                              await setEnv(
                                 envKey,
                                 providerEnv[envKey] || "",
                                 profile,
@@ -564,7 +565,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
                         className="btn btn-secondary btn-sm"
                         onClick={async () => {
                           setActivating(p.name);
-                          await window.hermesAPI.setConfig(
+                          await setConfig(
                             "memory.provider",
                             "",
                             profile,
@@ -584,7 +585,7 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
                         className="btn btn-primary btn-sm"
                         onClick={async () => {
                           setActivating(p.name);
-                          await window.hermesAPI.setConfig(
+                          await setConfig(
                             "memory.provider",
                             p.name,
                             profile,

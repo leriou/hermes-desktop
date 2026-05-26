@@ -4,7 +4,7 @@ import {
   DEFAULT_ACTIVE_LOCALE,
   setLocale as setSharedLocale,
   type AppLocale,
-} from "../../../shared/i18n";
+} from "@shared/i18n";
 import { I18nProvider } from "./I18nProvider";
 import { useI18n } from "./useI18n";
 

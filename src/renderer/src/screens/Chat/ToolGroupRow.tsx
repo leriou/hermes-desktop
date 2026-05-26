@@ -1,3 +1,4 @@
+import { copyToClipboard } from "@renderer/lib/hermes-tauri";
 import { memo, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ClipboardList, X } from "lucide-react";
@@ -53,7 +54,7 @@ function DetailSection({
           className="tool-detail-copy"
           onClick={(event) => {
             event.preventDefault();
-            void window.hermesAPI.copyToClipboard(value);
+            void copyToClipboard(value);
           }}
         >
           Copy

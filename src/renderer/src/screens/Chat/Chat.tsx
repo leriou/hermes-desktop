@@ -1,3 +1,5 @@
+import { abortChat, clearStagedAttachments, copyToClipboard, deleteSession, isRemoteMode, onContextMenuCopyChat, onContextMenuSelectBubble, selectFolder } from "@renderer/lib/hermes-tauri";
+import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatInput, type ChatInputHandle, type ModelOption } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
@@ -100,7 +102,7 @@ function Chat({
   const { t } = useI18n();
   const [dragActive, setDragActive] = useState(false);
   const [remoteMode, setRemoteMode] = useState(false);
-  const [verbose, setVerbose] = useState(() => localStorage.getItem("hermes-verbose") === "true");
+  const [verbose, setVerbose] = useState(() => getStoreItem("hermes-verbose") === "true");
   const [approvalPolicy, setApprovalPolicyState] = useState<ApprovalPolicy>(() => loadApprovalPolicy());
   const [approvalHistory, setApprovalHistory] = useState(() => loadApprovalHistory());
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
@@ -121,7 +123,7 @@ function Chat({
   useEffect(() => {
     let cancelled = false;
     (async (): Promise<void> => {
-      const flag = await window.hermesAPI.isRemoteMode();
+      const flag = await isRemoteMode();
       if (!cancelled) setRemoteMode(flag);
     })();
     return (): void => {
@@ -494,16 +496,16 @@ function Chat({
   });
   useEffect(() => {
     if (!visible) return;
-    const unsub = window.hermesAPI.onContextMenuCopyChat((format) => {
+    const unsub = onContextMenuCopyChat((format) => {
       const msgs = messagesRef.current;
       if (msgs.length === 0) return;
-      void window.hermesAPI.copyToClipboard(buildChatTranscript(msgs, format));
+      void copyToClipboard(buildChatTranscript(msgs, format));
     });
     const handleCustom = (e: Event) => {
       const format = (e as CustomEvent).detail;
       const msgs = messagesRef.current;
       if (msgs.length === 0) return;
-      void window.hermesAPI.copyToClipboard(buildChatTranscript(msgs, format));
+      void copyToClipboard(buildChatTranscript(msgs, format));
     };
     window.addEventListener("hermes-copy-chat", handleCustom);
     return () => { unsub(); window.removeEventListener("hermes-copy-chat", handleCustom); };
@@ -511,7 +513,7 @@ function Chat({
 
   useEffect(() => {
     if (!visible) return;
-    return window.hermesAPI.onContextMenuSelectBubble(({ x, y }) => {
+    return onContextMenuSelectBubble(({ x, y }) => {
       const bubble = document.elementFromPoint(x, y)?.closest(".chat-bubble");
       if (!bubble) return;
       const selection = window.getSelection();
@@ -522,13 +524,13 @@ function Chat({
 
   const handleClear = useCallback(() => {
     if (isLoading) {
-      window.hermesAPI.abortChat();
+      abortChat();
       setIsLoading(false);
     }
     const idToDelete = session.hermesSessionId ?? sessionId;
     if (idToDelete) {
-      void window.hermesAPI.deleteSession(idToDelete);
-      void window.hermesAPI.clearStagedAttachments(idToDelete);
+      void deleteSession(idToDelete);
+      void clearStagedAttachments(idToDelete);
     }
     setMessages([]);
     dispatch({ type: "setHermesSessionId", value: null });
@@ -552,7 +554,7 @@ function Chat({
   const toggleVerbose = useCallback(() => {
     setVerbose((v) => {
       const next = !v;
-      localStorage.setItem("hermes-verbose", String(next));
+      setStoreItem("hermes-verbose", String(next));
       return next;
     });
   }, []);
@@ -595,7 +597,7 @@ function Chat({
   }, []);
 
   const handlePickFolder = useCallback(async () => {
-    const path = await window.hermesAPI.selectFolder();
+    const path = await selectFolder();
     if (path) dispatch({ type: "setContextFolder", value: path });
   }, [dispatch]);
 

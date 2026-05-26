@@ -1,3 +1,4 @@
+import { getRoutingConfig, setRoutingConfig } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash } from "../../assets/icons";
 import { PROVIDERS } from "../../constants";
@@ -23,7 +24,7 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      const cfg = await window.hermesAPI.getRoutingConfig(profile);
+      const cfg = await getRoutingConfig(profile);
       setDefaultModel(cfg.defaultModel);
       setDefaultProvider(cfg.defaultProvider);
       setDefaultBaseUrl(cfg.defaultBaseUrl);
@@ -42,7 +43,7 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
     setSaving(true);
     setError("");
     try {
-      await window.hermesAPI.setRoutingConfig(
+      await setRoutingConfig(
         {
           defaultModel: defaultModel.trim(),
           defaultProvider: defaultProvider.trim(),

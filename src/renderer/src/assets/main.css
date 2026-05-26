@@ -9012,3 +9012,18 @@ body {
 .config-editor-textarea:focus {
   outline: none;
 }
+
+/* ========================================================================
+   Tauri ProMotion 120Hz & GPU Acceleration Optimization
+   ======================================================================== */
+[data-gpu="available"] .session-sidebar-list,
+[data-gpu="available"] .messages-container,
+[data-gpu="available"] .kanban-column-list,
+[data-gpu="available"] .chat-pane {
+  will-change: transform, scroll-position;
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+

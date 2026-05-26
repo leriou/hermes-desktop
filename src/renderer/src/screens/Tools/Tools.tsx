@@ -1,3 +1,4 @@
+import { getToolsets, setToolsetEnabled } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Refresh } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
@@ -118,7 +119,7 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
     setLoading(true);
     setError("");
     try {
-      const list = await window.hermesAPI.getToolsets(profile);
+      const list = await getToolsets(profile);
       setToolsets((list as ToolsetInfo[]) ?? []);
     } catch (err) {
       console.error("Failed to load toolsets", err);
@@ -140,7 +141,7 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
         t.key === key ? { ...t, enabled: !currentEnabled } : t,
       ),
     );
-    const result = await window.hermesAPI.setToolsetEnabled(
+    const result = await setToolsetEnabled(
       key,
       !currentEnabled,
       profile,

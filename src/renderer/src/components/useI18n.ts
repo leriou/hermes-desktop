@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
-import type { AppLocale } from "../../../shared/i18n";
+import type { AppLocale } from "@shared/i18n";
 import { I18nContext } from "./I18nContext";
 
 export function useI18n(): {

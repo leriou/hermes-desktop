@@ -1,3 +1,4 @@
+import { getConfig, setConfig } from "@renderer/lib/hermes-tauri";
 import { useCallback, useEffect, useState } from "react";
 
 interface UseFastModeResult {
@@ -15,7 +16,7 @@ export function useFastMode(profile?: string): UseFastModeResult {
   const [fastMode, setFastMode] = useState(false);
 
   useEffect(() => {
-    window.hermesAPI.getConfig("agent.service_tier", profile).then((val) => {
+    getConfig("agent.service_tier", profile).then((val) => {
       setFastMode(isFastTier(val));
     });
   }, [profile]);
@@ -23,7 +24,7 @@ export function useFastMode(profile?: string): UseFastModeResult {
   const set = useCallback(
     async (next: boolean): Promise<void> => {
       setFastMode(next);
-      await window.hermesAPI.setConfig(
+      await setConfig(
         "agent.service_tier",
         next ? "fast" : "normal",
         profile,

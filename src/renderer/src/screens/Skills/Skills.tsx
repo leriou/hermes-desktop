@@ -1,3 +1,4 @@
+import { getSkillContent, installSkill, listBundledSkills, listInstalledSkills, uninstallSkill } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X, Download, Trash, Refresh } from "../../assets/icons";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
@@ -41,14 +42,14 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
 
   const loadInstalled = useCallback(async (): Promise<void> => {
     const list = await cache.getOrFetch(`skills:installed:${profile ?? "default"}`, 20_000, async () =>
-      (await window.hermesAPI.listInstalledSkills(profile)) ?? [],
+      (await listInstalledSkills(profile)) ?? [],
     );
     setInstalledSkills(list);
   }, [profile]);
 
   const loadBundled = useCallback(async (): Promise<void> => {
     const list = await cache.getOrFetch("skills:bundled", 120_000, async () =>
-      (await window.hermesAPI.listBundledSkills()) ?? [],
+      (await listBundledSkills()) ?? [],
     );
     setBundledSkills(list);
   }, []);
@@ -65,14 +66,14 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
 
   async function handleViewDetail(skill: InstalledSkill): Promise<void> {
     setDetailSkill(skill);
-    const content = await window.hermesAPI.getSkillContent(skill.path);
+    const content = await getSkillContent(skill.path);
     setDetailContent(content);
   }
 
   async function handleInstall(name: string): Promise<void> {
     setActionInProgress(name);
     setError("");
-    const result = await window.hermesAPI.installSkill(name, profile);
+    const result = await installSkill(name, profile);
     setActionInProgress(null);
     if (result.success) {
       cache.invalidate(`skills:installed:${profile ?? "default"}`);
@@ -85,7 +86,7 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
   async function handleUninstall(name: string): Promise<void> {
     setActionInProgress(name);
     setError("");
-    const result = await window.hermesAPI.uninstallSkill(name, profile);
+    const result = await uninstallSkill(name, profile);
     setActionInProgress(null);
     if (result.success) {
       setDetailSkill(null);

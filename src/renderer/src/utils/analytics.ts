@@ -1,4 +1,5 @@
 import posthog from "posthog-js";
+import { getStoreItem, setStoreItem } from "./store";
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || "";
 const POSTHOG_HOST =
@@ -10,8 +11,8 @@ function isAnalyticsEnabled(): boolean {
   // Default to true for official builds (key present), false otherwise
   const hasKey = POSTHOG_KEY.length > 0;
   try {
-    const stored = localStorage.getItem(ANALYTICS_CONSENT_KEY);
-    if (stored === null) return hasKey; // First run: enabled if key exists
+    const stored = getStoreItem(ANALYTICS_CONSENT_KEY);
+    if (stored === "") return hasKey; // First run: enabled if key exists
     return stored === "true";
   } catch {
     return false;
@@ -21,10 +22,10 @@ function isAnalyticsEnabled(): boolean {
 function getOrCreateAnonymousId(): string {
   const key = "hermes-anonymous-id";
   try {
-    let id = localStorage.getItem(key);
+    let id = getStoreItem(key);
     if (!id) {
       id = crypto.randomUUID();
-      localStorage.setItem(key, id);
+      setStoreItem(key, id);
     }
     return id;
   } catch {
@@ -93,7 +94,7 @@ export function getAnalyticsConsent(): boolean {
 
 export function setAnalyticsConsent(enabled: boolean): void {
   try {
-    localStorage.setItem(ANALYTICS_CONSENT_KEY, String(enabled));
+    setStoreItem(ANALYTICS_CONSENT_KEY, String(enabled));
   } catch {
     // ignore
   }

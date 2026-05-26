@@ -1,3 +1,4 @@
+import { getModelAliases, getModelConfig, listModels, setModelConfig } from "@renderer/lib/hermes-tauri";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../../components/useI18n";
 import type { ModelGroup } from "../types";
@@ -40,9 +41,9 @@ export function useModelConfig(profile?: string): UseModelConfigResult {
 
   const reload = useCallback(async (): Promise<void> => {
     const [mc, savedModels, savedAliases] = await Promise.all([
-      window.hermesAPI.getModelConfig(profile),
-      window.hermesAPI.listModels(),
-      window.hermesAPI.getModelAliases(),
+      getModelConfig(profile),
+      listModels(),
+      getModelAliases(),
     ]);
     if (selectionGuard.current) {
       selectionGuard.current = false;
@@ -63,7 +64,7 @@ export function useModelConfig(profile?: string): UseModelConfigResult {
   const selectModel = useCallback(
     async (provider: string, model: string, baseUrl: string): Promise<void> => {
       const effectiveBaseUrl = provider === "custom" ? baseUrl : "";
-      await window.hermesAPI.setModelConfig(
+      await setModelConfig(
         provider,
         model,
         effectiveBaseUrl,
@@ -79,7 +80,7 @@ export function useModelConfig(profile?: string): UseModelConfigResult {
 
   const selectAlias = useCallback(
     async (alias: ModelAlias): Promise<void> => {
-      await window.hermesAPI.setModelConfig(
+      await setModelConfig(
         alias.provider || "custom",
         alias.model,
         alias.baseUrl,

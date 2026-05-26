@@ -5,6 +5,8 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { I18nProvider } from "./components/I18nProvider";
 import { initAnalytics } from "./utils/analytics";
+import * as hermesAPI from "./lib/hermes-tauri";
+import { initStore } from "./utils/store";
 
 function setupTauriContextMenu(): void {
   document.addEventListener("contextmenu", (e) => {
@@ -100,10 +102,10 @@ async function probeGPU(): Promise<boolean> {
 }
 
 async function boot(): Promise<void> {
+  await initStore();
   // Inject the Tauri adapter before React renders so that
   // window.hermesAPI is available when App's useEffect fires.
   if ((window as any).__TAURI_INTERNALS__) {
-    const { hermesAPI } = await import("./lib/hermes-tauri");
     (window as any).hermesAPI = hermesAPI;
     setupTauriContextMenu();
   }

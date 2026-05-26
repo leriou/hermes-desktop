@@ -1,5 +1,5 @@
 import { FileText, X } from "lucide-react";
-import type { Attachment } from "../../../shared/attachments";
+import type { Attachment } from "@shared/attachments";
 
 interface AttachmentChipProps {
   attachment: Attachment;

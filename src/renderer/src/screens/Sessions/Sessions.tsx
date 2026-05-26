@@ -1,3 +1,4 @@
+import { copyToClipboard, listCachedSessions, searchSessions, syncSessionCache } from "@renderer/lib/hermes-tauri";
 import { useEffect, useState, useRef, useCallback, memo, useMemo } from "react";
 import { Plus, Search, X, ChatBubble, ChevronDown, ChevronRight, Copy, Check } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
@@ -167,7 +168,7 @@ function CopyIdButton({ id }: { id: string }): React.JSX.Element {
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    void window.hermesAPI.copyToClipboard(id);
+    void copyToClipboard(id);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }, [id]);
@@ -263,18 +264,18 @@ function Sessions({
   const grouped = useMemo(() => groupSessions(filteredSessions), [filteredSessions]);
 
   const refreshSessions = useCallback(async (): Promise<void> => {
-    const synced = await window.hermesAPI.syncSessionCache(profile);
+    const synced = await syncSessionCache(profile);
     if (synced) setSessions(synced);
   }, [profile]);
 
   const loadSessions = useCallback(async (): Promise<void> => {
     setLoading(true);
-    const cached = await window.hermesAPI.listCachedSessions(profile, 100);
+    const cached = await listCachedSessions(profile, 100);
     if (cached && cached.length > 0) {
       setSessions(cached);
       setLoading(false);
     }
-    const synced = await window.hermesAPI.syncSessionCache(profile);
+    const synced = await syncSessionCache(profile);
     if (synced) setSessions(synced);
     setLoading(false);
   }, [profile]);
@@ -285,7 +286,7 @@ function Sessions({
 
   useEffect(() => {
     if (visible) {
-      window.hermesAPI.syncSessionCache(profile).then(setSessions);
+      syncSessionCache(profile).then(setSessions);
     }
   }, [visible, profile]);
 
@@ -313,7 +314,7 @@ function Sessions({
     }
     setIsSearching(true);
     searchTimer.current = setTimeout(async () => {
-      const results = (await window.hermesAPI.searchSessions(searchQuery, 50, profile)) ?? [];
+      const results = (await searchSessions(searchQuery, 50, profile)) ?? [];
       setSearchResults(results);
       setIsSearching(false);
     }, 300);

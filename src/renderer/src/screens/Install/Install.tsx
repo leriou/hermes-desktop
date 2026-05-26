@@ -1,3 +1,4 @@
+import { adoptHermesHome, onInstallProgress, openExternal, quitApp, selectHermesFolder, validateHermesHome } from "@renderer/lib/hermes-tauri";
 import { useEffect, useState, useRef } from "react";
 import { ArrowRight, Copy, Send } from "../../assets/icons";
 
@@ -71,7 +72,7 @@ function Install({
   useEffect(() => {
     if (phase !== "running") return;
     let isMounted = true;
-    const cleanup = window.hermesAPI.onInstallProgress((p) => {
+    const cleanup = onInstallProgress((p) => {
       if (isMounted) setProgress(p);
     });
 
@@ -114,14 +115,14 @@ function Install({
   // restart to adopt it (#272).
   async function handleUseExisting(): Promise<void> {
     setUseExistingError(null);
-    const dir = await window.hermesAPI.selectHermesFolder();
+    const dir = await selectHermesFolder();
     if (!dir) return;
-    const ok = await window.hermesAPI.validateHermesHome(dir);
+    const ok = await validateHermesHome(dir);
     if (!ok) {
       setUseExistingError(t("install.useExistingInvalid"));
       return;
     }
-    const saved = await window.hermesAPI.adoptHermesHome(dir);
+    const saved = await adoptHermesHome(dir);
     if (saved) {
       setAdopted(true);
     } else {
@@ -149,7 +150,7 @@ function Install({
             <div className="install-confirm-actions">
               <button
                 className="btn btn-primary"
-                onClick={() => window.hermesAPI.quitApp()}
+                onClick={() => quitApp()}
               >
                 {t("install.useExistingQuitBtn")}
               </button>
@@ -265,7 +266,7 @@ function Install({
             <button
               className="btn btn-secondary btn-sm"
               onClick={() =>
-                window.hermesAPI.openExternal(TELEGRAM_COMMUNITY_URL)
+                openExternal(TELEGRAM_COMMUNITY_URL)
               }
               title={TELEGRAM_COMMUNITY_URL}
             >

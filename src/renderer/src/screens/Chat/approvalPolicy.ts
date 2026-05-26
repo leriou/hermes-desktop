@@ -1,4 +1,5 @@
 import type { ApprovalRequest } from "./types";
+import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 
 export type ApprovalMode = "manual" | "countdown" | "auto_approve";
 export type ApprovalDecision = "approve" | "deny";
@@ -89,7 +90,7 @@ export function pruneApprovalHistory(
 
 export function loadApprovalPolicy(): ApprovalPolicy {
   try {
-    const raw = localStorage.getItem(APPROVAL_POLICY_KEY);
+    const raw = getStoreItem(APPROVAL_POLICY_KEY);
     return normalizeApprovalPolicy(raw ? JSON.parse(raw) : null);
   } catch {
     return DEFAULT_APPROVAL_POLICY;
@@ -97,12 +98,12 @@ export function loadApprovalPolicy(): ApprovalPolicy {
 }
 
 export function saveApprovalPolicy(policy: ApprovalPolicy): void {
-  localStorage.setItem(APPROVAL_POLICY_KEY, JSON.stringify(normalizeApprovalPolicy(policy)));
+  setStoreItem(APPROVAL_POLICY_KEY, JSON.stringify(normalizeApprovalPolicy(policy)));
 }
 
 export function loadApprovalHistory(now = Date.now(), ttlMinutes = DEFAULT_APPROVAL_POLICY.historyTtlMinutes): ApprovalHistoryEntry[] {
   try {
-    const raw = localStorage.getItem(APPROVAL_HISTORY_KEY);
+    const raw = getStoreItem(APPROVAL_HISTORY_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return pruneApprovalHistory(Array.isArray(parsed) ? parsed : [], now, ttlMinutes);
   } catch {
@@ -111,5 +112,5 @@ export function loadApprovalHistory(now = Date.now(), ttlMinutes = DEFAULT_APPRO
 }
 
 export function saveApprovalHistory(entries: ApprovalHistoryEntry[]): void {
-  localStorage.setItem(APPROVAL_HISTORY_KEY, JSON.stringify(entries));
+  setStoreItem(APPROVAL_HISTORY_KEY, JSON.stringify(entries));
 }

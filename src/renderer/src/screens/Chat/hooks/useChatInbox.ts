@@ -1,3 +1,4 @@
+import { onTuiEvent } from "@renderer/lib/hermes-tauri";
 import { useEffect, useRef } from "react";
 import type { ChatBubbleMessage, ChatMessage, ReasoningMessage, SubagentMessage, ToolCallMessage, UsageState } from "../types";
 import type { SessionState } from "./useSessionManager";
@@ -150,7 +151,7 @@ export function useChatInbox({
       flushTimersRef.current.set(tabId, timer);
     }
 
-    const cleanup = window.hermesAPI.onTuiEvent((rawEvent: RawTuiEvent) => {
+    const cleanup = onTuiEvent((rawEvent: RawTuiEvent) => {
       const event = normalizeTuiEvent(rawEvent);
       const tabId = tabForEvent(event);
       if (!tabId) return;

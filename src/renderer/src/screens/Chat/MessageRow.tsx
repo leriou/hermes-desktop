@@ -1,3 +1,4 @@
+import { copyToClipboard, voiceTts } from "@renderer/lib/hermes-tauri";
 import { memo, useCallback, useState } from "react";
 import icon from "../../assets/icon.png";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
@@ -61,14 +62,14 @@ export const MessageRow = memo(function MessageRow({
 
   const handleCopy = useCallback(() => {
     if (!isChatBubbleMessage(msg) || !msg.content) return;
-    void window.hermesAPI.copyToClipboard(msg.content);
+    void copyToClipboard(msg.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }, [msg]);
 
   const handleTts = useCallback(() => {
     if (!isChatBubbleMessage(msg) || !msg.content) return;
-    window.hermesAPI.voiceTts(msg.content).catch((err) => {
+    voiceTts(msg.content).catch((err) => {
       console.warn("[TTS] voice-tts failed:", err);
     });
   }, [msg]);

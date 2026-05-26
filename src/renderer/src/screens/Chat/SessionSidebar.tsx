@@ -1,3 +1,5 @@
+import { listCachedSessions } from "@renderer/lib/hermes-tauri";
+import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { memo, useEffect, useState } from "react";
 import { Plus, Loader2, Circle, X, Clock } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
@@ -28,12 +30,12 @@ interface HistorySession {
 
 interface SessionSidebarProps {
   sessions: SessionEntry[];
-  activeId: string | null;
+  activeSessionId: string | null;
   activeDbSessionId: string | null;
   onSelect: (id: string) => void;
   onNewChat: () => void;
   onClose: (id: string) => void;
-  onResumeSession: (sessionId: string) => void;
+  onResumeSession: (id: string) => void;
   profile?: string;
 }
 
@@ -135,7 +137,7 @@ const HistoryItem = memo(function HistoryItem({
 
 export function SessionSidebar({
   sessions,
-  activeId,
+  activeSessionId: activeId,
   activeDbSessionId,
   onSelect,
   onNewChat,
@@ -146,7 +148,7 @@ export function SessionSidebar({
   const { t } = useI18n();
   const [history, setHistory] = useState<HistorySession[]>(() => {
     try {
-      const cached = localStorage.getItem(`hermes-session-cache:${profile}`);
+      const cached = getStoreItem(`hermes-session-cache:${profile}`);
       if (cached) {
         const { sessions, ts } = JSON.parse(cached);
         if (Date.now() - ts < 60_000 && Array.isArray(sessions)) {
@@ -161,13 +163,13 @@ export function SessionSidebar({
     let cancelled = false;
     (async (): Promise<void> => {
       try {
-        const cached = await window.hermesAPI.listCachedSessions(profile, 30);
+        const cached = await listCachedSessions(profile, 30);
         if (cancelled) return;
         const threeDaysAgo = Math.floor(Date.now() / 1000) - 3 * 86400;
         const filtered = cached.filter((s: HistorySession) => s.startedAt >= threeDaysAgo);
         setHistory(filtered);
         try {
-          localStorage.setItem(`hermes-session-cache:${profile}`, JSON.stringify({
+          setStoreItem(`hermes-session-cache:${profile}`, JSON.stringify({
             sessions: filtered,
             ts: Date.now(),
           }));

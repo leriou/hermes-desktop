@@ -1,3 +1,12 @@
+import {
+  gatewayStatus,
+  getEnv,
+  getPlatformEnabled,
+  setEnv as setTauriEnv,
+  setPlatformEnabled as setTauriPlatformEnabled,
+  startGateway,
+  stopGateway,
+} from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { GATEWAY_SECTIONS, GATEWAY_PLATFORMS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
@@ -20,11 +29,11 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
   );
 
   const loadConfig = useCallback(async (): Promise<void> => {
-    const envData = await window.hermesAPI.getEnv(profile);
+    const envData = await getEnv(profile);
     setEnv(envData);
-    const gwStatus = await window.hermesAPI.gatewayStatus();
+    const gwStatus = await gatewayStatus();
     setGatewayRunning(gwStatus);
-    const platforms = await window.hermesAPI.getPlatformEnabled(profile);
+    const platforms = await getPlatformEnabled(profile);
     setPlatformEnabled(platforms);
   }, [profile]);
 
@@ -47,13 +56,13 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
       gatewayStatusTimeoutRef.current = null;
     }
     if (gatewayRunning) {
-      await window.hermesAPI.stopGateway();
+      await stopGateway();
       setGatewayRunning(false);
     } else {
-      const started = await window.hermesAPI.startGateway();
+      const started = await startGateway();
       setGatewayRunning(started);
       gatewayStatusTimeoutRef.current = setTimeout(async () => {
-        const status = await window.hermesAPI.gatewayStatus();
+        const status = await gatewayStatus();
         setGatewayRunning(status);
         gatewayStatusTimeoutRef.current = null;
       }, 2000);
@@ -67,9 +76,9 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
     }
     const newValue = !platformEnabled[platform];
     setPlatformEnabled((prev) => ({ ...prev, [platform]: newValue }));
-    await window.hermesAPI.setPlatformEnabled(platform, newValue, profile);
+    await setTauriPlatformEnabled(platform, newValue, profile);
     platformStatusTimeoutRef.current = setTimeout(async () => {
-      const status = await window.hermesAPI.gatewayStatus();
+      const status = await gatewayStatus();
       setGatewayRunning(status);
       platformStatusTimeoutRef.current = null;
     }, 3000);
@@ -77,7 +86,7 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
 
   async function handleBlur(key: string): Promise<void> {
     const value = env[key] || "";
-    await window.hermesAPI.setEnv(key, value, profile);
+    await setTauriEnv(key, value, profile);
     setSavedKey(key);
     setTimeout(() => setSavedKey(null), 2000);
   }

@@ -6,7 +6,8 @@
     "jsx": "react-jsx",
     "types": ["vitest/globals"],
     "paths": {
-      "@renderer/*": ["./src/renderer/src/*"]
+      "@renderer/*": ["./src/renderer/src/*"],
+      "@shared/*": ["./src/renderer/src/shared/*"]
     }
   },
   "include": [

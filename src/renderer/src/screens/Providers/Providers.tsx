@@ -5,6 +5,7 @@ import BrandLogo from "../../components/common/BrandLogo";
 import { useDiscoveredModels } from "../../hooks/useDiscoveredModels";
 import OAuthLoginModal from "../../components/OAuthLoginModal";
 import { KeyRound, Check } from "../../assets/icons";
+import { addModel, getCredentialPool, getEnv, setCredentialPool, setEnv as setTauriEnv } from "@renderer/lib/hermes-tauri";
 
 type ProviderTab = "model" | "apikeys" | "tools" | "credentials" | "oauth";
 
@@ -84,8 +85,8 @@ function Providers({
 
   const loadConfig = useCallback(async (): Promise<void> => {
     const [envData, pool] = await Promise.all([
-      window.hermesAPI.getEnv(profile),
-      window.hermesAPI.getCredentialPool(),
+      getEnv(profile),
+      getCredentialPool(),
     ]);
     setEnv(envData);
     setCredPool(pool);
@@ -110,7 +111,7 @@ function Providers({
       envSaveTimers.current.delete(key);
     }
     const value = env[key] || "";
-    await window.hermesAPI.setEnv(key, value, profile);
+    await setTauriEnv(key, value, profile);
     setSavedKey(key);
     setTimeout(() => setSavedKey(null), 2000);
   }
@@ -121,7 +122,7 @@ function Providers({
     if (pending) clearTimeout(pending);
     const timer = setTimeout(() => {
       envSaveTimers.current.delete(key);
-      void window.hermesAPI.setEnv(key, value, profile);
+      void setTauriEnv(key, value, profile);
     }, 400);
     envSaveTimers.current.set(key, timer);
   }
@@ -135,7 +136,7 @@ function Providers({
     return () => {
       for (const [key, timer] of timers) {
         clearTimeout(timer);
-        void window.hermesAPI.setEnv(key, envRef.current[key] || "", profile);
+        void setTauriEnv(key, envRef.current[key] || "", profile);
       }
       timers.clear();
     };
@@ -151,7 +152,7 @@ function Providers({
         label: poolNewLabel.trim() || `Key ${existing.length + 1}`,
       },
     ];
-    await window.hermesAPI.setCredentialPool(poolProvider, entries);
+    await setCredentialPool(poolProvider, entries);
     setCredPool((prev) => ({ ...prev, [poolProvider]: entries }));
     setPoolNewKey("");
     setPoolNewLabel("");
@@ -163,7 +164,7 @@ function Providers({
   ): Promise<void> {
     const entries = [...(credPool[provider] || [])];
     entries.splice(index, 1);
-    await window.hermesAPI.setCredentialPool(provider, entries);
+    await setCredentialPool(provider, entries);
     setCredPool((prev) => ({ ...prev, [provider]: entries }));
   }
 
@@ -201,7 +202,7 @@ function Providers({
     for (const modelId of selectedModels) {
       try {
         const alias = allAlias[modelId]?.trim() || undefined;
-        await window.hermesAPI.addModel(
+        await addModel(
           modelId,
           discProvider === "custom" ? "custom" : discProvider,
           modelId,
