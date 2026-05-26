@@ -1,15 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-// Draggable region support for Tauri macOS
-if (typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__) {
-  (window as any).electron = {
-    process: {
-      platform: "darwin" // Force darwin to enable .drag-region in App.tsx
-    }
-  };
-}
-
 function listenOnce(event: string, callback: (payload: any) => void): () => void {
   let unlistenFn: (() => void) | null = null;
   let cleaned = false;

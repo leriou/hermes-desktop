@@ -71,14 +71,18 @@ const CodeBlock = memo(function CodeBlock({
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [highlighted, setHighlighted] = useState(false);
+  const [highlightedCode, setHighlightedCode] = useState<string | null>(null);
   const code = String(children).replace(/\n$/, "");
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "";
   const isDiff = language === "diff";
 
   useEffect(() => {
-    startTransition(() => setHighlighted(true));
+    setHighlightedCode(null);
+    const timer = window.setTimeout(() => {
+      startTransition(() => setHighlightedCode(code));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [code]);
 
   const lines = code.split("\n");
@@ -103,7 +107,7 @@ const CodeBlock = memo(function CodeBlock({
       </div>
       {isDiff ? (
         <DiffView code={displayCode} />
-      ) : highlighted ? (
+      ) : highlightedCode === code ? (
         <SyntaxHighlighter
           style={oneDark}
           language={LANG_MAP[language] ? language : "text"}
@@ -137,6 +141,11 @@ const CodeBlock = memo(function CodeBlock({
 });
 
 const MD_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="sm-table-wrap">
+      <table className="sm-table">{children}</table>
+    </div>
+  ),
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
     <a
       href={href}

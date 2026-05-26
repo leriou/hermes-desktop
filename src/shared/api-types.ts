@@ -1,11 +1,8 @@
 /**
  * Canonical API type definitions for the Hermes Desktop app.
  *
- * Both the Electron preload bridge and the Tauri invoke adapter must
- * satisfy this interface.  The renderer consumes it via `window.hermesAPI`.
- *
- * This file is the single source of truth — do not duplicate these types
- * in preload/index.d.ts or renderer/lib/hermes-tauri.ts.
+ * The Tauri invoke adapter must satisfy this interface.
+ * The renderer consumes it via `window.hermesAPI`.
  */
 
 import type { AppLocale } from "./i18n/types";
