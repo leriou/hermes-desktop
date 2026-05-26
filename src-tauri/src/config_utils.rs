@@ -2,7 +2,7 @@ use std::path::Path;
 use crate::python;
 use tauri::AppHandle;
 
-pub use hermes_core::config::{ConnectionConfig, SshConfig, ModelAlias};
+pub use hermes_core::config::{ConnectionConfig, ModelAlias};
 
 pub fn read_desktop_config(app: &AppHandle) -> serde_json::Value {
     let desktop_json_path = python::get_hermes_home(Some(app)).join("desktop.json");
@@ -46,10 +46,3 @@ pub fn list_mcp_servers(content: &str) -> Vec<serde_json::Value> {
     hermes_core::config::list_mcp_servers(content)
 }
 
-pub fn list_plugins(content: &str) -> Vec<serde_json::Value> {
-    hermes_core::config::list_plugins(content)
-}
-
-pub fn set_plugin_state(content: &str, name: &str, enabled: bool) -> Option<String> {
-    hermes_core::config::set_plugin_state(content, name, enabled)
-}

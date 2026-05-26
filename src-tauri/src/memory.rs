@@ -172,6 +172,7 @@ pub fn write_user_profile(app: Option<&AppHandle>, profile: Option<String>, cont
 
 // --- Soul ---
 
+#[allow(dead_code)]
 pub fn read_soul(app: Option<&AppHandle>, profile: Option<String>) -> Result<String, String> {
     let soul_file = hermes_home(app, profile).join("SOUL.md");
     if !soul_file.exists() {
@@ -180,6 +181,7 @@ pub fn read_soul(app: Option<&AppHandle>, profile: Option<String>) -> Result<Str
     fs::read_to_string(soul_file).map_err(|e| e.to_string())
 }
 
+#[allow(dead_code)]
 pub fn write_soul(app: Option<&AppHandle>, profile: Option<String>, text: String) -> Result<(), String> {
     let soul_file = hermes_home(app, profile).join("SOUL.md");
     if let Some(parent) = soul_file.parent() {
@@ -188,6 +190,7 @@ pub fn write_soul(app: Option<&AppHandle>, profile: Option<String>, text: String
     fs::write(soul_file, text).map_err(|e| e.to_string())
 }
 
+#[allow(dead_code)]
 pub fn reset_soul(app: Option<&AppHandle>, profile: Option<String>) -> Result<(), String> {
     let soul_file = hermes_home(app, profile).join("SOUL.md");
     if soul_file.exists() {

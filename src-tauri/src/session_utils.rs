@@ -1,6 +1,5 @@
 use serde_json::{json, Value};
 use crate::python;
-use crate::profiles;
 use tauri::AppHandle;
 
 fn profile_home(app: Option<&AppHandle>, profile: Option<String>) -> std::path::PathBuf {

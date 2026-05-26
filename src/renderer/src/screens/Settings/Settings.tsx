@@ -73,7 +73,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const VALID_STYLES = new Set(MARKDOWN_STYLE_OPTIONS.map((o) => o.value));
   const [mdStyle, setMdStyleState] = useState<MarkdownStyle>(() => {
     const stored = getStoreItem(MARKDOWN_STYLE_STORAGE_KEY);
-    if (typeof stored === "string" && VALID_STYLES.has(stored)) {
+    if (typeof stored === "string" && VALID_STYLES.has(stored as MarkdownStyle)) {
       return stored as MarkdownStyle;
     }
     return "default";

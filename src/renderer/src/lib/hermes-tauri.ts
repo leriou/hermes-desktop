@@ -595,17 +595,19 @@ export function setToolsetEnabled(
 export function listInstalledSkills(
   profile?: string,
 ): Promise<
-  Array<{ name: string; category: string; description: string; path: string }>
+  Array<{ name: string; entry_name: string; category: string; description: string; path: string; usage_count?: number }>
 > {
   return invoke("list_installed_skills", { profile });
 }
 export function listBundledSkills(profile?: string): Promise<
   Array<{
     name: string;
+    entry_name: string;
     description: string;
     category: string;
     source: string;
     installed: boolean;
+    usage_count?: number;
   }>
 > {
   return invoke("list_bundled_skills", { profile });

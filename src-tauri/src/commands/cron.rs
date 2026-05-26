@@ -1,7 +1,5 @@
 use serde_json::{Value};
 use tauri::{command, AppHandle};
-use super::utils::*;
-
 #[command]
 pub async fn create_cron_job(app: AppHandle, schedule: String, prompt: Option<String>, name: Option<String>, deliver: Option<String>, profile: Option<String>) -> Result<Value, String> {
     crate::cron_utils::create_cron_job(Some(&app), schedule, prompt, name, deliver, profile)

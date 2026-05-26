@@ -2,7 +2,7 @@ use tokio::process::{Child, Command};
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 pub struct SshTunnelManager {
     child: Arc<Mutex<Option<Child>>>,

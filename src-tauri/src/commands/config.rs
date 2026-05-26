@@ -4,8 +4,6 @@ use crate::AppState;
 use std::fs;
 use crate::python;
 use crate::config_utils;
-use super::utils::*;
-
 #[command]
 pub async fn get_model_config(state: State<'_, AppState>, app: AppHandle, _profile: Option<String>) -> Result<Value, String> {
     // Try gateway first

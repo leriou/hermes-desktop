@@ -113,15 +113,4 @@ pub fn get_hermes_repo(app: Option<&AppHandle>) -> PathBuf {
     get_hermes_home(app).join("hermes-agent")
 }
 
-pub fn hermes_cli_args(args: Vec<&str>) -> Vec<String> {
-    let mut result = Vec::new();
-    if cfg!(target_os = "windows") {
-        result.push("-m".to_string());
-        result.push("hermes_cli.main".to_string());
-    }
-    for arg in args {
-        result.push(arg.to_string());
-    }
-    result
-}
 

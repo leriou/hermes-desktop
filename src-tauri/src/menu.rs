@@ -1,5 +1,5 @@
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::{AppHandle, Emitter, Manager, Wry};
+use tauri::{AppHandle, Emitter, Manager};
 
 fn open_url(app: &AppHandle, url: &str) -> Result<(), String> {
     use tauri_plugin_shell::ShellExt;

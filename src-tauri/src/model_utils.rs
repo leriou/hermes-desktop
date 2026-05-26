@@ -184,7 +184,7 @@ pub fn update_model(app: Option<&AppHandle>, id: String, fields: Value, profile:
     let new_model = fields.get("model").and_then(|v| v.as_str());
     let new_base_url = fields.get("baseUrl").and_then(|v| v.as_str());
 
-    if let Some(rest) = id.strip_prefix("default:") {
+    if let Some(_rest) = id.strip_prefix("default:") {
         if let Some(model_sec) = root.get_mut("model") {
             if let Some(obj) = model_sec.as_object_mut() {
                 if let Some(m) = new_model { obj.insert("default".to_string(), json!(m)); }

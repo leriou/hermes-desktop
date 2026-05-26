@@ -3,8 +3,6 @@ use tauri::{command, State, AppHandle};
 use crate::AppState;
 use std::fs;
 use crate::python;
-use super::utils::*;
-
 #[command]
 pub async fn send_message(
     state: State<'_, AppState>,

@@ -226,7 +226,7 @@ pub async fn update_model(app: AppHandle, id: String, fields: Value, profile: Op
 }
 
 #[command]
-pub async fn run_hermes_backup(app: AppHandle, profile: Option<String>) -> Result<Value, String> {
+pub async fn run_hermes_backup(app: AppHandle, _profile: Option<String>) -> Result<Value, String> {
     match run_hermes_cli(&app, &["backup"]) {
         Ok(stdout) => Ok(json!({ "success": true, "path": stdout.trim() })),
         Err(e) => Ok(json!({ "success": false, "error": e })),

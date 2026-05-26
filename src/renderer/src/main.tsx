@@ -7,7 +7,7 @@ import { I18nProvider } from "./components/I18nProvider";
 import { initAnalytics } from "./utils/analytics";
 import * as hermesAPI from "./lib/hermes-tauri";
 import { initStore, getStoreItem } from "./utils/store";
-import { MARKDOWN_STYLE_STORAGE_KEY, MARKDOWN_STYLE_OPTIONS } from "./constants";
+import { MARKDOWN_STYLE_STORAGE_KEY, MARKDOWN_STYLE_OPTIONS, type MarkdownStyle } from "./constants";
 
 function setupTauriContextMenu(): void {
   document.addEventListener("contextmenu", (e) => {
@@ -149,7 +149,7 @@ async function boot(): Promise<void> {
   const validStyles = new Set(MARKDOWN_STYLE_OPTIONS.map((o) => o.value));
   document.documentElement.setAttribute(
     "data-md-style",
-    validStyles.has(savedMdStyle) ? savedMdStyle : "default",
+    validStyles.has(savedMdStyle as MarkdownStyle) ? savedMdStyle : "default",
   );
 
   if ((window as any).__TAURI_INTERNALS__) {

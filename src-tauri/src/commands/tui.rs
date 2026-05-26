@@ -3,8 +3,6 @@ use tauri::{command, State, AppHandle};
 use crate::AppState;
 use crate::tui_gateway::TuiGateway;
 use std::sync::Arc;
-use super::utils::*;
-
 #[command]
 pub async fn start_gateway(state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<bool, String> {
     let mut gateway_guard = state.gateway.lock().await;
