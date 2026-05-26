@@ -221,6 +221,7 @@ export function useSessionManager() {
   const findTabBySessionId = useCallback((sid: string): string | null => {
     for (const [id, s] of sessionsRef.current.entries()) {
       if (s.hermesSessionId === sid || s.dbSessionId === sid) return id;
+      if (s.relatedSessionIds.includes(sid)) return id;
     }
     return null;
   }, []);

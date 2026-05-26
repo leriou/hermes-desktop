@@ -352,6 +352,13 @@ export function useChatInbox({
             }
             return next;
           });
+          const sidPatch: Record<string, unknown> = {};
+          if (event.sessionId) {
+            sidPatch.hermesSessionId = event.sessionId;
+            if (state && !state.relatedSessionIds.includes(event.sessionId)) {
+              sidPatch.relatedSessionIds = [...state.relatedSessionIds, event.sessionId];
+            }
+          }
           updateTab(tabId, {
             isLoading: false,
             toolProgress: null,
@@ -360,7 +367,7 @@ export function useChatInbox({
             pendingSudo: null,
             pendingSecret: null,
             todos: [],
-            ...(event.sessionId ? { hermesSessionId: event.sessionId } : {}),
+            ...sidPatch,
             ...(Object.keys(usage).length
               ? { usage: usageFromPayload(usage) }
               : {}),
