@@ -23,6 +23,9 @@ interface UseChatActionsArgs {
   contextFolder: string | null;
   pendingClarify: ClarifyRequest | null;
   setPendingClarify: (c: ClarifyRequest | null) => void;
+  activeTabId: string;
+  updateTab: (id: string, patch: Partial<import("./useSessionManager").SessionState>) => void;
+  streamingText?: string;
   executeGatewayCommand?: (
     sessionId: string,
     command: string,
@@ -48,6 +51,9 @@ export function useChatActions({
   localCommands,
   pendingClarify,
   setPendingClarify,
+  activeTabId,
+  updateTab,
+  streamingText,
   executeGatewayCommand,
 }: UseChatActionsArgs): UseChatActionsResult {
   const isLoadingRef = useRef(isLoading);
@@ -233,10 +239,11 @@ export function useChatActions({
       onSessionStarted?.();
 
       try {
+        const promptText = formatPromptWithAttachments(text, attachments);
         const sid = await gatewayClientRef.current.submitPromptWithSession({
           currentSessionId: hermesSessionIdRef.current,
           dbSessionId: dbSessionIdRef.current,
-          text,
+          text: promptText,
         });
         if (sid !== hermesSessionIdRef.current) {
           setHermesSessionId(sid);
@@ -309,9 +316,73 @@ export function useChatActions({
         .interrupt(hermesSessionIdRef.current)
         .catch(() => {});
     }
+
+    if (streamingText && streamingText.trim()) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `agent-interrupted-${Date.now()}`,
+          sessionId: hermesSessionIdRef.current || undefined,
+          role: "agent",
+          content: `${streamingText.trim()}\n\n*[interrupted]*`,
+          timestamp: Date.now(),
+        },
+      ]);
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `status-interrupted-${Date.now()}`,
+          kind: "system_status",
+          role: "agent",
+          tone: "warning",
+          title: "Session interrupted",
+          content: "Execution was cancelled by user.",
+          timestamp: Date.now(),
+        },
+      ]);
+    }
+    updateTab(activeTabId, { streamingText: "" });
+
     setIsLoading(false);
     setTimeout(() => chatInputRef.current?.focus(), 50);
-  }, [chatInputRef, setIsLoading]);
+  }, [
+    chatInputRef,
+    setIsLoading,
+    streamingText,
+    setMessages,
+    updateTab,
+    activeTabId,
+  ]);
 
   return { handleSend, handleQuickAsk, handleAbort };
+}
+
+function formatPromptWithAttachments(
+  text: string,
+  attachments?: Attachment[],
+): string {
+  if (!attachments || attachments.length === 0) return text;
+
+  let formatted = text;
+  const textAttachments = attachments.filter((a) => a.kind === "text-file");
+  const pathAttachments = attachments.filter((a) => a.kind === "path-ref");
+
+  if (textAttachments.length > 0) {
+    formatted += "\n\n";
+    textAttachments.forEach((att) => {
+      formatted += `\n=== ATTACHMENT FILE: ${att.name} ===\n${
+        att.text || ""
+      }\n====================================\n`;
+    });
+  }
+
+  if (pathAttachments.length > 0) {
+    formatted += "\n\n";
+    pathAttachments.forEach((att) => {
+      formatted += `\n(Staged attachment "${att.name}" is located at absolute path: "${att.path}")\n`;
+    });
+  }
+
+  return formatted;
 }

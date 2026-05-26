@@ -132,7 +132,6 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     name: "/model",
     description: "Show or switch the current model",
     category: "info",
-    hasParams: true,
   },
   { name: "/memory", description: "Show agent memory", category: "info" },
   { name: "/persona", description: "Show current persona", category: "info" },

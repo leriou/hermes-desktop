@@ -24,6 +24,8 @@ describe("useChatInbox", () => {
       pendingSudo: null,
       pendingSecret: null,
       pendingModelSwitch: null,
+      pendingModelSwitchMessageId: null,
+      todos: [],
       unreadCount: 0,
       title: "",
       model: "",
@@ -68,6 +70,7 @@ describe("useChatInbox", () => {
         isLoading: true,
         toolProgress: null,
         streamingReasoning: "",
+        todos: [],
       });
     });
   });
@@ -97,12 +100,28 @@ describe("useChatInbox", () => {
       sid: "sid-1",
       payload: { kind: "compressing", text: "compressing context" },
     });
+    eventHandler?.({
+      type: "status.update",
+      sid: "sid-1",
+      payload: { kind: "compressing", text: "🗜️ Context too large (~24,192 tokens) — compressing (1/3)..." },
+    });
+    eventHandler?.({
+      type: "status.update",
+      sid: "sid-1",
+      payload: { kind: "compressing", text: "🗜️ Context compacted: ~24,192 -> ~4,200 tokens" },
+    });
 
     await waitFor(() => {
       const firstUpdater = updateTabMessages.mock.calls[0][1] as (
         prev: unknown[],
       ) => unknown[];
       const secondUpdater = updateTabMessages.mock.calls[1][1] as (
+        prev: unknown[],
+      ) => unknown[];
+      const thirdUpdater = updateTabMessages.mock.calls[2][1] as (
+        prev: unknown[],
+      ) => unknown[];
+      const fourthUpdater = updateTabMessages.mock.calls[3][1] as (
         prev: unknown[],
       ) => unknown[];
       expect(firstUpdater([])[0]).toMatchObject({
@@ -115,7 +134,19 @@ describe("useChatInbox", () => {
         kind: "system_event",
         role: "system",
         event: "context_compress",
-        title: "Compressing session",
+        title: "Compacting session",
+      });
+      expect(thirdUpdater([])[0]).toMatchObject({
+        kind: "system_event",
+        role: "system",
+        event: "context_compress",
+        title: "Compacting session (~24,192 tok)",
+      });
+      expect(fourthUpdater([])[0]).toMatchObject({
+        kind: "system_event",
+        role: "system",
+        event: "context_compress",
+        title: "Session compressed (24,192 ➜ 4,200 tok)",
       });
     });
   });

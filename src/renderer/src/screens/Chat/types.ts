@@ -48,6 +48,7 @@ export interface ToolCallMessage {
   durationS?: number;
   /** Filled by tool.complete — unified diff for file edits */
   inlineDiff?: string;
+  timestamp?: number;
 }
 
 export interface ToolResultMessage {
@@ -59,6 +60,7 @@ export interface ToolResultMessage {
   name: string;
   content: string;
   attachments?: Attachment[];
+  timestamp?: number;
 }
 
 export interface ToolGroupMessage {
@@ -108,6 +110,20 @@ export interface SubagentMessage {
   progressHint?: string;
 }
 
+export interface TodoItem {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+}
+
+export interface TodoMessage {
+  id: string;
+  kind: "todo";
+  role: "system";
+  todos: TodoItem[];
+  timestamp?: number;
+}
+
 export type ChatMessage =
   | ChatBubbleMessage
   | ReasoningMessage
@@ -116,7 +132,8 @@ export type ChatMessage =
   | ToolGroupMessage
   | SystemStatusMessage
   | SystemEventMessage
-  | SubagentMessage;
+  | SubagentMessage
+  | TodoMessage;
 
 export interface ModelGroup {
   provider: string;

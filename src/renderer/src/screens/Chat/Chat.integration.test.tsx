@@ -241,7 +241,7 @@ describe("Chat command wiring", () => {
     });
   });
 
-  it("routes goal, toolbar model/compress/steer, and bottom-left alias picker to the expected APIs", async () => {
+  it("routes goal, model, compress, steer and alias picker commands to the expected APIs", async () => {
     const api = installHermesAPI();
     const setMessages = vi.fn();
     const onSessionStateChange = vi.fn();
@@ -264,21 +264,14 @@ describe("Chat command wiring", () => {
       expect(api.getModelAliases).toHaveBeenCalled();
     });
 
-    const toolbarButtons = Array.from(
-      view.container.querySelectorAll(".tui-btn"),
-    ) as HTMLButtonElement[];
+    const textarea = view.container.querySelector(
+      "textarea",
+    ) as HTMLTextAreaElement;
 
+    // Test /goal command
     await act(async () => {
-      fireEvent.click(
-        toolbarButtons.find((b) => b.textContent?.includes("Goal"))!,
-      );
-    });
-    const goalInput = view.container.querySelector(
-      ".tui-popover-input",
-    ) as HTMLInputElement;
-    await act(async () => {
-      fireEvent.change(goalInput, { target: { value: "finish task" } });
-      fireEvent.keyDown(goalInput, { key: "Enter" });
+      fireEvent.change(textarea, { target: { value: "/goal finish task" } });
+      fireEvent.keyDown(textarea, { key: "Enter" });
     });
     await waitFor(() => {
       expect(api.tuiCommandDispatch).toHaveBeenCalledWith(
@@ -289,105 +282,38 @@ describe("Chat command wiring", () => {
       expect(api.tuiSubmitPrompt).toHaveBeenCalledWith("rt-1", "finish task");
     });
 
+    // Test /model command
     await act(async () => {
-      fireEvent.click(
-        toolbarButtons.find((b) => b.textContent?.includes("Model"))!,
-      );
-    });
-    const modelInput = view.container.querySelector(
-      ".tui-popover-input",
-    ) as HTMLInputElement;
-    await act(async () => {
-      fireEvent.change(modelInput, { target: { value: "gpt-4o" } });
-      fireEvent.keyDown(modelInput, { key: "Enter" });
+      fireEvent.change(textarea, { target: { value: "/model gpt-4o" } });
+      fireEvent.keyDown(textarea, { key: "Enter" });
     });
     await waitFor(() => {
       expect(api.tuiSetModel).toHaveBeenCalledWith("rt-1", "gpt-4o");
     });
 
+    // Test /compress command
     await act(async () => {
-      fireEvent.click(
-        toolbarButtons.find((b) => b.textContent?.includes("Compress"))!,
-      );
-    });
-    const yesBtn = Array.from(
-      view.container.querySelectorAll(".tui-popover-btn"),
-    ).find(
-      (el) => (el as HTMLButtonElement).textContent === "Yes",
-    ) as HTMLButtonElement;
-    await act(async () => {
-      fireEvent.click(yesBtn);
+      fireEvent.change(textarea, { target: { value: "/compress " } });
+      fireEvent.keyDown(textarea, { key: "Enter" });
     });
     await waitFor(() => {
       expect(api.tuiCompress).toHaveBeenCalledWith("rt-1", undefined);
-      expect(api.tuiSessionTitle).toHaveBeenCalledWith("rt-1");
     });
 
-    await act(async () => {
-      fireEvent.click(
-        toolbarButtons.find((b) => b.textContent?.includes("Undo"))!,
-      );
-    });
-    await waitFor(() => {
-      expect(api.tuiUndo).toHaveBeenCalledWith("rt-1");
-      expect(api.tuiSessionHistory).toHaveBeenCalledWith("rt-1");
-      expect(setMessages).toHaveBeenCalled();
-    });
-
-    await act(async () => {
-      fireEvent.click(
-        toolbarButtons.find((b) => b.textContent?.includes("Branch"))!,
-      );
-    });
-    const branchInput = view.container.querySelector(
-      ".tui-popover-input",
-    ) as HTMLInputElement;
-    await act(async () => {
-      fireEvent.change(branchInput, { target: { value: "safer path" } });
-      fireEvent.keyDown(branchInput, { key: "Enter" });
-    });
-    await waitFor(() => {
-      expect(api.tuiSessionBranch).toHaveBeenCalledWith("rt-1", "safer path");
-      expect(onSessionStateChange).toHaveBeenCalledWith(
-        expect.objectContaining({ hermesSessionId: "branch-1" }),
-      );
-    });
-
-    const steerBtn = toolbarButtons.find((b) =>
-      b.textContent?.includes("Steer"),
-    )!;
-    expect(steerBtn.disabled).toBe(true);
-
-    view.rerender(
-      <Chat
-        messages={[
-          { id: "m1", role: "user", content: "hello" },
-          { id: "m2", role: "agent", content: "world" },
-        ]}
-        setMessages={setMessages as any}
-        sessionId="rt-1"
-        dbSessionId="db-1"
-        sessionTitle="New Chat"
-        onSessionStateChange={onSessionStateChange}
-      />,
-    );
-
-    const textarea = view.container.querySelector(
-      "textarea",
-    ) as HTMLTextAreaElement;
+    // Test /steer command
     await act(async () => {
       fireEvent.change(textarea, { target: { value: "/steer nudge" } });
       fireEvent.keyDown(textarea, { key: "Enter" });
     });
     await waitFor(() => {
       expect(api.tuiCommandDispatch).toHaveBeenCalledWith(
-        "branch-1",
+        "rt-1",
         "steer",
         "nudge",
       );
-      expect(api.tuiSubmitPrompt).toHaveBeenCalledWith("branch-1", "nudge");
     });
 
+    // Test alias picker trigger
     const modelTrigger = view.container.querySelector(
       ".chat-model-trigger",
     ) as HTMLButtonElement;
@@ -409,7 +335,7 @@ describe("Chat command wiring", () => {
         "",
         undefined,
       );
-      expect(api.tuiSetModel).toHaveBeenCalledWith("branch-1", "Fast Alias");
+      expect(api.tuiSetModel).toHaveBeenCalledWith("rt-1", "Fast Alias");
     });
   });
 });

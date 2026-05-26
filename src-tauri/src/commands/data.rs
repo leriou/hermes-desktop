@@ -27,6 +27,11 @@ pub async fn get_session_messages(_state: State<'_, AppState>, app: AppHandle, s
 }
 
 #[command]
+pub async fn get_session_messages_before(_state: State<'_, AppState>, app: AppHandle, session_id: String, before_timestamp: f64, limit: Option<u32>, profile: Option<String>) -> Result<Value, String> {
+    crate::session_utils::get_session_messages_before(Some(&app), &session_id, before_timestamp, limit, profile)
+}
+
+#[command]
 pub async fn delete_session(state: State<'_, AppState>, session_id: String) -> Result<Value, String> {
     let gateway = state.gateway.lock().await;
     let gw = gateway.as_ref().ok_or("Gateway not running")?;

@@ -25,9 +25,6 @@ function App(): React.JSX.Element {
     "local" | "remote" | "ssh"
   >("local");
   const [verifyWarning, setVerifyWarning] = useState(false);
-  const isMac =
-    !!(window as any).__TAURI_INTERNALS__ &&
-    navigator.userAgent.includes("Macintosh");
   const runInstallCheck = useCallback(async () => {
     let next: Screen = "welcome";
     let error: string | null = null;
@@ -174,7 +171,6 @@ function App(): React.JSX.Element {
     <ThemeProvider>
       <ErrorBoundary>
         <div className="app">
-          {isMac && <div className="drag-region" data-tauri-drag-region />}
           <div className="app-content">{renderScreen()}</div>
         </div>
       </ErrorBoundary>

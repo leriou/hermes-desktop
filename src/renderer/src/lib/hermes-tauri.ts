@@ -420,6 +420,57 @@ export function getSessionMessages(
 > {
   return invoke("get_session_messages", { sessionId, profile });
 }
+
+export function getSessionMessagesBefore(
+  sessionId: string,
+  beforeTimestamp: number,
+  limit?: number,
+  profile?: string,
+): Promise<
+  Array<
+    | {
+        kind: "user";
+        id: number;
+        content: string;
+        timestamp: number;
+        attachments?: Attachment[];
+      }
+    | {
+        kind: "assistant";
+        id: number;
+        content: string;
+        timestamp: number;
+        attachments?: Attachment[];
+      }
+    | {
+        kind: "reasoning";
+        id: number;
+        assistantId: number;
+        text: string;
+        timestamp: number;
+      }
+    | {
+        kind: "tool_call";
+        id: number;
+        assistantId: number;
+        callId: string;
+        name: string;
+        args: string;
+        timestamp: number;
+      }
+    | {
+        kind: "tool_result";
+        id: number;
+        callId: string;
+        name: string;
+        content: string;
+        timestamp: number;
+        attachments?: Attachment[];
+      }
+  >
+> {
+  return invoke("get_session_messages_before", { sessionId, beforeTimestamp, limit, profile });
+}
 export function deleteSession(sessionId: string): Promise<void> {
   return invoke("delete_session", { sessionId });
 }

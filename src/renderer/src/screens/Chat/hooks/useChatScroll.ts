@@ -3,10 +3,12 @@ import type { ChatMessage } from "../types";
 import { isNearScrollBottom } from "../scrollState";
 
 const STREAM_SCROLL_INTERVAL_MS = 80;
+const SCROLL_TOP_THRESHOLD = 60;
 
 export function useChatScroll(
   messages: ChatMessage[],
   isLoading: boolean,
+  onLoadEarlier?: () => void,
 ): {
   containerRef: React.RefObject<HTMLDivElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
@@ -17,6 +19,9 @@ export function useChatScroll(
   const prevMessageCountRef = useRef(messages.length);
   const streamingRafRef = useRef<number>(0);
   const streamingTimerRef = useRef<number>(0);
+  const loadEarlierTriggeredRef = useRef(false);
+  const onLoadEarlierRef = useRef(onLoadEarlier);
+  onLoadEarlierRef.current = onLoadEarlier;
 
   const scrollToBottom = useCallback(
     (force?: boolean, instant?: boolean) => {
@@ -38,10 +43,23 @@ export function useChatScroll(
     function handleScroll(): void {
       const el = container!;
       userScrolledUpRef.current = !isNearScrollBottom(el);
+      if (
+        onLoadEarlierRef.current &&
+        el.scrollTop < SCROLL_TOP_THRESHOLD &&
+        !loadEarlierTriggeredRef.current
+      ) {
+        loadEarlierTriggeredRef.current = true;
+        onLoadEarlierRef.current();
+      }
     }
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Reset trigger when messages grow at the head (earlier messages loaded)
+  useEffect(() => {
+    loadEarlierTriggeredRef.current = false;
+  }, [messages.length]);
 
   // Auto-scroll on incoming messages; force-scroll when user sends a new one
   useEffect(() => {

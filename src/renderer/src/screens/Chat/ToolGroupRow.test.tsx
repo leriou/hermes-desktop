@@ -42,52 +42,65 @@ describe("ToolGroupRow", () => {
     });
   });
 
-  it("keeps the aggregated call table and opens readable details", () => {
+  it("renders multiple tool calls as a collapsible timeline", () => {
     const { container } = render(<ToolGroupRow msg={toolGroup} />);
 
-    expect(container.querySelector(".tool-group-table")).not.toBeNull();
-    expect(screen.getByText("2次调用 · 1✓ 1…")).toBeInTheDocument();
+    expect(container.querySelector(".chat-tool-multiple-container")).not.toBeNull();
+    expect(screen.getByText("shell (2次调用)")).toBeInTheDocument();
+    expect(screen.getByText("1✓ 1…")).toBeInTheDocument();
+
+    // 确认渲染了内部的 timeline 详情
+    expect(container.querySelector(".tool-timeline")).not.toBeNull();
     expect(screen.getByText("npm test")).toBeInTheDocument();
     expect(screen.getByText("npm run typecheck:web")).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "查看第 1 次 shell 调用详情" }),
-    );
+    const detailButtons = screen.getAllByRole("button", { name: "查看详情" });
+    expect(detailButtons).toHaveLength(2);
+
+    fireEvent.click(detailButtons[0]);
 
     expect(
       screen.getByRole("dialog", { name: "shell 调用详情" }),
     ).toBeInTheDocument();
     expect(screen.getByText("call-1")).toBeInTheDocument();
     expect(screen.getByText("succeeded")).toBeInTheDocument();
-    expect(screen.getByText("Args")).toBeInTheDocument();
-    expect(screen.getByText("Result")).toBeInTheDocument();
   });
 
-  it("shows pending progress and a raw inspect section in tool details", () => {
-    const pendingGroup: ToolGroupMessage = {
-      ...toolGroup,
+  it("renders a single tool call directly as a compact footprint and opens modal", () => {
+    const singleGroup: ToolGroupMessage = {
+      id: "group-single",
+      kind: "tool_group",
+      role: "agent",
+      toolName: "shell",
       calls: [
         {
-          id: "call-progress",
+          id: "call-single",
           kind: "tool_call",
           role: "agent",
-          callId: "call-progress",
+          callId: "call-single",
           name: "shell",
-          args: "{bad json",
-          progress: "installing dependencies",
+          args: JSON.stringify({ cmd: "npm run build" }),
+          result: undefined,
+          progress: "bundling assets",
         },
       ],
     };
 
-    render(<ToolGroupRow msg={pendingGroup} />);
+    const { container } = render(<ToolGroupRow msg={singleGroup} />);
+
+    expect(container.querySelector(".chat-tool-single-footprint")).not.toBeNull();
+    expect(screen.getByText(/Run command/)).toBeInTheDocument();
+    expect(screen.getByText("npm run build")).toBeInTheDocument();
+    expect(screen.getByText(/bundling assets/)).toBeInTheDocument();
+
     fireEvent.click(
       screen.getByRole("button", { name: "查看第 1 次 shell 调用详情" }),
     );
 
+    expect(screen.getByRole("dialog", { name: "shell 调用详情" })).toBeInTheDocument();
     expect(screen.getByText("running")).toBeInTheDocument();
     expect(screen.getByText("Progress")).toBeInTheDocument();
-    expect(screen.getByText("installing dependencies")).toBeInTheDocument();
+    expect(screen.getByText("bundling assets")).toBeInTheDocument();
     expect(screen.getByText("Raw")).toBeInTheDocument();
-    expect(screen.getByText(/"callId": "call-progress"/)).toBeInTheDocument();
   });
 });

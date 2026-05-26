@@ -7,6 +7,7 @@ import type {
   SubagentMessage,
   ToolCallMessage,
   UsageState,
+  TodoItem,
 } from "../types";
 import type { SessionState } from "./useSessionManager";
 import { shortModelName } from "../sessionDisplay";
@@ -26,6 +27,32 @@ import {
   type RawTuiEvent,
 } from "../tuiEvents";
 
+function isTodoStatus(status: unknown): status is TodoItem["status"] {
+  return (
+    status === "pending" ||
+    status === "in_progress" ||
+    status === "completed" ||
+    status === "cancelled"
+  );
+}
+
+function parseTodos(value: unknown): TodoItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const row = item as Record<string, unknown>;
+      const status = row.status;
+      if (!isTodoStatus(status)) return null;
+      return {
+        content: String(row.content ?? "").trim(),
+        id: String(row.id ?? "").trim(),
+        status,
+      };
+    })
+    .filter((item): item is TodoItem => !!(item && item.id && item.content));
+}
+
 interface UseChatInboxArgs {
   sessions: Map<string, SessionState>;
   activeTabId: string | null;
@@ -44,6 +71,7 @@ const LIVE_EVENT_TYPES = new Set([
   "tool.start",
   "thinking.delta",
   "reasoning.delta",
+  "tool.generating",
 ]);
 
 function usageFromPayload(usage: any): UsageState {
@@ -153,11 +181,43 @@ export function useChatInbox({
     }
 
     function commitStreaming(tabId: string, sid?: string): void {
+      // Force-flush any pending chunks that haven't been rAF'd yet.
+      // Without this, a message.delta followed immediately by tool.start in the
+      // same frame loses the text because rAF hasn't fired.
+      const pendingFrame = flushFramesRef.current.get(tabId);
+      if (pendingFrame) {
+        window.cancelAnimationFrame(pendingFrame);
+        flushFramesRef.current.delete(tabId);
+      }
+      const pendingChunk = pendingChunksRef.current.get(tabId) ?? "";
+      if (pendingChunk) {
+        pendingChunksRef.current.delete(tabId);
+      }
+
       const state = sessionsRef.current.get(tabId);
-      const text = state?.streamingText ?? "";
-      if (!text) return;
-      updateTab(tabId, { streamingText: "" });
-      updateTabMessages(tabId, (prev) => appendStreaming(prev, text, sid));
+      const text = `${state?.streamingText ?? ""}${pendingChunk}`;
+      const reasoning = state?.streamingReasoning ?? "";
+
+      if (!text && !reasoning) return;
+
+      updateTab(tabId, { streamingText: "", streamingReasoning: "" });
+
+      updateTabMessages(tabId, (prev) => {
+        let next = [...prev];
+        if (reasoning) {
+          next.push({
+            id: `reasoning-${Date.now()}`,
+            kind: "reasoning",
+            role: "agent",
+            text: reasoning,
+          });
+        }
+        if (text) {
+          next = appendStreaming(next, text, sid);
+        }
+        return next;
+      });
+
       if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
         updateTab(tabId, { unreadCount: (state?.unreadCount ?? 0) + 1 });
       }
@@ -190,6 +250,40 @@ export function useChatInbox({
       const tabId = tabForEvent(event);
       if (!tabId) return;
       const state = sessionsRef.current.get(tabId);
+
+      // ── Debug: trace event flow ──────────────────────────────────
+      const debugTypes = new Set([
+        "message.start", "message.delta", "message.complete",
+        "tool.start", "tool.complete", "tool.generating", "tool.progress",
+        "thinking.delta", "reasoning.delta",
+      ]);
+      if (debugTypes.has(event.type)) {
+        const extra: Record<string, unknown> = {};
+        if (event.type === "tool.start" || event.type === "tool.complete") {
+          extra.name = event.payload.name;
+          extra.tool_id = event.payload.tool_id;
+        }
+        if (event.type === "thinking.delta" || event.type === "reasoning.delta") {
+          const t = textFromPayload(event.payload);
+          extra.len = t.length;
+          extra.snippet = t.slice(0, 30);
+        }
+        if (event.type === "message.delta") {
+          const t = textFromPayload(event.payload);
+          extra.len = t.length;
+          extra.snippet = t.slice(0, 30);
+        }
+        console.log(
+          `[hermes-event] ${event.type}`,
+          JSON.stringify(extra),
+          `| streamingReasoning=${(state?.streamingReasoning ?? "").length}`,
+          `| streamingText=${(state?.streamingText ?? "").length}`,
+          `| toolProgress=${state?.toolProgress ?? "null"}`,
+          `| isLoading=${state?.isLoading ?? false}`,
+        );
+      }
+      // ── End Debug ────────────────────────────────────────────────
+
       const runtimeSid =
         event.sessionId ??
         state?.hermesSessionId ??
@@ -203,8 +297,17 @@ export function useChatInbox({
             isLoading: true,
             toolProgress: null,
             streamingReasoning: "",
+            todos: [],
           });
           break;
+
+        case "tool.generating": {
+          const genName = stringField(payload, "name");
+          if (genName) {
+            updateTab(tabId, { toolProgress: `drafting ${genName}…` });
+          }
+          break;
+        }
 
         case "message.delta": {
           const text = textFromPayload(payload);
@@ -242,6 +345,8 @@ export function useChatInbox({
           const model = stringField(usage, "model");
           updateTab(tabId, { streamingText: "", streamingReasoning: "" });
 
+          const currentTodos = state?.todos || [];
+
           // Single updateTabMessages: append reasoning → content for the current live turn.
           // Live deltas render from `streamingText`, so completion should not mutate
           // the previous agent/tool/system row. Mutating the last role=agent row makes
@@ -268,6 +373,15 @@ export function useChatInbox({
                 ...(model ? { model } : {}),
               });
             }
+            if (currentTodos.length > 0) {
+              next.push({
+                id: `todo-archive-${Date.now()}`,
+                kind: "todo",
+                role: "system",
+                todos: currentTodos,
+                timestamp: Date.now(),
+              });
+            }
             return next;
           });
           updateTab(tabId, {
@@ -277,6 +391,7 @@ export function useChatInbox({
             pendingClarify: null,
             pendingSudo: null,
             pendingSecret: null,
+            todos: [],
             ...(event.sessionId ? { hermesSessionId: event.sessionId } : {}),
             ...(Object.keys(usage).length
               ? { usage: usageFromPayload(usage) }
@@ -306,11 +421,14 @@ export function useChatInbox({
         }
 
         case "tool.start":
+          commitStreaming(tabId, runtimeSid);
           const toolId = stringField(payload, "tool_id");
           const toolName = stringField(payload, "name", "Tool");
+          const startTodos = payload.todos;
           updateTab(tabId, {
             isLoading: true,
             toolProgress: toolName || "Thinking...",
+            ...(startTodos !== undefined ? { todos: parseTodos(startTodos) } : {}),
           });
           if (toolId) {
             const current = sessionsRef.current.get(tabId);
@@ -335,7 +453,11 @@ export function useChatInbox({
           break;
 
         case "tool.complete":
-          updateTab(tabId, { toolProgress: null });
+          const completeTodos = payload.todos;
+          updateTab(tabId, {
+            toolProgress: "analyzing tool output…",
+            ...(completeTodos !== undefined ? { todos: parseTodos(completeTodos) } : {}),
+          });
           const completeToolId = stringField(payload, "tool_id");
           if (completeToolId) {
             const current = sessionsRef.current.get(tabId);
@@ -462,20 +584,35 @@ export function useChatInbox({
           updateTab(tabId, {
             ...(sessionModel ? { model: sessionModel } : {}),
             ...(sessionTitle ? { title: sessionTitle } : {}),
-            ...(sessionModel ? { pendingModelSwitch: null } : {}),
+            ...(sessionModel ? { pendingModelSwitch: null, pendingModelSwitchMessageId: null } : {}),
           });
           if (sessionModel && state?.pendingModelSwitch) {
             const current = sessionsRef.current.get(tabId);
-            updateTabMessages(tabId, (prev) => [
-              ...prev,
-              {
-                ...createSystemEvent(
-                  "model_switch",
-                  "Model switched",
-                  shortModelName(sessionModel),
-                ),
-              },
-            ]);
+            const switchMsgId = state?.pendingModelSwitchMessageId;
+            updateTabMessages(tabId, (prev) => {
+              const idx = prev.findIndex((m) => m.id === switchMsgId);
+              if (idx !== -1) {
+                const next = [...prev];
+                next[idx] = {
+                  ...next[idx],
+                  tone: "success",
+                  title: "Model switched",
+                  content: shortModelName(sessionModel),
+                } as any;
+                return next;
+              }
+              return [
+                ...prev,
+                {
+                  ...createSystemEvent(
+                    "model_switch",
+                    "Model switched",
+                    shortModelName(sessionModel),
+                    { tone: "success" }
+                  ),
+                },
+              ];
+            });
             if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
               updateTab(tabId, {
                 unreadCount: (current?.unreadCount ?? 0) + 1,
@@ -500,7 +637,7 @@ export function useChatInbox({
                   : "info";
             const title =
               statusKind === "compressing"
-                ? "Compressing session"
+                ? formatCompressingTitle(statusText)
                 : statusKind === "goal"
                   ? "Goal update"
                   : "Session update";
@@ -630,4 +767,23 @@ export function useChatInbox({
       }
     };
   }, [findTabBySessionId, updateTab, updateTabMessages]);
+}
+
+function formatCompressingTitle(statusText: string): string {
+  const textLower = statusText.toLowerCase();
+  const isCompleted = textLower.includes("compressed") || textLower.includes("compacted");
+
+  const rangeMatch = statusText.match(/(?:~)?([\d,]+)\s*(?:➜|->)\s*(?:~)?([\d,]+)/);
+  if (rangeMatch) {
+    return `Session compressed (${rangeMatch[1]} ➜ ${rangeMatch[2]} tok)`;
+  }
+
+  const singleMatch = statusText.match(/~(\d[\d,]*)\s*(?:tokens|tok|t)?/i);
+  if (singleMatch) {
+    return isCompleted
+      ? `Session compressed (~${singleMatch[1]} tok)`
+      : `Compacting session (~${singleMatch[1]} tok)`;
+  }
+
+  return isCompleted ? "Session compressed" : "Compacting session";
 }

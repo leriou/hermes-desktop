@@ -6,11 +6,14 @@ import { ToolGroupRow } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { buildRenderableTranscript } from "./renderTranscript";
+import { TodoPanel } from "../../components/common/TodoPanel";
 import type {
   ChatMessage,
   SystemEventMessage,
   SystemStatusMessage,
   ToolGroupMessage,
+  TodoMessage,
+  ToolCallMessage,
 } from "./types";
 
 interface MessageListProps {
@@ -21,22 +24,226 @@ interface MessageListProps {
   streamingReasoning?: string;
 }
 
+function getActiveToolCall(messages: ChatMessage[]): ToolCallMessage | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.kind === "tool_group") {
+      const runningCall = msg.calls.find((c) => c.result === undefined && c.success === undefined);
+      if (runningCall) return runningCall;
+    }
+  }
+  return null;
+}
+
+function getActiveCallDescription(call: ToolCallMessage) {
+  let argsObj: Record<string, any> = {};
+  try {
+    argsObj = JSON.parse(call.args || "{}");
+  } catch {
+    // ignore
+  }
+
+  const nameLower = (call.name || "").toLowerCase();
+  
+  const getParam = () => {
+    return (
+      argsObj.command ||
+      argsObj.code ||
+      argsObj.path ||
+      argsObj.filename ||
+      argsObj.filepath ||
+      argsObj.query ||
+      argsObj.pattern ||
+      argsObj.url ||
+      (Array.isArray(argsObj.urls) ? argsObj.urls[0] : argsObj.urls) ||
+      argsObj.content ||
+      argsObj.note ||
+      argsObj.text ||
+      argsObj.prompt ||
+      call.args ||
+      ""
+    );
+  };
+  
+  const rawParam = getParam();
+  const displayParam = rawParam.length > 40 ? rawParam.slice(0, 37) + "…" : rawParam;
+
+  if (
+    nameLower.includes("terminal") ||
+    nameLower.includes("command") ||
+    nameLower.includes("run") ||
+    nameLower.includes("shell") ||
+    nameLower.includes("execute")
+  ) {
+    return {
+      icon: "💻",
+      action: "Running",
+      detail: displayParam ? `$ ${displayParam}` : "command",
+      isCode: true,
+    };
+  }
+  if (
+    nameLower.includes("write") ||
+    nameLower.includes("patch") ||
+    nameLower.includes("edit") ||
+    nameLower.includes("create")
+  ) {
+    return {
+      icon: "✍️",
+      action: "Writing",
+      detail: displayParam || "file",
+      isPath: true,
+    };
+  }
+  if (nameLower.includes("read") || nameLower.includes("view") || nameLower.includes("get_file") || nameLower.includes("fetch_file")) {
+    return {
+      icon: "📖",
+      action: "Reading",
+      detail: displayParam || "file",
+      isPath: true,
+    };
+  }
+  if (nameLower.includes("search") || nameLower.includes("grep")) {
+    return {
+      icon: "🔍",
+      action: "Searching",
+      detail: displayParam || "query",
+      isText: true,
+    };
+  }
+  if (nameLower.includes("web") || nameLower.includes("url") || nameLower.includes("fetch") || nameLower.includes("download")) {
+    return {
+      icon: "🌐",
+      action: "Fetching",
+      detail: displayParam || "url",
+      isText: true,
+    };
+  }
+  if (nameLower.includes("memory") || nameLower.includes("fact") || nameLower.includes("todo")) {
+    return {
+      icon: "🧠",
+      action: "Recalling memory",
+      detail: displayParam || "knowledge",
+      isText: true,
+    };
+  }
+
+  return {
+    icon: "🔧",
+    action: "Executing",
+    detail: `${call.name || "tool"}${displayParam ? `: ${displayParam}` : ""}`,
+    isText: true,
+  };
+}
+
+/* ── Ephemeral thinking footprint (timeline-style) ───────────────────── */
+function LiveReasoningRow({ text }: { text: string }): React.JSX.Element {
+  const lineCount = text.split("\n").length;
+
+  // Extract last meaningful line for the snippet
+  const lines = text.split("\n").filter((l) => l.trim());
+  const lastLine = lines.length > 0 ? lines[lines.length - 1].trim() : "";
+  const displayLine =
+    lastLine.length > 80 ? lastLine.slice(0, 77) + "…" : lastLine;
+
+  return (
+    <div className="chat-live-reasoning-footprint">
+      <div className="chat-live-reasoning-left">
+        <div className="chat-live-reasoning-dot" />
+      </div>
+      <div className="chat-live-reasoning-body">
+        <span className="chat-live-reasoning-label">🧠 Thinking</span>
+        <span className="chat-live-reasoning-meta">{lineCount} lines</span>
+        {displayLine && (
+          <span className="chat-live-reasoning-snippet">{displayLine}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TypingIndicator({
   toolProgress,
+  messages,
 }: {
   toolProgress: string | null;
+  messages: ChatMessage[];
 }): React.JSX.Element {
+  const activeCall = useMemo(() => getActiveToolCall(messages), [messages]);
+
+  const renderProgressContent = () => {
+    if (toolProgress) {
+      const draftMatch = toolProgress.match(/^drafting\s+(.+?)(?:…)?$/);
+      if (draftMatch) {
+        const fileName = draftMatch[1];
+        const displayPath = fileName.length > 50 ? "…" + fileName.slice(-47) : fileName;
+        return (
+          <div className="chat-tool-progress-drafting">
+            <span className="chat-tool-progress-icon-write">✍️</span>
+            <span className="chat-tool-progress-text-shimmer">Drafting</span>
+            <code className="chat-tool-progress-file-badge" title={fileName}>
+              {displayPath}
+            </code>
+          </div>
+        );
+      }
+
+      if (
+        toolProgress === "analyzing tool output…" ||
+        toolProgress.startsWith("analyzing")
+      ) {
+        return (
+          <div className="chat-tool-progress-analyzing">
+            <div className="chat-tool-progress-spinner-dual" />
+            <span className="chat-tool-progress-text-pulse">
+              Analyzing tool output…
+            </span>
+          </div>
+        );
+      }
+    }
+
+    if (activeCall) {
+      const desc = getActiveCallDescription(activeCall);
+      return (
+        <div className="chat-tool-progress-active">
+          <div className="chat-tool-progress-spinner-dual" />
+          <span className="chat-tool-progress-icon">{desc.icon}</span>
+          <span className="chat-tool-progress-action-label">{desc.action}</span>
+          {desc.isCode || desc.isPath ? (
+            <code className={desc.isCode ? "chat-tool-progress-code-badge" : "chat-tool-progress-file-badge"}>
+              {desc.detail}
+            </code>
+          ) : (
+            <span className="chat-tool-progress-detail-text">{desc.detail}</span>
+          )}
+        </div>
+      );
+    }
+
+    if (toolProgress) {
+      return <div className="chat-tool-progress">{toolProgress}</div>;
+    }
+
+    return null;
+  };
+
+  const hasContent = toolProgress || activeCall;
+
   return (
     <div className="chat-message chat-message-agent">
       <HermesAvatar />
       <div className="chat-bubble chat-bubble-agent">
-        {toolProgress ? (
-          <div className="chat-tool-progress">{toolProgress}</div>
+        {hasContent ? (
+          renderProgressContent()
         ) : (
-          <div className="chat-typing">
-            <span className="chat-typing-dot" />
-            <span className="chat-typing-dot" />
-            <span className="chat-typing-dot" />
+          <div className="chat-typing-container">
+            <div className="chat-typing">
+              <span className="chat-typing-dot" />
+              <span className="chat-typing-dot" />
+              <span className="chat-typing-dot" />
+            </div>
+            <span className="chat-typing-label">Thinking…</span>
           </div>
         )}
       </div>
@@ -145,12 +352,27 @@ export const MessageList = memo(function MessageList({
     <>
       {visibleMessages.map((msg, i) => {
         const k = (msg as { kind?: string }).kind;
-        if (k === "reasoning" || k === "live_reasoning") {
+        if (k === "reasoning") {
           return (
             <ReasoningRow
               key={msg.id}
               msg={msg as any}
-              defaultOpen={k === "live_reasoning"}
+              defaultOpen={false}
+            />
+          );
+        }
+        if (k === "live_reasoning") {
+          return (
+            <LiveReasoningRow
+              key={msg.id}
+              text={
+                (
+                  msg as Extract<
+                    import("./renderTranscript").RenderTranscriptItem,
+                    { kind: "live_reasoning" }
+                  >
+                ).text
+              }
             />
           );
         }
@@ -183,6 +405,16 @@ export const MessageList = memo(function MessageList({
             <SystemEventRow key={msg.id} msg={msg as SystemEventMessage} />
           );
         }
+        if (k === "todo") {
+          const todoMsg = msg as TodoMessage;
+          return (
+            <TodoPanel
+              key={todoMsg.id}
+              todos={todoMsg.todos}
+              defaultCollapsed={true}
+            />
+          );
+        }
         if (k === "live_assistant") {
           const liveMsg = msg as Extract<
             import("./renderTranscript").RenderTranscriptItem,
@@ -206,6 +438,7 @@ export const MessageList = memo(function MessageList({
             <TypingIndicator
               key={typingMsg.id}
               toolProgress={typingMsg.toolProgress}
+              messages={messages}
             />
           );
         }

@@ -386,6 +386,88 @@ fn read_messages_from_db(db_path: &Path, session_id: &str) -> Result<Vec<Value>,
     Ok(items)
 }
 
+/// Load messages with timestamp strictly less than `before_ts`, newest first, limited to `limit`.
+pub fn get_session_messages_before_impl(
+    db_path: &str,
+    session_id: &str,
+    before_ts: f64,
+    limit: u32,
+) -> Result<Vec<Value>, String> {
+    let db_p = Path::new(db_path);
+    if !db_p.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = rusqlite::Connection::open_with_flags(
+        db_p,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    ).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, role, content, timestamp, \
+                    tool_call_id, tool_calls, tool_name, \
+                    reasoning, reasoning_content, reasoning_details \
+             FROM messages \
+             WHERE session_id = ? AND role IN ('user', 'assistant', 'tool') AND timestamp < ? \
+             ORDER BY timestamp DESC, id DESC \
+             LIMIT ?"
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map(rusqlite::params![session_id, before_ts, limit], |row| {
+        let id: i64 = row.get(0)?;
+        let role: String = row.get(1)?;
+        let content: String = row.get::<_, Option<String>>(2)?.unwrap_or_default();
+        let timestamp: f64 = row.get(3)?;
+        let tool_call_id: Option<String> = row.get(4)?;
+        let tool_calls: Option<String> = row.get(5)?;
+        let tool_name: Option<String> = row.get(6)?;
+        let reasoning: Option<String> = row.get(7)?;
+        let reasoning_content: Option<String> = row.get(8)?;
+        let reasoning_details: Option<String> = row.get(9)?;
+        Ok((id, role, content, timestamp, tool_call_id, tool_calls, tool_name, reasoning, reasoning_content, reasoning_details))
+    }).map_err(|e| e.to_string())?;
+
+    let mut items = Vec::new();
+    for row_result in rows {
+        let (id, role, content, timestamp, tool_call_id, tool_calls, tool_name, reasoning, reasoning_content, reasoning_details) =
+            row_result.map_err(|e: rusqlite::Error| e.to_string())?;
+        let decoded = decode_content_full(&content, id);
+        let has_attachments = !decoded.attachments.is_empty();
+        match role.as_str() {
+            "user" => {
+                if decoded.text.is_empty() && !has_attachments { continue; }
+                let mut msg = json!({ "kind": "user", "id": id, "content": decoded.text, "timestamp": timestamp });
+                if has_attachments { msg.as_object_mut().unwrap().insert("attachments".into(), json!(decoded.attachments)); }
+                items.push(msg);
+            }
+            "assistant" => {
+                let reasoning_text = pick_reasoning(reasoning.as_deref(), reasoning_content.as_deref(), reasoning_details.as_deref());
+                if !reasoning_text.is_empty() {
+                    items.push(json!({ "kind": "reasoning", "id": id, "assistantId": id, "text": reasoning_text, "timestamp": timestamp }));
+                }
+                if !decoded.text.is_empty() || has_attachments {
+                    let mut msg = json!({ "kind": "assistant", "id": id, "content": decoded.text, "timestamp": timestamp });
+                    if has_attachments { msg.as_object_mut().unwrap().insert("attachments".into(), json!(decoded.attachments)); }
+                    items.push(msg);
+                }
+                for tc in parse_tool_calls(tool_calls.as_deref()) {
+                    items.push(json!({ "kind": "tool_call", "id": id, "assistantId": id, "callId": tc.0, "name": tc.1, "args": tc.2, "timestamp": timestamp }));
+                }
+            }
+            "tool" => {
+                let mut msg = json!({ "kind": "tool_result", "id": id, "callId": tool_call_id.unwrap_or_default(), "name": tool_name.unwrap_or_else(|| "tool".into()), "content": decoded.text, "timestamp": timestamp });
+                if has_attachments { msg.as_object_mut().unwrap().insert("attachments".into(), json!(decoded.attachments)); }
+                items.push(msg);
+            }
+            _ => {}
+        }
+    }
+    // Reverse to chronological order (oldest first)
+    items.reverse();
+    Ok(items)
+}
+
 // ── N-API YAML round-trip ───────────────────────────────
 
 #[cfg_attr(feature = "napi", napi)]

@@ -39,10 +39,16 @@ export function useModelConfig(profile?: string): UseModelConfigResult {
   const [currentBaseUrl, setCurrentBaseUrl] = useState("");
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
   const [aliases, setAliases] = useState<ModelAlias[]>([]);
-  // Guard: after selectAlias/selectModel, suppress the next reload's
-  // state overwrite so the gateway's stale model.options doesn't clobber
-  // the user's explicit choice.
-  const selectionGuard = useRef(false);
+  // Guard: after selectAlias/selectModel, suppress reload overwrites until the
+  // backend confirms the new model.  A simple boolean was too eager — a second
+  // reload (e.g. from a gateway event) could consume the guard and clobber the
+  // user's choice with a stale value.  Instead we store the pending selection
+  // and only clear it when getModelConfig() returns the expected model.
+  const pendingSelection = useRef<{
+    model: string;
+    provider: string;
+    baseUrl: string;
+  } | null>(null);
 
   const reload = useCallback(async (): Promise<void> => {
     const [mc, savedModels, savedAliases] = await Promise.all([
@@ -50,8 +56,16 @@ export function useModelConfig(profile?: string): UseModelConfigResult {
       listModels(),
       getModelAliases(),
     ]);
-    if (selectionGuard.current) {
-      selectionGuard.current = false;
+    const pending = pendingSelection.current;
+    if (pending) {
+      // Backend caught up — clear guard and accept the confirmed value.
+      if (mc.model === pending.model) {
+        pendingSelection.current = null;
+        setCurrentModel(mc.model);
+        setCurrentProvider(mc.provider);
+        setCurrentBaseUrl(mc.baseUrl);
+      }
+      // else: backend still stale, keep optimistic values untouched.
     } else {
       setCurrentModel(mc.model);
       setCurrentProvider(mc.provider);
@@ -69,27 +83,35 @@ export function useModelConfig(profile?: string): UseModelConfigResult {
   const selectModel = useCallback(
     async (provider: string, model: string, baseUrl: string): Promise<void> => {
       const effectiveBaseUrl = provider === "custom" ? baseUrl : "";
-      await setModelConfig(provider, model, effectiveBaseUrl, profile);
-      selectionGuard.current = true;
+      pendingSelection.current = { model, provider, baseUrl: effectiveBaseUrl };
       setCurrentModel(model);
       setCurrentProvider(provider);
       setCurrentBaseUrl(effectiveBaseUrl);
+      try {
+        await setModelConfig(provider, model, effectiveBaseUrl, profile);
+      } catch {
+        // Optimistic update already applied; backend persistence best-effort
+      }
     },
     [profile],
   );
 
   const selectAlias = useCallback(
     async (alias: ModelAlias): Promise<void> => {
-      await setModelConfig(
-        alias.provider || "custom",
-        alias.model,
-        alias.baseUrl,
-        profile,
-      );
-      selectionGuard.current = true;
+      const provider = alias.provider || "custom";
+      pendingSelection.current = {
+        model: alias.model,
+        provider,
+        baseUrl: alias.baseUrl,
+      };
       setCurrentModel(alias.model);
-      setCurrentProvider(alias.provider || "custom");
+      setCurrentProvider(provider);
       setCurrentBaseUrl(alias.baseUrl);
+      try {
+        await setModelConfig(provider, alias.model, alias.baseUrl, profile);
+      } catch {
+        // Optimistic update already applied; backend persistence best-effort
+      }
     },
     [profile],
   );

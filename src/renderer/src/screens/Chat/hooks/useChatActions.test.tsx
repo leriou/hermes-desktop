@@ -30,6 +30,8 @@ describe("useChatActions", () => {
       contextFolder: null,
       pendingClarify: null,
       setPendingClarify: vi.fn(),
+      activeTabId: "tab-1",
+      updateTab: vi.fn(),
     };
   }
 

@@ -1,14 +1,8 @@
 import { copyToClipboard } from "@renderer/lib/hermes-tauri";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ClipboardList, X } from "lucide-react";
-import { HermesAvatar } from "./MessageRow";
 import type { ToolCallMessage, ToolGroupMessage } from "./types";
-import {
-  getColumnsForTool,
-  fallbackColumns,
-  type ColumnDef,
-} from "./tool-table-config";
 import { getToolMeta } from "./HistoryRow";
 
 /* ── JSON pretty-print helper ─────────────────────────────────────────── */
@@ -146,88 +140,296 @@ function DetailModal({
   );
 }
 
-/* ── Tool table ──────────────────────────────────────────────────────── */
+/* ── Friendly Tool Parameter Translator ───────────────────────────── */
 
-function ToolTable({
+export function getFriendlyToolDescription(toolName: string, argsStr: string): {
+  icon: string;
+  action: string;
+  detail: string;
+} {
+  let argsObj: Record<string, any> = {};
+  try {
+    argsObj = JSON.parse(argsStr || "{}");
+  } catch {
+    // ignore
+  }
+
+  const nameLower = toolName.toLowerCase();
+  
+  if (
+    nameLower === "run_command" ||
+    nameLower.includes("terminal") ||
+    nameLower === "execute_command" ||
+    nameLower === "shell" ||
+    nameLower.includes("shell")
+  ) {
+    const cmd = argsObj.CommandLine || argsObj.command || argsObj.code || argsObj.cmd || "";
+    return {
+      icon: "💻",
+      action: "Run command",
+      detail: cmd,
+    };
+  }
+  
+  if (nameLower === "write_to_file" || nameLower === "write_file") {
+    const file = argsObj.TargetFile || argsObj.path || argsObj.filename || "";
+    return {
+      icon: "✍️",
+      action: "Create file",
+      detail: file,
+    };
+  }
+  
+  if (nameLower === "replace_file_content") {
+    const file = argsObj.TargetFile || argsObj.path || "";
+    return {
+      icon: "📝",
+      action: "Edit file",
+      detail: file,
+    };
+  }
+
+  if (nameLower === "multi_replace_file_content") {
+    const file = argsObj.TargetFile || argsObj.path || "";
+    const chunks = Array.isArray(argsObj.ReplacementChunks) ? argsObj.ReplacementChunks.length : 0;
+    return {
+      icon: "🛠️",
+      action: `Edit file (${chunks} chunks)`,
+      detail: file,
+    };
+  }
+
+  if (nameLower === "view_file" || nameLower === "read_file") {
+    const file = argsObj.AbsolutePath || argsObj.path || "";
+    return {
+      icon: "🔍",
+      action: "View file",
+      detail: file,
+    };
+  }
+
+  if (nameLower === "list_dir") {
+    const dir = argsObj.DirectoryPath || argsObj.path || "";
+    return {
+      icon: "📁",
+      action: "List directory",
+      detail: dir,
+    };
+  }
+
+  if (nameLower === "grep_search") {
+    const query = argsObj.Query || "";
+    const path = argsObj.SearchPath || "";
+    const pathName = path.split("/").pop() || "";
+    return {
+      icon: "🔎",
+      action: "Search code",
+      detail: `"${query}"${pathName ? ` in ${pathName}` : ""}`,
+    };
+  }
+
+  if (nameLower === "ask_permission") {
+    const action = argsObj.Action || "";
+    const target = argsObj.Target || "";
+    return {
+      icon: "🔑",
+      action: "Request permission",
+      detail: `${action} on ${target}`,
+    };
+  }
+
+  if (nameLower === "search_web" || nameLower.includes("web") || nameLower.includes("url")) {
+    const query = argsObj.query || argsObj.url || "";
+    return {
+      icon: "🌐",
+      action: "Search web",
+      detail: query,
+    };
+  }
+
+  // fallback
+  const firstVal = Object.values(argsObj).find((v) => typeof v === "string" && v.length > 0) || "";
+  return {
+    icon: "🔧",
+    action: toolName,
+    detail: String(firstVal || argsStr || ""),
+  };
+}
+
+/* ── Single Tool Footprint (TUI-style) ──────────────────────── */
+
+function SingleToolFootprint({
+  call,
+  toolName,
+}: {
+  call: ToolCallMessage;
+  toolName: string;
+}): React.JSX.Element {
+  const [showDetail, setShowDetail] = useState(false);
+  const pending = call.result === undefined;
+  
+  const desc = getFriendlyToolDescription(toolName, call.args || "");
+  const summary = desc.detail;
+  const truncatedSummary =
+    summary.length > 80 ? summary.slice(0, 80) + "…" : summary;
+
+  return (
+    <div className={`chat-tool-single-footprint ${
+      pending
+        ? "chat-tool-single-footprint--pending"
+        : call.success === false
+          ? "chat-tool-single-footprint--fail"
+          : ""
+    }`}>
+      <div className="chat-tool-single-left">
+        <div className="chat-tool-single-line" />
+        <div
+          className={`chat-tool-single-dot ${
+            pending
+              ? "chat-tool-single-dot--pending"
+              : call.success === false
+                ? "chat-tool-single-dot--fail"
+                : "chat-tool-single-dot--success"
+          }`}
+        >
+          {pending ? (
+            <span className="chat-tool-single-spinner" />
+          ) : call.success === false ? (
+            "✗"
+          ) : (
+            "✓"
+          )}
+        </div>
+      </div>
+      <div className="chat-tool-single-body">
+        <span className="chat-tool-single-label">
+          {desc.icon} {desc.action}
+        </span>
+        {truncatedSummary && (
+          <code className="chat-tool-single-code" title={summary}>
+            {truncatedSummary}
+          </code>
+        )}
+        {call.progress && (
+          <span className="chat-tool-single-progress" title={call.progress}>
+            · {call.progress}
+          </span>
+        )}
+      </div>
+      <div className="chat-tool-single-right">
+        {call.durationS !== undefined && (
+          <span className="chat-tool-single-duration">
+            {call.durationS.toFixed(1)}s
+          </span>
+        )}
+        <button
+          className="chat-tool-single-detail-btn"
+          onClick={() => setShowDetail(true)}
+          title="查看完整详情"
+          aria-label={`查看第 1 次 ${toolName} 调用详情`}
+        >
+          <ClipboardList size={12} />
+        </button>
+      </div>
+
+      {showDetail && (
+        <DetailModal
+          call={call}
+          index={0}
+          onClose={() => setShowDetail(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Tool Timeline List (For multiple tools) ─────────────────────── */
+
+function ToolTimeline({
   calls,
-  columns,
+  toolName,
 }: {
   calls: ToolCallMessage[];
-  columns: ColumnDef[];
+  toolName: string;
 }): React.JSX.Element {
   const [detailIdx, setDetailIdx] = useState<number | null>(null);
 
   return (
-    <div className="tool-group-table-wrap">
-      <table className="tool-group-table">
-        <thead>
-          <tr>
-            <th className="tool-group-th tool-group-th--num">#</th>
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className="tool-group-th"
-                style={col.width ? { width: col.width } : undefined}
-              >
-                {col.label}
-              </th>
-            ))}
-            <th className="tool-group-th tool-group-th--status">状态</th>
-            <th className="tool-group-th tool-group-th--detail">详情</th>
-          </tr>
-        </thead>
-        <tbody>
-          {calls.map((call, i) => {
-            let args: Record<string, unknown>;
-            try {
-              args = JSON.parse(call.args || "{}");
-            } catch {
-              args = {};
-            }
-            const pending = call.result === undefined;
-            return (
-              <tr
-                key={call.callId || i}
-                className={
+    <div className="tool-timeline">
+      {calls.map((call, i) => {
+        const pending = call.result === undefined;
+        const desc = getFriendlyToolDescription(toolName, call.args || "");
+        const summary = desc.detail;
+        const truncatedSummary =
+          summary.length > 80 ? summary.slice(0, 80) + "…" : summary;
+
+        return (
+          <div
+            key={call.callId || i}
+            className={`tool-timeline-item ${
+              pending
+                ? "tool-timeline-item--pending"
+                : call.success === false
+                  ? "tool-timeline-item--fail"
+                  : ""
+            }`}
+          >
+            <div className="tool-timeline-left">
+              <div className="tool-timeline-line" />
+              <div
+                className={`tool-timeline-dot ${
                   pending
-                    ? "tool-group-tr--pending"
+                    ? "tool-timeline-dot--pending"
                     : call.success === false
-                      ? "tool-group-tr--fail"
-                      : ""
-                }
+                      ? "tool-timeline-dot--fail"
+                      : "tool-timeline-dot--success"
+                }`}
               >
-                <td className="tool-group-td tool-group-td--num">{i + 1}</td>
-                {columns.map((col) => (
-                  <td key={col.key} className="tool-group-td">
-                    {col.render
-                      ? col.render(args[col.key] ?? "")
-                      : String(args[col.key] ?? "")}
-                  </td>
-                ))}
-                <td className="tool-group-td tool-group-td--status">
-                  {pending ? (
-                    <span className="tool-group-pending">running…</span>
-                  ) : call.success === false ? (
-                    <span className="chat-tool-fail">✗</span>
-                  ) : (
-                    <span className="chat-tool-ok">✓</span>
-                  )}
-                </td>
-                <td className="tool-group-td tool-group-td--detail">
-                  <button
-                    className="tool-group-detail-btn"
-                    onClick={() => setDetailIdx(i)}
-                    aria-label={`查看第 ${i + 1} 次 ${call.name} 调用详情`}
-                    title="查看详情"
-                  >
-                    <ClipboardList size={14} aria-hidden="true" />
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                {pending ? (
+                  <span className="tool-timeline-spinner" />
+                ) : call.success === false ? (
+                  "✗"
+                ) : (
+                  "✓"
+                )}
+              </div>
+            </div>
+
+            <div className="tool-timeline-content">
+              <span className="tool-timeline-index">#{i + 1}</span>
+              {truncatedSummary ? (
+                <code className="tool-timeline-code" title={summary}>
+                  {truncatedSummary}
+                </code>
+              ) : (
+                <span className="tool-timeline-empty">(empty args)</span>
+              )}
+              {call.progress && (
+                <span className="tool-timeline-progress" title={call.progress}>
+                  · {call.progress}
+                </span>
+              )}
+            </div>
+
+            <div className="tool-timeline-right">
+              {call.durationS !== undefined && (
+                <span className="tool-timeline-duration">
+                  {call.durationS.toFixed(1)}s
+                </span>
+              )}
+              <button
+                className="tool-timeline-detail-btn"
+                onClick={() => setDetailIdx(i)}
+                aria-label="查看详情"
+                title="查看完整 JSON 详情"
+              >
+                <ClipboardList size={12} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
       {detailIdx !== null && (
         <DetailModal
           call={calls[detailIdx]}
@@ -239,7 +441,60 @@ function ToolTable({
   );
 }
 
-/* ── Main group row ──────────────────────────────────────────────────── */
+/* ── Multiple Tools Footprint (TUI-style) ────────────────────────── */
+
+function MultipleToolsFootprint({
+  msg,
+  label,
+  icon,
+  statusStr,
+  allDone,
+}: {
+  msg: ToolGroupMessage;
+  label: string;
+  icon: string;
+  statusStr: string;
+  allDone: boolean;
+}): React.JSX.Element {
+  const [open, setOpen] = useState(!allDone);
+
+  useEffect(() => {
+    if (!allDone) {
+      setOpen(true);
+    }
+  }, [allDone]);
+
+  return (
+    <div className="chat-tool-multiple-container">
+      <details
+        className="chat-tool-multiple-details"
+        open={open}
+        onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+      >
+        <summary className="chat-tool-multiple-header">
+          <div className="chat-tool-multiple-left">
+            <div className="chat-tool-multiple-line" />
+            <div className="chat-tool-multiple-dot">
+              {icon}
+            </div>
+          </div>
+          <span className="chat-tool-multiple-label">
+            {label} ({msg.calls.length}次调用)
+          </span>
+          <span className="chat-tool-multiple-status">{statusStr}</span>
+          <span className={`chat-tool-multiple-chevron ${open ? "open" : ""}`}>
+            ▸
+          </span>
+        </summary>
+        <div className="chat-tool-multiple-body">
+          <ToolTimeline calls={msg.calls} toolName={msg.toolName} />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+/* ── Main Entry Component ─────────────────────────────────────────── */
 
 export const ToolGroupRow = memo(function ToolGroupRow({
   msg,
@@ -248,6 +503,7 @@ export const ToolGroupRow = memo(function ToolGroupRow({
 }): React.JSX.Element {
   const { icon, label } = getToolMeta(msg.toolName);
   const total = msg.calls.length;
+  
   const succeeded = msg.calls.filter(
     (c) => c.result !== undefined && c.success !== false,
   ).length;
@@ -255,48 +511,23 @@ export const ToolGroupRow = memo(function ToolGroupRow({
   const pending = msg.calls.filter((c) => c.result === undefined).length;
   const allDone = pending === 0;
 
-  const columns = useMemo(() => {
-    const custom = getColumnsForTool(msg.toolName);
-    if (custom) return custom;
-    const firstArgs = msg.calls.find((c) => c.args)?.args || "";
-    return fallbackColumns(firstArgs);
-  }, [msg.toolName, msg.calls]);
-
   const statusParts: string[] = [];
   if (succeeded) statusParts.push(`${succeeded}✓`);
   if (failed) statusParts.push(`${failed}✗`);
   if (pending) statusParts.push(`${pending}…`);
   const statusStr = statusParts.join(" ");
 
-  const [open, setOpen] = useState(total === 1 && !allDone);
+  if (total === 1) {
+    return <SingleToolFootprint call={msg.calls[0]} toolName={msg.toolName} />;
+  }
 
   return (
-    <div className="chat-message chat-message-agent chat-message-history">
-      <HermesAvatar />
-      <details
-        className="chat-history chat-history--tool-group"
-        open={open}
-        onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
-      >
-        <summary className="chat-history-header">
-          <span
-            className={`chat-history-chevron ${open ? "chat-history-chevron--open" : ""}`}
-          >
-            ▸
-          </span>
-          <span className="chat-history-label">
-            <span className="chat-tool-icon">{icon}</span>
-            <span className="chat-tool-name">{label}</span>
-            <span className="chat-group-summary">
-              {total > 1 ? `${total}次调用 · ` : ""}
-              {statusStr}
-            </span>
-          </span>
-        </summary>
-        <div className="chat-history-body">
-          <ToolTable calls={msg.calls} columns={columns} />
-        </div>
-      </details>
-    </div>
+    <MultipleToolsFootprint
+      msg={msg}
+      label={label}
+      icon={icon}
+      statusStr={statusStr}
+      allDone={allDone}
+    />
   );
 });

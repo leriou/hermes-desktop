@@ -63,7 +63,7 @@ describe("buildRenderableTranscript", () => {
     expect(group.calls[1].result).toBe("file content 2");
   });
 
-  it("appends live_reasoning when streaming reasoning text during loading", () => {
+  it("appends live_reasoning and omits typing indicator when streaming reasoning text during loading without toolProgress", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "Hello" },
     ];
@@ -75,7 +75,7 @@ describe("buildRenderableTranscript", () => {
       streamingReasoning: "Thinking about the question...",
     });
 
-    expect(result).toHaveLength(3);
+    expect(result).toHaveLength(2);
     expect(result[0].id).toBe("u1");
     expect(result[1]).toEqual({
       id: "live-reasoning",
@@ -83,11 +83,28 @@ describe("buildRenderableTranscript", () => {
       role: "agent",
       text: "Thinking about the question...",
     });
+  });
+
+  it("appends both live_reasoning and typing when toolProgress is present during streaming reasoning", () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "Hello" },
+    ];
+
+    const result = buildRenderableTranscript({
+      messages,
+      isLoading: true,
+      toolProgress: "searching codebase...",
+      streamingReasoning: "Thinking about the question...",
+    });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].id).toBe("u1");
+    expect(result[1].kind).toBe("live_reasoning");
     expect(result[2]).toEqual({
       id: "typing",
       kind: "typing",
       role: "agent",
-      toolProgress: null,
+      toolProgress: "searching codebase...",
     });
   });
 

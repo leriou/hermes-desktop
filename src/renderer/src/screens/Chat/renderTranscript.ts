@@ -132,12 +132,14 @@ export function buildRenderableTranscript({
 
   if (isLoading) {
     if (!lastMessageIsAgent && !streamingText) {
-      items.push({
-        id: "typing",
-        kind: "typing",
-        role: "agent",
-        toolProgress,
-      });
+      if (!streamingReasoning || toolProgress) {
+        items.push({
+          id: "typing",
+          kind: "typing",
+          role: "agent",
+          toolProgress,
+        });
+      }
     } else if (toolProgress && (lastMessageIsAgent || streamingText)) {
       items.push({
         id: "tool-progress",
@@ -147,6 +149,20 @@ export function buildRenderableTranscript({
       });
     }
   }
+
+  // ── Debug: trace rendering decisions ──────────────────────────
+  if (isLoading) {
+    const itemKinds = items.map((it) => (it as { kind?: string }).kind ?? "bubble").filter(k => k !== "bubble" && k !== "reasoning" && k !== "tool_group");
+    console.log(
+      `[hermes-render] live items: [${itemKinds.join(", ")}]`,
+      `| lastMessageIsAgent=${lastMessageIsAgent}`,
+      `| streamingReasoning=${streamingReasoning.length}`,
+      `| streamingText=${streamingText.length}`,
+      `| toolProgress=${toolProgress ?? "null"}`,
+      `| lastMsg=${messages.length > 0 ? (messages[messages.length - 1] as any).kind ?? "bubble" : "none"}`,
+    );
+  }
+  // ── End Debug ────────────────────────────────────────────────
 
   return items;
 }

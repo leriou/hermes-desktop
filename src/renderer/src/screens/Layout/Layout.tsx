@@ -386,6 +386,7 @@ function Layout({
                     callId: it.callId || "",
                     name: it.name || "tool",
                     args: it.args || "",
+                    timestamp: ts,
                   };
                 case "tool_result": {
                   let content = it.content || "";
@@ -401,6 +402,7 @@ function Layout({
                     callId: it.callId || "",
                     name: it.name || "tool",
                     content,
+                    timestamp: ts,
                   };
                 }
                 default:
@@ -574,7 +576,10 @@ function Layout({
 
   return (
     <div className="layout">
-      <aside className={`sidebar${sidebarCollapsed ? " collapsed" : ""}`}>
+      <aside
+        className={`sidebar drag-surface${sidebarCollapsed ? " collapsed" : ""}`}
+        data-tauri-drag-region
+      >
         <div className="sidebar-brand">
           <img
             src={hermesicon}
@@ -707,6 +712,8 @@ function Layout({
                     pendingClarify={tab.pendingClarify}
                     pendingSudo={tab.pendingSudo}
                     pendingSecret={tab.pendingSecret}
+                    pendingModelSwitchMessageId={tab.pendingModelSwitchMessageId}
+                    todos={tab.todos}
                     profile={activeProfile}
                     visible={visible}
                     onNewChat={handleNewChat}
@@ -726,6 +733,12 @@ function Layout({
                           : {}),
                         ...(patch.pendingModelSwitch !== undefined
                           ? { pendingModelSwitch: patch.pendingModelSwitch }
+                          : {}),
+                        ...(patch.pendingModelSwitchMessageId !== undefined
+                          ? { pendingModelSwitchMessageId: patch.pendingModelSwitchMessageId }
+                          : {}),
+                        ...(patch.todos !== undefined
+                          ? { todos: patch.todos }
                           : {}),
                         ...(patch.isLoading !== undefined
                           ? { isLoading: patch.isLoading }

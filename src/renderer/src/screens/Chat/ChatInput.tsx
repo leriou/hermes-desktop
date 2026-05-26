@@ -21,14 +21,6 @@ import { AttachmentChip } from "../../components/AttachmentChip";
 import type { Attachment } from "@shared/attachments";
 import type { ClarifyRequest } from "./types";
 
-export interface ModelOption {
-  label: string;
-  sublabel: string;
-  model: string;
-  provider: string;
-  baseUrl: string;
-}
-
 export interface ChatInputHandle {
   setText(text: string): void;
   clear(): void;
@@ -42,9 +34,7 @@ interface ChatInputProps {
   hasSession: boolean;
   sessionId?: string | null;
   remoteMode?: boolean;
-  modelOptions?: ModelOption[];
   pendingClarify?: ClarifyRequest | null;
-  onModelSelect?: (option: ModelOption) => void;
   onSubmit: (text: string, attachments: Attachment[]) => void;
   onQuickAsk: (text: string, attachments: Attachment[]) => void;
   onAbort: () => void;
@@ -57,9 +47,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       hasSession,
       sessionId,
       remoteMode,
-      modelOptions,
       pendingClarify,
-      onModelSelect,
       onSubmit,
       onQuickAsk,
       onAbort,
@@ -71,14 +59,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const [slashMenuOpen, setSlashMenuOpen] = useState(false);
     const [slashFilter, setSlashFilter] = useState("");
     const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
-    const [modelMenuOpen, setModelMenuOpen] = useState(false);
-    const [modelMenuFilter, setModelMenuFilter] = useState("");
-    const [modelMenuSelectedIndex, setModelMenuSelectedIndex] = useState(0);
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [attachmentError, setAttachmentError] = useState<string | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const slashMenuRef = useRef<HTMLDivElement>(null);
-    const modelMenuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const autoResize = useCallback((): void => {
@@ -199,22 +183,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         document.removeEventListener("mousedown", handleClickOutside);
     }, [slashMenuOpen]);
 
-    // Close model menu on click outside
-    useEffect(() => {
-      if (!modelMenuOpen) return;
-      function handleClickOutside(e: MouseEvent): void {
-        if (
-          modelMenuRef.current &&
-          !modelMenuRef.current.contains(e.target as Node)
-        ) {
-          setModelMenuOpen(false);
-        }
-      }
-      document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
-    }, [modelMenuOpen]);
-
     // Scroll active slash menu item into view
     useEffect(() => {
       if (!slashMenuOpen) return;
@@ -223,15 +191,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       );
       active?.scrollIntoView({ block: "nearest" });
     }, [slashSelectedIndex, slashMenuOpen]);
-
-    // Scroll active model menu item into view
-    useEffect(() => {
-      if (!modelMenuOpen) return;
-      const active = modelMenuRef.current?.querySelector(
-        ".slash-menu-item-active",
-      );
-      active?.scrollIntoView({ block: "nearest" });
-    }, [modelMenuSelectedIndex, modelMenuOpen]);
 
     const filteredSlashCommands = useMemo(
       () =>
@@ -242,17 +201,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
           : [],
       [slashMenuOpen, slashFilter],
     );
-
-    const filteredModelOptions = useMemo(() => {
-      if (!modelMenuOpen || !modelOptions?.length) return [];
-      if (!modelMenuFilter) return modelOptions;
-      const q = modelMenuFilter.toLowerCase();
-      return modelOptions.filter(
-        (m) =>
-          m.label.toLowerCase().includes(q) ||
-          m.sublabel.toLowerCase().includes(q),
-      );
-    }, [modelMenuOpen, modelOptions, modelMenuFilter]);
 
     function clearAfterSend(text: string): void {
       history.push(text);
@@ -267,7 +215,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       const hasPayload = text.length > 0 || attachments.length > 0;
       if (!hasPayload) return;
       setSlashMenuOpen(false);
-      setModelMenuOpen(false);
       const sendAttachments = attachments;
       clearAfterSend(text);
       onSubmit(text, sendAttachments);
@@ -283,15 +230,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     function handleSlashSelect(cmd: SlashCommand): void {
       setSlashMenuOpen(false);
-      // Commands with custom param autocomplete: insert prefix and show param menu
-      if (cmd.hasParams) {
-        setInput(cmd.name + " ");
-        setModelMenuOpen(true);
-        setModelMenuFilter("");
-        setModelMenuSelectedIndex(0);
-        inputRef.current?.focus();
-        return;
-      }
       // Local / info commands dispatch immediately — let parent route through onSubmit
       if (cmd.local || cmd.category === "info") {
         setInput("");
@@ -302,13 +240,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       // Backend commands that take arguments: insert prefix and wait for the user
       setInput(cmd.name + " ");
       inputRef.current?.focus();
-    }
-
-    function handleModelSelect(option: ModelOption): void {
-      setModelMenuOpen(false);
-      setInput("");
-      if (inputRef.current) inputRef.current.style.height = "auto";
-      onModelSelect?.(option);
     }
 
     function handleInputChange(
@@ -323,20 +254,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
       });
 
-      // Detect /model <filter> for param autocomplete
-      if (value.startsWith("/model ")) {
-        const filter = value.slice(7).trim();
-        if (!modelMenuOpen) {
-          setModelMenuOpen(true);
-          setModelMenuSelectedIndex(0);
-        }
-        setModelMenuFilter(filter);
-        if (slashMenuOpen) setSlashMenuOpen(false);
-        return;
-      }
-
-      if (modelMenuOpen) setModelMenuOpen(false);
-
       if (value.startsWith("/") && !value.includes(" ")) {
         const query = value.split(" ")[0];
         setSlashMenuOpen(true);
@@ -349,34 +266,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
       if (isImeComposing(e)) return;
-
-      // Model menu keyboard navigation
-      if (modelMenuOpen && filteredModelOptions.length > 0) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          setModelMenuSelectedIndex((i) =>
-            i < filteredModelOptions.length - 1 ? i + 1 : 0,
-          );
-          return;
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          setModelMenuSelectedIndex((i) =>
-            i > 0 ? i - 1 : filteredModelOptions.length - 1,
-          );
-          return;
-        }
-        if (e.key === "Enter" || e.key === "Tab") {
-          e.preventDefault();
-          handleModelSelect(filteredModelOptions[modelMenuSelectedIndex]);
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setModelMenuOpen(false);
-          return;
-        }
-      }
 
       // Slash menu keyboard navigation
       if (slashMenuOpen && filteredSlashCommands.length > 0) {
@@ -409,7 +298,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       // History navigation: ArrowUp/Down when not in a multiline draft (or already navigating)
       if (
         !slashMenuOpen &&
-        !modelMenuOpen &&
         (history.isNavigating() || !input.includes("\n"))
       ) {
         if (e.key === "ArrowUp" && history.size() > 0) {
@@ -478,27 +366,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   <span className="slash-menu-item-desc">
                     {cmd.description}
                   </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {modelMenuOpen && filteredModelOptions.length > 0 && (
-          <div className="slash-menu" ref={modelMenuRef}>
-            <div className="slash-menu-header">
-              <Slash size={12} />
-              Models
-            </div>
-            <div className="slash-menu-list">
-              {filteredModelOptions.map((opt, i) => (
-                <button
-                  key={`${opt.provider}:${opt.model}`}
-                  className={`slash-menu-item ${i === modelMenuSelectedIndex ? "slash-menu-item-active" : ""}`}
-                  onMouseEnter={() => setModelMenuSelectedIndex(i)}
-                  onClick={() => handleModelSelect(opt)}
-                >
-                  <span className="slash-menu-item-name">{opt.label}</span>
-                  <span className="slash-menu-item-desc">{opt.sublabel}</span>
                 </button>
               ))}
             </div>

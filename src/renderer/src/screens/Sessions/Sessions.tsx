@@ -152,6 +152,7 @@ const SOURCE_STYLES: Record<string, string> = {
   api: "sessions-tag-source--api",
   gateway: "sessions-tag-source--gateway",
   webhook: "sessions-tag-source--webhook",
+  feishu: "sessions-tag-source--feishu",
 };
 
 function sourceTagClass(source: string): string {
@@ -159,7 +160,7 @@ function sourceTagClass(source: string): string {
 }
 
 // Filter types
-type SourceFilter = "all" | "cli" | "tui" | "cron";
+type SourceFilter = "all" | "cli" | "tui" | "cron" | "feishu";
 type MsgCountFilter = "all" | "1-20" | "21-50" | "50-100" | ">100";
 
 function matchesMsgCount(count: number, filter: MsgCountFilter): boolean {
@@ -397,6 +398,7 @@ function Sessions({
     { key: "cli", label: "CLI" },
     { key: "tui", label: "TUI" },
     { key: "cron", label: "Cron" },
+    { key: "feishu", label: "Feishu" },
   ];
 
   const msgCountFilters: { key: MsgCountFilter; label: string }[] = [

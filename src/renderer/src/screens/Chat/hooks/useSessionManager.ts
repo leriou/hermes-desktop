@@ -5,6 +5,7 @@ import type {
   ClarifyRequest,
   SudoRequest,
   SecretRequest,
+  TodoItem,
 } from "../types";
 import type { SessionEntry, SessionStatus } from "../SessionSidebar";
 import { sessionDisplayPreview, sessionDisplayTitle } from "../sessionDisplay";
@@ -23,6 +24,8 @@ export interface SessionState {
   pendingSudo: SudoRequest | null;
   pendingSecret: SecretRequest | null;
   pendingModelSwitch: string | null;
+  pendingModelSwitchMessageId: string | null;
+  todos: TodoItem[];
   unreadCount: number;
   title: string;
   model: string;
@@ -44,6 +47,8 @@ function emptySession(): SessionState {
     pendingSudo: null,
     pendingSecret: null,
     pendingModelSwitch: null,
+    pendingModelSwitchMessageId: null,
+    todos: [],
     unreadCount: 0,
     title: "",
     model: "",

@@ -15,10 +15,10 @@ export function createSystemEvent(
   event: SystemEventKind,
   title: string,
   content?: string,
-  options: { tone?: SystemEventTone; code?: string } = {},
+  options: { tone?: SystemEventTone; code?: string; id?: string } = {},
 ): SystemEventMessage {
   return {
-    id: `system-event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: options.id ?? `system-event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: "system_event",
     role: "system",
     event,

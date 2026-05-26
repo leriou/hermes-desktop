@@ -263,6 +263,36 @@ pub fn get_session_messages(app: Option<&AppHandle>, session_id: &str, profile: 
     }
 }
 
+pub fn get_session_messages_before(app: Option<&AppHandle>, session_id: &str, before_timestamp: f64, limit: Option<u32>, profile: Option<String>) -> Result<Value, String> {
+    let home = profile_home(app, profile);
+    let db_path = home.join("state.db").to_string_lossy().to_string();
+    let limit = limit.unwrap_or(50);
+    let result = hermes_core::get_session_messages_before_impl(&db_path, session_id, before_timestamp, limit);
+    match result {
+        Ok(items) => {
+            let max_tool_content = 8000;
+            let items_val = json!(items);
+            let mut arr = match items_val.as_array().cloned() {
+                Some(a) => a,
+                None => return Ok(json!([])),
+            };
+            for item in arr.iter_mut() {
+                if item.get("kind").map(|v| v.as_str()) == Some(Some("tool_result")) {
+                    if let Some(content) = item.get("content").and_then(|v| v.as_str()) {
+                        if content.len() > max_tool_content {
+                            item["content"] = json!(format!("{}\n\n... ({} chars total)",
+                                &content[..content.char_indices().nth(max_tool_content).map_or(content.len(), |(i,_)| i)],
+                                content.len()));
+                        }
+                    }
+                }
+            }
+            Ok(Value::Array(arr))
+        }
+        Err(e) => Err(e),
+    }
+}
+
 pub fn persist_message(app: Option<&AppHandle>, sid: &str, role: &str, content: &str, tool_call_id: Option<&str>, tool_name: Option<&str>, profile: Option<String>) {
     let home = profile_home(app, profile);
     let desktop_dir = home.join("desktop").join("messages").to_string_lossy().to_string();
