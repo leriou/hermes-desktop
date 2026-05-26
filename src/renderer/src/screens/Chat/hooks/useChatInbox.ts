@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ChatMessage, ReasoningMessage, SubagentMessage, ToolCallMessage, UsageState } from "../types";
+import type { ChatBubbleMessage, ChatMessage, ReasoningMessage, SubagentMessage, ToolCallMessage, UsageState } from "../types";
 import type { SessionState } from "./useSessionManager";
 import { shortModelName } from "../sessionDisplay";
 import { createSystemEvent, systemEventFromError } from "../systemEvents";
@@ -50,10 +50,18 @@ function durationFromPayload(payload: Record<string, unknown>): number | undefin
   return numberField(payload, "duration_seconds") ?? numberField(payload, "duration_s");
 }
 
+function isPlainAssistantBubble(message: ChatMessage | undefined): message is ChatBubbleMessage & { role: "agent" } {
+  if (!message || message.role !== "agent" || !("content" in message) || typeof message.content !== "string") {
+    return false;
+  }
+  const kind = (message as { kind?: string }).kind;
+  return !kind || kind === "assistant";
+}
+
 function appendStreaming(prev: ChatMessage[], text: string, sessionId?: string): ChatMessage[] {
   if (!text) return prev;
   const last = prev[prev.length - 1];
-  if (last && last.role === "agent" && "content" in last && typeof last.content === "string") {
+  if (isPlainAssistantBubble(last)) {
     return [...prev.slice(0, -1), { ...last, content: last.content + text }];
   }
   if (!text.trim()) return prev;
@@ -202,49 +210,33 @@ export function useChatInbox({
           const model = stringField(usage, "model");
           updateTab(tabId, { streamingText: "", streamingReasoning: "" });
 
-          // Single updateTabMessages: reasoning → content → model, all in one pass
+          // Single updateTabMessages: append reasoning → content for the current live turn.
+          // Live deltas render from `streamingText`, so completion should not mutate
+          // the previous agent/tool/system row. Mutating the last role=agent row makes
+          // consecutive turns attach reasoning to the wrong message and can render the
+          // final answer inside tool/status chrome until the DB history is reloaded.
           updateTabMessages(tabId, (prev) => {
-            let msgs = prev;
-            // 1. Insert reasoning message before last agent message
+            const next: ChatMessage[] = [...prev];
             if (reasoningText) {
-              const reasoningMsg: ReasoningMessage = {
+              next.push({
                 id: `reasoning-${Date.now()}`,
                 kind: "reasoning",
                 role: "agent",
                 text: reasoningText,
-              };
-              for (let i = msgs.length - 1; i >= 0; i--) {
-                if (msgs[i].role === "agent" && "content" in msgs[i]) {
-                  msgs = [...msgs.slice(0, i), reasoningMsg, ...msgs.slice(i)];
-                  break;
-                }
-              }
-              if (msgs === prev) msgs = [...prev, reasoningMsg];
+              } satisfies ReasoningMessage);
             }
-            // 2. Replace last agent message content
             const text = finalText || (hadStreaming ? fallbackText : "");
             if (text) {
-              let replaced = false;
-              for (let i = msgs.length - 1; i >= 0; i--) {
-                const m = msgs[i];
-                if (m.role === "agent" && "content" in m && typeof m.content === "string") {
-                  msgs = [
-                    ...msgs.slice(0, i),
-                    { ...m, content: text, ...(model ? { model } : {}) },
-                    ...msgs.slice(i + 1),
-                  ];
-                  replaced = true;
-                  break;
-                }
-              }
-              if (!replaced) {
-                msgs = [
-                  ...msgs,
-                  { id: `agent-${Date.now()}`, sessionId: runtimeSid, role: "agent", content: text, timestamp: Date.now(), ...(model ? { model } : {}) },
-                ];
-              }
+              next.push({
+                id: `agent-${Date.now()}`,
+                sessionId: runtimeSid,
+                role: "agent",
+                content: text,
+                timestamp: Date.now(),
+                ...(model ? { model } : {}),
+              });
             }
-            return msgs;
+            return next;
           });
           updateTab(tabId, {
             isLoading: false,

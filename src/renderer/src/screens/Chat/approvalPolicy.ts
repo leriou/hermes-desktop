@@ -2,7 +2,7 @@ import type { ApprovalRequest } from "./types";
 
 export type ApprovalMode = "manual" | "countdown" | "auto_approve";
 export type ApprovalDecision = "approve" | "deny";
-export type ApprovalDecisionSource = "manual" | "timeout" | "auto";
+export type ApprovalDecisionSource = "manual" | "timeout" | "auto" | "judgment";
 
 export interface ApprovalPolicy {
   mode: ApprovalMode;
@@ -20,6 +20,9 @@ export interface ApprovalHistoryEntry {
   decision: ApprovalDecision;
   source: ApprovalDecisionSource;
   decidedAt: number;
+  judgmentReason?: string;
+  judgmentConfidence?: number;
+  judgmentRisk?: "low" | "medium" | "high";
 }
 
 export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
@@ -56,6 +59,7 @@ export function createApprovalHistoryEntry(
   decision: ApprovalDecision,
   source: ApprovalDecisionSource,
   decidedAt: number,
+  judgment?: { reason: string; confidence: number; risk: "low" | "medium" | "high" },
 ): ApprovalHistoryEntry {
   return {
     id: `approval-${decidedAt}-${Math.random().toString(36).slice(2, 8)}`,
@@ -66,6 +70,11 @@ export function createApprovalHistoryEntry(
     decision,
     source,
     decidedAt,
+    ...(judgment ? {
+      judgmentReason: judgment.reason,
+      judgmentConfidence: judgment.confidence,
+      judgmentRisk: judgment.risk,
+    } : {}),
   };
 }
 

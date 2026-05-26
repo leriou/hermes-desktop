@@ -53,4 +53,28 @@ describe("ApprovalModal", () => {
 
     expect(onDecision).toHaveBeenCalledWith("deny", "timeout");
   });
+
+  it("surfaces local judgment advice without auto-deciding", () => {
+    const { container } = render(
+      <ApprovalModal
+        request={request}
+        policy={DEFAULT_APPROVAL_POLICY}
+        submitting={false}
+        judgmentAdvice={{
+          kind: "approval",
+          decision: "deny",
+          confidence: 0.9,
+          risk: "high",
+          reason: "Command appears destructive or privilege-sensitive.",
+          suggestedAction: "ask_user",
+        }}
+        onDecision={vi.fn()}
+        onPolicyChange={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector(".chat-approval-judgment")?.textContent).toContain("Judgment");
+    expect(container.querySelector(".chat-approval-judgment")?.textContent).toContain("high");
+    expect(container.querySelector(".chat-approval-judgment")?.textContent).toContain("90%");
+  });
 });

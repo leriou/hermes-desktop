@@ -13,6 +13,11 @@ export function ApprovalHistoryPanel({ entries }: { entries: ApprovalHistoryEntr
             {entry.source !== "manual" ? ` · ${entry.source}` : ""}
           </span>
           <span className="chat-approval-history-command" title={entry.command}>{entry.command}</span>
+          {entry.judgmentReason && (
+            <span className="chat-approval-history-judgment" title={entry.judgmentReason}>
+              judgment {Math.round((entry.judgmentConfidence ?? 0) * 100)}% · {entry.judgmentRisk}
+            </span>
+          )}
         </div>
       ))}
     </div>

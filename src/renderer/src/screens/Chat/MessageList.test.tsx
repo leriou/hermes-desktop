@@ -1,49 +1,23 @@
-import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { MessageList } from "./MessageList";
 
 const baseProps = {
   messages: [],
   toolProgress: null,
-  onSudoRespond: vi.fn(),
-  onSecretRespond: vi.fn(),
 };
 
 describe("MessageList pending request bars", () => {
-  it("shows secret requests while a turn is loading", () => {
-    const onSecretRespond = vi.fn();
+  it("does not render sudo or secret prompts in the transcript", () => {
     const { container } = render(
       <MessageList
         {...baseProps}
         isLoading
-        pendingSecret={{ requestId: "s1", envVar: "OPENAI_API_KEY", prompt: "API key" }}
-        onSecretRespond={onSecretRespond}
       />,
     );
 
-    const input = container.querySelector(".chat-secret-bar input") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "secret" } });
-    fireEvent.click(container.querySelector(".chat-secret-bar button") as HTMLButtonElement);
-
-    expect(onSecretRespond).toHaveBeenCalledWith("secret");
-  });
-
-  it("shows sudo requests while a turn is loading", () => {
-    const onSudoRespond = vi.fn();
-    const { container } = render(
-      <MessageList
-        {...baseProps}
-        isLoading
-        pendingSudo={{ requestId: "sudo-1" }}
-        onSudoRespond={onSudoRespond}
-      />,
-    );
-
-    const input = container.querySelector(".chat-sudo-bar input") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "pw" } });
-    fireEvent.click(container.querySelector(".chat-sudo-bar button") as HTMLButtonElement);
-
-    expect(onSudoRespond).toHaveBeenCalledWith("pw");
+    expect(container.querySelector(".chat-sudo-bar")).toBeNull();
+    expect(container.querySelector(".chat-secret-bar")).toBeNull();
   });
 });
 
@@ -88,5 +62,33 @@ describe("MessageList system events", () => {
     expect(container.querySelectorAll(".chat-system-event")).toHaveLength(3);
     expect(container.querySelector(".chat-message-agent")).toBeNull();
     expect(container.querySelector(".chat-system-event-error")?.textContent).toContain("Provider error 429");
+  });
+
+  it("renders system events as a compact event rail with expandable detail", () => {
+    const { container } = render(
+      <MessageList
+        {...baseProps}
+        isLoading={false}
+        messages={[
+          {
+            id: "error",
+            kind: "system_event",
+            role: "system",
+            event: "provider_error",
+            tone: "error",
+            title: "Provider error 1305",
+            content: "Model overloaded",
+            code: "1305",
+          },
+        ]}
+      />,
+    );
+
+    expect(container.querySelector(".chat-system-event-rail")).not.toBeNull();
+    const details = container.querySelector("details.chat-system-event") as HTMLDetailsElement;
+    expect(details).not.toBeNull();
+    expect(details.open).toBe(false);
+    expect(container.textContent).toContain("Provider error 1305");
+    expect(container.textContent).toContain("1305");
   });
 });

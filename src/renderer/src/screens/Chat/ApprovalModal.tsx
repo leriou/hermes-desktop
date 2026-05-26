@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import type { ApprovalRequest } from "./types";
 import type { ApprovalDecision, ApprovalDecisionSource, ApprovalPolicy } from "./approvalPolicy";
+import type { JudgmentAdvice } from "./judgmentEngine";
 
 interface ApprovalModalProps {
   request: ApprovalRequest | null;
   policy: ApprovalPolicy;
   submitting: boolean;
+  judgmentAdvice?: JudgmentAdvice | null;
   onDecision: (decision: ApprovalDecision, source: ApprovalDecisionSource) => void;
   onPolicyChange: (policy: ApprovalPolicy) => void;
 }
@@ -14,6 +16,7 @@ export function ApprovalModal({
   request,
   policy,
   submitting,
+  judgmentAdvice = null,
   onDecision,
   onPolicyChange,
 }: ApprovalModalProps): React.JSX.Element | null {
@@ -60,6 +63,15 @@ export function ApprovalModal({
         {request.patternKeys.length > 0 && (
           <div className="chat-approval-patterns">
             {request.patternKeys.map((key) => <span key={key}>{key}</span>)}
+          </div>
+        )}
+        {judgmentAdvice && (
+          <div className={`chat-approval-judgment chat-approval-judgment-${judgmentAdvice.risk}`}>
+            <div className="chat-approval-judgment-head">
+              <span>Judgment</span>
+              <span>{judgmentAdvice.risk} · {Math.round(judgmentAdvice.confidence * 100)}%</span>
+            </div>
+            <div className="chat-approval-judgment-body">{judgmentAdvice.reason}</div>
           </div>
         )}
 

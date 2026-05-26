@@ -1,5 +1,6 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { ClipboardList, X } from "lucide-react";
 import { HermesAvatar } from "./MessageRow";
 import type { ToolCallMessage, ToolGroupMessage } from "./types";
 import {
@@ -19,39 +20,104 @@ function tryFormatJson(text: string): string {
   }
 }
 
+function buildRawInspect(call: ToolCallMessage): string {
+  return JSON.stringify(
+    {
+      callId: call.callId,
+      name: call.name,
+      args: call.args || "",
+      progress: call.progress,
+      result: call.result,
+      success: call.success,
+      durationS: call.durationS,
+      fallbackWarning: call.fallbackWarning,
+      inlineDiff: call.inlineDiff,
+    },
+    null,
+    2,
+  );
+}
+
+function DetailSection({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.JSX.Element {
+  return (
+    <details className="tool-detail-section" open>
+      <summary className="tool-detail-section-label">
+        <span>{label}</span>
+        <button
+          className="tool-detail-copy"
+          onClick={(event) => {
+            event.preventDefault();
+            void window.hermesAPI.copyToClipboard(value);
+          }}
+        >
+          Copy
+        </button>
+      </summary>
+      <pre className="tool-detail-pre">{tryFormatJson(value || "(empty)")}</pre>
+    </details>
+  );
+}
+
 /* ── Detail modal ───────────────────────────────────────────────────── */
 
 function DetailModal({
   call,
+  index,
   onClose,
 }: {
   call: ToolCallMessage;
+  index: number;
   onClose: () => void;
 }): React.JSX.Element {
+  const pending = call.result === undefined;
+  const status = pending ? "running" : call.success === false ? "failed" : "succeeded";
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return createPortal(
-    <div className="tool-detail-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+    <div
+      className="tool-detail-backdrop"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${call.name} 调用详情`}
+    >
       <div className="tool-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="tool-detail-header">
-          <span className="tool-detail-title">{call.name}</span>
-          <button className="tool-detail-close" onClick={onClose}>×</button>
+          <div className="tool-detail-heading">
+            <span className="tool-detail-title">{call.name}</span>
+            <span className={`tool-detail-status tool-detail-status--${status}`}>{status}</span>
+          </div>
+          <button className="tool-detail-close" onClick={onClose} aria-label="关闭工具调用详情">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="tool-detail-meta">
+          <span>#{index + 1}</span>
+          {call.callId && <span>{call.callId}</span>}
+          {call.durationS !== undefined && <span>{call.durationS.toFixed(1)}s</span>}
         </div>
         <div className="tool-detail-body">
-          <div className="tool-detail-section">
-            <div className="tool-detail-section-label">
-              Args
-              <button className="tool-detail-copy" onClick={() => void window.hermesAPI.copyToClipboard(call.args || "")}>Copy</button>
-            </div>
-            <pre className="tool-detail-pre">{tryFormatJson(call.args || "(empty)")}</pre>
-          </div>
+          {call.progress && <DetailSection label="Progress" value={call.progress} />}
+          {call.fallbackWarning && <DetailSection label="Warning" value={call.fallbackWarning} />}
+          <DetailSection label="Args" value={call.args || ""} />
           {call.result !== undefined && (
-            <div className="tool-detail-section">
-              <div className="tool-detail-section-label">
-                Result
-                <button className="tool-detail-copy" onClick={() => void window.hermesAPI.copyToClipboard(call.result || "")}>Copy</button>
-              </div>
-              <pre className="tool-detail-pre">{tryFormatJson(call.result || "(empty)")}</pre>
-            </div>
+            <DetailSection label="Result" value={call.result || ""} />
           )}
+          {call.inlineDiff && <DetailSection label="Diff" value={call.inlineDiff} />}
+          <DetailSection label="Raw" value={buildRawInspect(call)} />
         </div>
       </div>
     </div>,
@@ -107,7 +173,14 @@ function ToolTable({
                       : <span className="chat-tool-ok">✓</span>}
                 </td>
                 <td className="tool-group-td tool-group-td--detail">
-                  <button className="tool-group-detail-btn" onClick={() => setDetailIdx(i)}>📋</button>
+                  <button
+                    className="tool-group-detail-btn"
+                    onClick={() => setDetailIdx(i)}
+                    aria-label={`查看第 ${i + 1} 次 ${call.name} 调用详情`}
+                    title="查看详情"
+                  >
+                    <ClipboardList size={14} aria-hidden="true" />
+                  </button>
                 </td>
               </tr>
             );
@@ -115,7 +188,7 @@ function ToolTable({
         </tbody>
       </table>
       {detailIdx !== null && (
-        <DetailModal call={calls[detailIdx]} onClose={() => setDetailIdx(null)} />
+        <DetailModal call={calls[detailIdx]} index={detailIdx} onClose={() => setDetailIdx(null)} />
       )}
     </div>
   );

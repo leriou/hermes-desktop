@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useCallback, useRef } from "react";
+import { memo, useMemo } from "react";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ReasoningRow, ToolResultRow } from "./HistoryRow";
 import { SubagentRow } from "./SubagentRow";
@@ -6,17 +6,13 @@ import { ToolGroupRow } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { mergeContinuationLabels } from "./sessionDisplay";
-import type { ChatMessage, SudoRequest, SecretRequest, SystemEventMessage, SystemStatusMessage, ToolCallMessage, ToolGroupMessage } from "./types";
+import type { ChatMessage, SystemEventMessage, SystemStatusMessage, ToolCallMessage, ToolGroupMessage } from "./types";
 
 
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading: boolean;
   toolProgress: string | null;
-  pendingSudo?: SudoRequest | null;
-  pendingSecret?: SecretRequest | null;
-  onSudoRespond: (password: string) => void;
-  onSecretRespond: (value: string) => void;
   streamingText?: string;
 }
 
@@ -147,59 +143,17 @@ function SystemStatusRow({ msg }: { msg: SystemStatusMessage }): React.JSX.Eleme
 }
 
 function SystemEventRow({ msg }: { msg: SystemEventMessage }): React.JSX.Element {
+  const icon = msg.tone === "success" ? "✓" : msg.tone === "warning" ? "!" : msg.tone === "error" ? "×" : "i";
   return (
-    <div className={`chat-system-event chat-system-event-${msg.tone} chat-system-event-${msg.event}`}>
-      <div className="chat-system-event-main">
-        <span className="chat-system-event-label">{msg.title}</span>
-        {msg.code && <span className="chat-system-event-code">{msg.code}</span>}
-      </div>
-      {msg.content && <div className="chat-system-event-content">{msg.content}</div>}
-    </div>
-  );
-}
-
-function SudoPromptBar({ onSubmit }: { onSubmit: (password: string) => void }): React.JSX.Element {
-  const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const handleSubmit = useCallback(() => {
-    if (value) { onSubmit(value); setValue(""); }
-  }, [value, onSubmit]);
-  return (
-    <div className="chat-sudo-bar">
-      <span className="chat-prompt-icon">🔑</span>
-      <span className="chat-prompt-label">Sudo password required</span>
-      <input
-        ref={inputRef}
-        type="password"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-        placeholder="Password"
-        autoFocus
-      />
-      <button onClick={handleSubmit}>Submit</button>
-    </div>
-  );
-}
-
-function SecretPromptBar({ req, onSubmit }: { req: SecretRequest; onSubmit: (value: string) => void }): React.JSX.Element {
-  const [value, setValue] = useState("");
-  const handleSubmit = useCallback(() => {
-    if (value) { onSubmit(value); setValue(""); }
-  }, [value, onSubmit]);
-  return (
-    <div className="chat-secret-bar">
-      <span className="chat-prompt-icon">🔐</span>
-      <span className="chat-prompt-label">{req.prompt || req.envVar}</span>
-      <input
-        type="password"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-        placeholder={req.envVar}
-        autoFocus
-      />
-      <button onClick={handleSubmit}>Submit</button>
+    <div className="chat-system-event-rail">
+      <span className={`chat-system-event-rail-dot chat-system-event-rail-dot-${msg.tone}`}>{icon}</span>
+      <details className={`chat-system-event chat-system-event-${msg.tone} chat-system-event-${msg.event}`}>
+        <summary className="chat-system-event-summary">
+          <span className="chat-system-event-label">{msg.title}</span>
+          {msg.code && <span className="chat-system-event-code">{msg.code}</span>}
+        </summary>
+        {msg.content && <div className="chat-system-event-content">{msg.content}</div>}
+      </details>
     </div>
   );
 }
@@ -208,10 +162,6 @@ export const MessageList = memo(function MessageList({
   messages,
   isLoading,
   toolProgress,
-  pendingSudo,
-  pendingSecret,
-  onSudoRespond,
-  onSecretRespond,
   streamingText,
 }: MessageListProps): React.JSX.Element {
   const processed = useMemo(
@@ -304,13 +254,6 @@ export const MessageList = memo(function MessageList({
         <div className="chat-tool-progress-inline">{toolProgress}</div>
       )}
 
-      {pendingSudo && (
-        <SudoPromptBar onSubmit={onSudoRespond} />
-      )}
-
-      {pendingSecret && (
-        <SecretPromptBar req={pendingSecret} onSubmit={onSecretRespond} />
-      )}
     </>
   );
 });

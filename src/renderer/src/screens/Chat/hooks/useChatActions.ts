@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ChatInputHandle } from "../ChatInput";
 import type { Attachment, ChatMessage, ClarifyRequest } from "../types";
-import { describeBusyInput } from "../busyInput";
+import { describeInputIntent } from "../inputIntent";
+import { createTauriChatGatewayClient } from "../tauriChatGatewayClient";
 
 interface LocalCommands {
   isLocal: (text: string) => boolean;
@@ -51,6 +52,7 @@ export function useChatActions({
   const dbSessionIdRef = useRef(dbSessionId ?? null);
   const abortRequestedRef = useRef(false);
   const queuedInputRef = useRef<Array<{ text: string; attachments?: Attachment[] }>>([]);
+  const gatewayClientRef = useRef(createTauriChatGatewayClient());
 
   useEffect(() => {
     isLoadingRef.current = isLoading;
@@ -87,14 +89,20 @@ export function useChatActions({
         return;
       }
 
-      // Handle clarify response — agent asked a question and is blocking
-      if (pendingClarify) {
+      const intent = describeInputIntent({
+        text,
+        isLoading: isLoadingRef.current,
+        hasClarify: !!pendingClarify,
+      });
+
+      if (intent.kind === "clarify") {
+        const clarify = pendingClarify;
         pushUser(text);
         setIsLoading(true);
         const sid = hermesSessionIdRef.current;
         if (sid) {
           try {
-            await window.hermesAPI.tuiClarifyRespond(sid, text, pendingClarify.requestId);
+            await gatewayClientRef.current.respondClarify(sid, text, clarify?.requestId);
           } catch {
             setIsLoading(false);
           }
@@ -103,31 +111,19 @@ export function useChatActions({
         return;
       }
 
-      if (text.startsWith("/") && executeGatewayCommand) {
-        const cmd = text.trim().split(/\s+/)[0].toLowerCase();
-        const canRunWhileBusy = cmd === "/steer";
-        if (isLoadingRef.current && !canRunWhileBusy) return;
-
+      if (intent.kind === "gateway_command" && executeGatewayCommand) {
         setIsLoading(true);
         abortRequestedRef.current = false;
         onSessionStarted?.();
 
         try {
-          await window.hermesAPI.startGateway();
-
-          let sid = hermesSessionIdRef.current;
-          if (!sid) {
-            const res = await window.hermesAPI.tuiCreateSession();
-            sid = res.session_id;
-            if (sid) {
-              setHermesSessionId(sid);
-              hermesSessionIdRef.current = sid;
-            }
+          const sid = await gatewayClientRef.current.ensureSession(hermesSessionIdRef.current);
+          if (sid !== hermesSessionIdRef.current) {
+            setHermesSessionId(sid);
+            hermesSessionIdRef.current = sid;
           }
 
-          if (!sid) throw new Error("Failed to create or resume session");
-
-          const handled = await executeGatewayCommand(sid, text);
+          const handled = await executeGatewayCommand(sid, intent.text);
           if (!handled) {
             setIsLoading(false);
           }
@@ -146,9 +142,9 @@ export function useChatActions({
         return;
       }
 
-      if (isLoadingRef.current) {
+      if (intent.kind === "busy") {
         const sid = hermesSessionIdRef.current;
-        const action = describeBusyInput(text, "steer");
+        const action = intent.action;
         if (action.kind === "queue") {
           if (action.text) {
             queuedInputRef.current.push({ text: action.text, attachments });
@@ -170,8 +166,8 @@ export function useChatActions({
 
         if (action.kind === "steer" && sid) {
           try {
-            const result = await window.hermesAPI.tuiSteer(sid, action.text);
-            const payload = result?.result ?? result ?? {};
+            const result = await gatewayClientRef.current.steer(sid, action.text);
+            const payload = (result?.result ?? result ?? {}) as { status?: string };
             if (payload.status === "queued") {
               setMessages((prev) => [
                 ...prev,
@@ -207,11 +203,13 @@ export function useChatActions({
         }
 
         if (sid) {
-          window.hermesAPI.tuiInterrupt(sid).catch(err => {
+          gatewayClientRef.current.interrupt(sid).catch(err => {
             console.error("[useChatActions] Pipelined interrupt failed:", err);
           });
         }
       }
+
+      if (intent.kind !== "prompt") return;
 
       setIsLoading(true);
       abortRequestedRef.current = false;
@@ -219,78 +217,20 @@ export function useChatActions({
       onSessionStarted?.();
 
       try {
-        // Ensure the TUI Gateway is running (Tauri mode requires it)
-        try {
-          await window.hermesAPI.startGateway();
-          console.log("[chat] gateway started OK");
-        } catch (gwErr) {
-          console.error("[chat] startGateway failed:", gwErr);
-          throw gwErr; // let outer catch handle it
-        }
-
-        let sid = hermesSessionIdRef.current;
-        if (!sid) {
-          const res = await window.hermesAPI.tuiCreateSession();
-          sid = res.session_id;
-          if (sid) {
-            setHermesSessionId(sid);
-            hermesSessionIdRef.current = sid;
-          }
-        }
-
-        if (!sid) throw new Error("Failed to create or resume session");
-
-        try {
-          await window.hermesAPI.tuiSubmitPrompt(sid, text);
-        } catch (err) {
-          if (abortRequestedRef.current) {
-            setIsLoading(false);
-            return;
-          }
-          const msg = (err as Error).message || String(err);
-          if (/not found|invalid|expired|session/i.test(msg)) {
-            try {
-              const dbSid = dbSessionIdRef.current;
-              if (dbSid) {
-                const resumed = await window.hermesAPI.tuiResumeSession(dbSid);
-                sid = resumed?.session_id || sid;
-              } else {
-                const res = await window.hermesAPI.tuiCreateSession();
-                sid = res.session_id;
-              }
-              if (sid) {
-                setHermesSessionId(sid);
-                hermesSessionIdRef.current = sid;
-              }
-              if (!sid) throw new Error("Failed to create or resume session");
-              await window.hermesAPI.tuiSubmitPrompt(sid, text);
-            } catch (retryErr) {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: `error-${Date.now()}`,
-                  role: "agent",
-                  content: `Error: ${(retryErr as Error).message}`,
-                  timestamp: Date.now(),
-                },
-              ]);
-              setIsLoading(false);
-            }
-          } else {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: `error-${Date.now()}`,
-                role: "agent",
-                content: `Error: ${msg}`,
-                timestamp: Date.now(),
-              },
-            ]);
-            setIsLoading(false);
-          }
+        const sid = await gatewayClientRef.current.submitPromptWithSession({
+          currentSessionId: hermesSessionIdRef.current,
+          dbSessionId: dbSessionIdRef.current,
+          text,
+        });
+        if (sid !== hermesSessionIdRef.current) {
+          setHermesSessionId(sid);
+          hermesSessionIdRef.current = sid;
         }
       } catch (err) {
-        // Catches errors from startGateway/tuiCreateSession that were previously unhandled
+        if (abortRequestedRef.current) {
+          setIsLoading(false);
+          return;
+        }
         setMessages((prev) => [
           ...prev,
           {
@@ -320,40 +260,17 @@ export function useChatActions({
       pushUser(`💭 ${text}`, "user-btw", attachments);
 
       try {
-        await window.hermesAPI.startGateway();
-      } catch { /* already running */ }
-
-      let sid = hermesSessionIdRef.current;
-      if (!sid) {
-        const res = await window.hermesAPI.tuiCreateSession();
-        sid = res.session_id;
-        if (sid) {
+        const sid = await gatewayClientRef.current.submitPromptWithSession({
+          currentSessionId: hermesSessionIdRef.current,
+          dbSessionId: dbSessionIdRef.current,
+          text: `/btw ${text}`,
+        });
+        if (sid !== hermesSessionIdRef.current) {
           setHermesSessionId(sid);
           hermesSessionIdRef.current = sid;
         }
-      }
-      
-      try {
-        await window.hermesAPI.tuiSubmitPrompt(sid, `/btw ${text}`);
-      } catch (_err) {
-        const dbSid = dbSessionIdRef.current;
-        try {
-          if (dbSid) {
-            const resumed = await window.hermesAPI.tuiResumeSession(dbSid);
-            sid = resumed?.session_id || sid;
-          } else {
-            const res = await window.hermesAPI.tuiCreateSession();
-            sid = res.session_id;
-          }
-          if (sid) {
-            setHermesSessionId(sid);
-            hermesSessionIdRef.current = sid;
-          }
-          if (!sid) throw new Error("Failed to create or resume session");
-          await window.hermesAPI.tuiSubmitPrompt(sid, `/btw ${text}`);
-        } catch {
-          setIsLoading(false);
-        }
+      } catch {
+        setIsLoading(false);
       }
     },
     [pushUser, setIsLoading, setHermesSessionId],
@@ -362,7 +279,7 @@ export function useChatActions({
   const handleAbort = useCallback(() => {
     abortRequestedRef.current = true;
     if (hermesSessionIdRef.current) {
-      window.hermesAPI.tuiInterrupt(hermesSessionIdRef.current).catch(() => {});
+      gatewayClientRef.current.interrupt(hermesSessionIdRef.current).catch(() => {});
     }
     setIsLoading(false);
     setTimeout(() => chatInputRef.current?.focus(), 50);
