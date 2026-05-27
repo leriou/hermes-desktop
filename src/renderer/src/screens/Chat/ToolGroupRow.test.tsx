@@ -54,7 +54,7 @@ describe("ToolGroupRow", () => {
     expect(screen.getByText("npm run typecheck:web")).toBeInTheDocument();
 
     // 点击详情按钮
-    const detailButtons = screen.getAllByTitle("查看详情");
+    const detailButtons = screen.getAllByRole("button", { name: /查看第 \d+ 次 shell 调用详情/ });
     expect(detailButtons).toHaveLength(2);
 
     fireEvent.click(detailButtons[0]);
