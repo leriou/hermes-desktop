@@ -1924,12 +1924,12 @@
 
 .chat-input-wrapper {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   background: var(--surface-composer);
   border: 1px solid var(--border);
   border-radius: var(--radius-composer);
-  padding: 6px 6px 6px 16px;
+  padding: 4px 6px 4px 16px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   box-shadow: var(--shadow-composer);
 }
@@ -1946,7 +1946,7 @@
   color: var(--text-primary);
   font-size: 14px;
   font-family: var(--font-sans);
-  padding: 4px 0;
+  padding: 0;
   outline: none;
   resize: none;
   min-height: 20px;
