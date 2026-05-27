@@ -31,6 +31,7 @@ export interface SessionState {
   title: string;
   model: string;
   updatedAt: number;
+  abortRequested?: boolean;
 }
 
 function emptySession(): SessionState {

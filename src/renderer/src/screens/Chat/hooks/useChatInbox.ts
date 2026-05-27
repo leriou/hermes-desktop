@@ -281,6 +281,22 @@ export function useChatInbox({
         undefined;
       const payload = event.payload;
 
+      if (state?.abortRequested) {
+        const cls = classifyEvent(event.type);
+        if (!cls.safeAfterAbort) return;
+        if (event.type === "message.complete") {
+          updateTab(tabId, { abortRequested: false, isLoading: false });
+          return;
+        }
+        if (event.type === "error") {
+          updateTab(tabId, {
+            abortRequested: false,
+            isLoading: false,
+            toolProgress: null,
+          });
+        }
+      }
+
       switch (event.type) {
         case "message.start":
           turnCompletedRef.current.delete(tabId);
@@ -578,6 +594,8 @@ export function useChatInbox({
             isLoading: false,
             toolProgress: null,
             streamingReasoning: "",
+            pendingApproval: null,
+            pendingClarify: null,
             pendingSudo: null,
             pendingSecret: null,
           });

@@ -342,7 +342,14 @@ export function useChatActions({
         },
       ]);
     }
-    updateTab(activeTabId, { streamingText: "" });
+    updateTab(activeTabId, {
+      streamingText: "",
+      abortRequested: true,
+      pendingApproval: null,
+      pendingClarify: null,
+      pendingSudo: null,
+      pendingSecret: null,
+    });
 
     setIsLoading(false);
     setTimeout(() => chatInputRef.current?.focus(), 50);

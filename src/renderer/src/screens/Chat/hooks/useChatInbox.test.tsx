@@ -567,6 +567,106 @@ describe("useChatInbox", () => {
     });
   });
 
+  it("drops late additive events after abort", () => {
+    const updateTab = vi.fn();
+    const updateTabMessages = vi.fn();
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", { ...sessionState(), abortRequested: true }],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    // Late streaming event after abort — should be dropped
+    eventHandler?.({ type: "message.delta", sid: "sid-1", payload: { text: "late" } });
+    eventHandler?.({ type: "tool.start", sid: "sid-1", payload: { tool_id: "t1", name: "Read" } });
+
+    expect(updateTab).not.toHaveBeenCalled();
+    expect(updateTabMessages).not.toHaveBeenCalled();
+  });
+
+  it("resets abort on message.complete and clears pending state", async () => {
+    const updateTab = vi.fn((_, patch) => {
+      const current = sessions.get("tab-1");
+      if (current) sessions.set("tab-1", { ...current, ...patch });
+    });
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", { ...sessionState(), abortRequested: true }],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages: vi.fn(),
+      }),
+    );
+
+    eventHandler?.({ type: "message.complete", sid: "sid-1", payload: {} });
+
+    await waitFor(() => {
+      expect(updateTab).toHaveBeenCalledWith(
+        "tab-1",
+        expect.objectContaining({ abortRequested: false, isLoading: false }),
+      );
+    });
+  });
+
+  it("clears all pending interaction state on error", async () => {
+    const updateTab = vi.fn((_, patch) => {
+      const current = sessions.get("tab-1");
+      if (current) sessions.set("tab-1", { ...current, ...patch });
+    });
+    const sessions = new Map<string, SessionState>([
+      [
+        "tab-1",
+        {
+          ...sessionState(),
+          pendingApproval: { command: "rm", description: "delete", patternKey: "", patternKeys: [] },
+          pendingClarify: { requestId: "c1", question: "Which?", choices: [] },
+          pendingSudo: { requestId: "s1" },
+          pendingSecret: { requestId: "sk1", envVar: "KEY", prompt: "" },
+        },
+      ],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages: vi.fn(),
+      }),
+    );
+
+    eventHandler?.({ type: "error", sid: "sid-1", payload: { message: "boom" } });
+
+    await waitFor(() => {
+      expect(updateTab).toHaveBeenCalledWith(
+        "tab-1",
+        expect.objectContaining({
+          pendingApproval: null,
+          pendingClarify: null,
+          pendingSudo: null,
+          pendingSecret: null,
+        }),
+      );
+    });
+  });
+
   it.skip("coalesces live assistant deltas into the next animation frame", () => {
     const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
       const current = sessions.get(tabId);
