@@ -1,5 +1,6 @@
-import { FileText, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { Attachment } from "@shared/attachments";
+import { getFileIcon, getFileCategory } from "../screens/Chat/fileTypeIcon";
 
 interface AttachmentChipProps {
   attachment: Attachment;
@@ -15,6 +16,8 @@ export function AttachmentChip({
   onPreview,
 }: AttachmentChipProps): React.JSX.Element {
   const isImage = attachment.kind === "image";
+  const Icon = getFileIcon(attachment.name);
+  const category = getFileCategory(attachment.name);
 
   return (
     <div
@@ -32,7 +35,7 @@ export function AttachmentChip({
         </button>
       ) : (
         <div className="attachment-chip-file">
-          <FileText size={14} />
+          <Icon size={14} className={`file-cat-${category}`} />
           <span className="attachment-chip-name">{attachment.name}</span>
         </div>
       )}

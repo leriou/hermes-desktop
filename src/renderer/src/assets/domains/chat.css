@@ -2127,6 +2127,15 @@
   border-color: var(--error);
 }
 
+.attachment-chip-file .file-cat-code { color: #60a5fa; }
+.attachment-chip-file .file-cat-image { color: #f472b6; }
+.attachment-chip-file .file-cat-archive { color: #fbbf24; }
+.attachment-chip-file .file-cat-audio { color: #a78bfa; }
+.attachment-chip-file .file-cat-document { color: #f87171; }
+.attachment-chip-file .file-cat-folder { color: #fbbf24; }
+.attachment-chip-file .file-cat-text { color: var(--text-secondary); }
+.attachment-chip-file .file-cat-unknown { color: var(--text-tertiary); }
+
 .chat-message-attachments {
   display: flex;
   flex-wrap: wrap;
