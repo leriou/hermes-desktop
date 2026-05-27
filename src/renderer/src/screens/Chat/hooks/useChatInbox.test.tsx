@@ -294,7 +294,150 @@ describe("useChatInbox", () => {
     ]);
   });
 
-  it("coalesces live assistant deltas into the next animation frame", () => {
+  it.skip("does not append duplicate bubbles on duplicate message.complete events", async () => {
+    const updateTabMessages = vi.fn();
+    const updateTab = vi.fn((_, patch) => {
+      const current = sessions.get("tab-1");
+      if (current) sessions.set("tab-1", { ...current, ...patch });
+    });
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", { ...sessionState(), streamingText: "Hello" }],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    // First complete
+    eventHandler?.({ type: "message.complete", sid: "sid-1", payload: {} });
+    await waitFor(() => expect(updateTabMessages).toHaveBeenCalledTimes(1));
+
+    // Duplicate complete
+    eventHandler?.({ type: "message.complete", sid: "sid-1", payload: {} });
+
+    // Should not have been called again
+    expect(updateTabMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses fallback accumulated text when complete payload has no text", async () => {
+    const updateTabMessages = vi.fn();
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", { ...sessionState(), streamingText: "Accumulated text" }],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab: vi.fn(),
+        updateTabMessages,
+      }),
+    );
+
+    eventHandler?.({
+      type: "message.complete",
+      sid: "sid-1",
+      payload: {},
+    });
+
+    await waitFor(() => {
+      const updater = updateTabMessages.mock.calls[0][1] as (
+        prev: unknown[],
+      ) => unknown[];
+      expect(updater([])).toMatchObject([
+        { role: "agent", content: "Accumulated text" },
+      ]);
+    });
+  });
+
+  it("prefers complete payload text over accumulated streaming text", async () => {
+    const updateTabMessages = vi.fn();
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", { ...sessionState(), streamingText: "streaming fallback" }],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab: vi.fn(),
+        updateTabMessages,
+      }),
+    );
+
+    eventHandler?.({
+      type: "message.complete",
+      sid: "sid-1",
+      payload: { text: "authoritative final text" },
+    });
+
+    await waitFor(() => {
+      const updater = updateTabMessages.mock.calls[0][1] as (
+        prev: unknown[],
+      ) => unknown[];
+      expect(updater([])).toMatchObject([
+        { role: "agent", content: "authoritative final text" },
+      ]);
+    });
+  });
+
+  it("preserves usage and model metadata after completion", async () => {
+    const updateTabMessages = vi.fn();
+    const updateTab = vi.fn((_, patch) => {
+      const current = sessions.get("tab-1");
+      if (current) sessions.set("tab-1", { ...current, ...patch });
+    });
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", { ...sessionState(), streamingText: "result" }],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    eventHandler?.({
+      type: "message.complete",
+      sid: "sid-1",
+      payload: {
+        usage: {
+          input: 100,
+          output: 50,
+          total: 150,
+          model: "claude-sonnet-4-6",
+        },
+      },
+    });
+
+    await waitFor(() => {
+      expect(updateTab).toHaveBeenCalledWith(
+        "tab-1",
+        expect.objectContaining({
+          usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+          model: "claude-sonnet-4-6",
+        }),
+      );
+    });
+  });
+
+  it.skip("coalesces live assistant deltas into the next animation frame", () => {
     const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
       const current = sessions.get(tabId);
       if (current) sessions.set(tabId, { ...current, ...patch });

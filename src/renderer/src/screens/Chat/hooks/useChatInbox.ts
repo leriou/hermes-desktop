@@ -152,6 +152,7 @@ export function useChatInbox({
   const chatVisibleRef = useRef(chatVisible);
   const pendingChunksRef = useRef(new Map<string, string>());
   const flushFramesRef = useRef(new Map<string, unknown>());
+  const turnCompletedRef = useRef(new Map<string, boolean>());
 
   useEffect(() => {
     sessionsRef.current = sessions;
@@ -272,6 +273,7 @@ export function useChatInbox({
 
       switch (event.type) {
         case "message.start":
+          turnCompletedRef.current.delete(tabId);
           updateTab(tabId, {
             isLoading: true,
             toolProgress: null,
@@ -302,6 +304,10 @@ export function useChatInbox({
         }
 
         case "message.complete": {
+          if (turnCompletedRef.current.get(tabId)) {
+            break; // Duplicate terminal event — skip
+          }
+          turnCompletedRef.current.set(tabId, true);
           const frame = flushFramesRef.current.get(tabId);
           if (frame) {
             flushFramesRef.current.delete(tabId);
