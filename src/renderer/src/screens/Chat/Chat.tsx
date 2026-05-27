@@ -14,7 +14,6 @@ import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { MessageList } from "./MessageList";
-import { TodoPanel } from "../../components/common/TodoPanel";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
 import { InteractionCenter } from "./InteractionCenter";
@@ -149,7 +148,13 @@ function Chat({
     messagesRef,
   });
 
-  const { setContainerRef, userScrolledUp, scrollToBottom } = useChatScroll(messages, isLoading, handleLoadEarlierMessages);
+  const { setContainerRef, userScrolledUp, scrollToBottom } = useChatScroll(
+    messages,
+    isLoading,
+    handleLoadEarlierMessages,
+    streamingText,
+    streamingReasoning,
+  );
 
   const modelConfig = useModelConfig(profile);
   const {
@@ -531,10 +536,8 @@ function Chat({
             toolProgress={toolProgress}
             streamingText={streamingText}
             streamingReasoning={streamingReasoning}
+            todos={todos}
           />
-        )}
-        {isLoading && todos && todos.length > 0 && (
-          <TodoPanel todos={todos} defaultCollapsed={false} />
         )}
         {userScrolledUp && messages.length > 0 && (
           <button
