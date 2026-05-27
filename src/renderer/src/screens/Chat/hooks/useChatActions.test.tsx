@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useChatActions } from "./useChatActions";
 
 vi.mock("@renderer/lib/hermes-tauri", () => ({
@@ -13,6 +13,9 @@ vi.mock("@renderer/lib/hermes-tauri", () => ({
 }));
 
 describe("useChatActions", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
   function baseArgs(isLoading: boolean) {
     return {
       hermesSessionId: "sid-1",
@@ -50,6 +53,81 @@ describe("useChatActions", () => {
 
     await waitFor(() => {
       expect(tuiSubmitPrompt).toHaveBeenCalledWith("sid-1", "follow up");
+    });
+  });
+
+  it("sends queued input after loading ends and preserves text", async () => {
+    const args = baseArgs(true);
+    const { result, rerender } = renderHook(
+      ({ loading }) => useChatActions({ ...args, isLoading: loading }),
+      { initialProps: { loading: true } },
+    );
+
+    await result.current.handleSend("/queue hello from queue");
+
+    const { tuiSubmitPrompt } = await import("@renderer/lib/hermes-tauri");
+    expect(tuiSubmitPrompt).not.toHaveBeenCalled();
+
+    rerender({ loading: false });
+
+    await waitFor(() => {
+      expect(tuiSubmitPrompt).toHaveBeenCalledWith("sid-1", "hello from queue");
+    });
+  });
+
+  it("steer uses current runtime session without creating a new turn", async () => {
+    const args = baseArgs(true);
+    const { result } = renderHook(
+      ({ loading }) => useChatActions({ ...args, isLoading: loading }),
+      { initialProps: { loading: true } },
+    );
+
+    await result.current.handleSend("focus on the error handling");
+
+    const { tuiSteer } = await import("@renderer/lib/hermes-tauri");
+    expect(tuiSteer).toHaveBeenCalledWith("sid-1", "focus on the error handling");
+  });
+
+  it("interrupt sends tuiInterrupt with current session id", async () => {
+    const args = baseArgs(true);
+    const { result } = renderHook(
+      ({ loading }) => useChatActions({ ...args, isLoading: loading }),
+      { initialProps: { loading: true } },
+    );
+
+    result.current.handleAbort();
+
+    const { tuiInterrupt } = await import("@renderer/lib/hermes-tauri");
+    expect(tuiInterrupt).toHaveBeenCalledWith("sid-1");
+  });
+
+  it("creates visible error system event on submit failure without losing input", async () => {
+    const args = baseArgs(false);
+    const { tuiSubmitPrompt } = await import("@renderer/lib/hermes-tauri");
+    vi.mocked(tuiSubmitPrompt).mockRejectedValueOnce(new Error("gateway down"));
+
+    const { result } = renderHook(
+      ({ loading }) => useChatActions({ ...args, isLoading: loading }),
+      { initialProps: { loading: false } },
+    );
+
+    await result.current.handleSend("hello");
+
+    await waitFor(() => {
+      expect(args.setMessages).toHaveBeenCalled();
+      const calls = args.setMessages.mock.calls;
+      const lastCallUpdater = calls[calls.length - 1][0] as (
+        prev: unknown[],
+      ) => unknown[];
+      const result_messages = lastCallUpdater([]);
+      expect(result_messages).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            role: "agent",
+            content: expect.stringContaining("Error"),
+          }),
+        ]),
+      );
     });
   });
 });

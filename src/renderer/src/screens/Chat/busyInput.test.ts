@@ -25,4 +25,28 @@ describe("describeBusyInput", () => {
       displayText: "replace the current turn",
     });
   });
+
+  it("handles /q shorthand for queue", () => {
+    const action = describeBusyInput("/q some text", "steer");
+    expect(action.kind).toBe("queue");
+    expect(action.text).toBe("some text");
+  });
+
+  it("handles /queue with no text", () => {
+    const action = describeBusyInput("/queue", "steer");
+    expect(action.kind).toBe("queue");
+    expect(action.text).toBe("");
+  });
+
+  it("defaults to steer mode for non-queue input", () => {
+    const action = describeBusyInput("some input", "steer");
+    expect(action.kind).toBe("steer");
+    expect(action.text).toBe("some input");
+  });
+
+  it("defaults to interrupt mode when configured", () => {
+    const action = describeBusyInput("stop now", "interrupt");
+    expect(action.kind).toBe("interrupt");
+    expect(action.text).toBe("stop now");
+  });
 });
