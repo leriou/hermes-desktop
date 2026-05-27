@@ -38,6 +38,7 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 hermes-core = { path = "../packages/hermes-core", default-features = false }
 cpal = "0.15"
 whisper-rs = { version = "0.12", features = ["coreml"] }
+reqwest = { version = "0.12", features = ["json"] }
 
 [profile.release]
 panic = "abort"

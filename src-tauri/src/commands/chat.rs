@@ -70,20 +70,96 @@ pub async fn clear_staged_attachments(app: AppHandle, session_id: String) -> Res
 }
 
 #[command]
-pub async fn discover_provider_models(state: State<'_, AppState>, provider: String, base_url: Option<String>, api_key: Option<String>, _profile: Option<String>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    if let Some(gw) = gateway.as_ref() {
-        if let Ok(val) = gw.call("model.discover", json!({ "provider": provider, "base_url": base_url, "api_key": api_key })).await {
-            // Gateway may return { models: [...] } or a bare array — normalize
-            let models = if let Some(arr) = val.get("models").and_then(|v| v.as_array()) {
-                arr.iter().filter_map(|m| m.as_str().map(|s| s.to_string())).collect::<Vec<_>>()
-            } else if let Some(arr) = val.as_array() {
-                arr.iter().filter_map(|m| m.as_str().map(|s| s.to_string())).collect::<Vec<_>>()
-            } else {
-                vec![]
-            };
-            return Ok(json!({ "models": models, "status": "ok", "cached": false }));
-        }
+pub async fn discover_provider_models(
+    _state: State<'_, AppState>,
+    provider: String,
+    base_url: Option<String>,
+    api_key: Option<String>,
+    _profile: Option<String>,
+) -> Result<Value, String> {
+    let api_key = match api_key {
+        Some(k) if !k.is_empty() => k,
+        _ => return Ok(json!({ "models": [], "status": "no-key", "cached": false })),
+    };
+
+    let url = resolve_models_url(&provider, base_url.as_deref());
+
+    let mut req = reqwest::Client::new()
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(15))
+        .header("Authorization", format!("Bearer {}", api_key));
+
+    // Anthropic uses x-api-key header instead
+    if provider == "anthropic" {
+        req = req.header("x-api-key", &api_key)
+                   .header("anthropic-version", "2023-06-01");
     }
-    Ok(json!({ "models": [], "status": "ok", "cached": false }))
+
+    let resp = req.send().await.map_err(|e| {
+        if e.is_connect() || e.is_timeout() {
+            format!("unknown-host")
+        } else {
+            format!("HTTP error: {}", e)
+        }
+    })?;
+
+    if !resp.status().is_success() {
+        let status = resp.status().as_u16();
+        if status == 401 || status == 403 {
+            return Ok(json!({ "models": [], "status": "no-key", "cached": false }));
+        }
+        return Ok(json!({ "models": [], "status": "error", "cached": false }));
+    }
+
+    let body: Value = resp.json().await.map_err(|e| format!("Parse error: {}", e))?;
+
+    let models = extract_model_ids(&body);
+    Ok(json!({ "models": models, "status": "ok", "cached": false }))
+}
+
+fn resolve_models_url(provider: &str, base_url: Option<&str>) -> String {
+    if let Some(url) = base_url {
+        let url = url.trim_end_matches('/');
+        // User provided a full base URL — append /models
+        return format!("{}/models", url);
+    }
+    match provider {
+        "openai" | "openai-codex" => "https://api.openai.com/v1/models".into(),
+        "anthropic" => "https://api.anthropic.com/v1/models".into(),
+        "google" => "https://generativelanguage.googleapis.com/v1beta/models".into(),
+        "xai" => "https://api.x.ai/v1/models".into(),
+        "deepseek" => "https://api.deepseek.com/v1/models".into(),
+        "groq" => "https://api.groq.com/openai/v1/models".into(),
+        "mistral" => "https://api.mistral.ai/v1/models".into(),
+        "together" => "https://api.together.xyz/v1/models".into(),
+        "fireworks" => "https://api.fireworks.ai/inference/v1/models".into(),
+        "openrouter" => "https://openrouter.ai/api/v1/models".into(),
+        "cerebras" => "https://api.cerebras.ai/v1/models".into(),
+        "perplexity" => "https://api.perplexity.ai/v1/models".into(),
+        "huggingface" => "https://api-inference.huggingface.co/models".into(),
+        "nvidia" => "https://integrate.api.nvidia.com/v1/models".into(),
+        "zai" => "https://open.bigmodel.cn/api/paas/v4/models".into(),
+        "qwen" => "https://dashscope.aliyuncs.com/compatible-mode/v1/models".into(),
+        "minimax" => "https://api.minimax.chat/v1/models".into(),
+        "nous" => "https://api.nousresearch.com/v1/models".into(),
+        _ => format!("https://api.{}.com/v1/models", provider),
+    }
+}
+
+fn extract_model_ids(body: &Value) -> Vec<String> {
+    // OpenAI-compatible: { "data": [ { "id": "model-name" }, ... ] }
+    if let Some(data) = body.get("data").and_then(|v| v.as_array()) {
+        return data.iter().filter_map(|m| {
+            m.get("id").and_then(|v| v.as_str()).map(|s| s.to_string())
+        }).collect();
+    }
+    // Google: { "models": [ { "name": "models/gemini-pro" }, ... ] }
+    if let Some(models) = body.get("models").and_then(|v| v.as_array()) {
+        return models.iter().filter_map(|m| {
+            m.get("name").or(m.get("id"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim_start_matches("models/").to_string())
+        }).collect();
+    }
+    vec![]
 }
