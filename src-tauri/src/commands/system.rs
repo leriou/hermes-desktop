@@ -218,6 +218,38 @@ pub async fn refresh_hermes_version(app: AppHandle) -> Result<Value, String> {
 }
 
 #[command]
+pub async fn get_build_info(app: AppHandle) -> Result<Value, String> {
+    let version = app.package_info().version.to_string();
+    let commit = env!("GIT_COMMIT").to_string();
+    let build_ts = env!("BUILD_TIME").to_string();
+    let build_time_str = build_ts.parse::<u64>()
+        .map(|ts| {
+            let secs = ts;
+            let days = secs / 86400;
+            let time = secs % 86400;
+            let hours = time / 3600;
+            let minutes = (time % 3600) / 60;
+            format!("2026-01-01 +{}d {:02}:{:02} (approx)", days, hours, minutes)
+        })
+        .unwrap_or_else(|_| "unknown".to_string());
+    let hermes_home = python::get_hermes_home(Some(&app));
+    let python_path = python::get_python_path(Some(&app));
+    let repo_path = python::get_hermes_repo(Some(&app));
+    let app_data = app.path().app_data_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+
+    Ok(json!({
+        "version": version,
+        "gitCommit": commit,
+        "buildTimestamp": build_ts,
+        "buildTimeDisplay": build_time_str,
+        "hermesHome": hermes_home.to_string_lossy(),
+        "pythonPath": python_path.to_string_lossy(),
+        "repoPath": repo_path.to_string_lossy(),
+        "appDataDir": app_data,
+    }))
+}
+
+#[command]
 pub async fn run_hermes_doctor(app: AppHandle) -> Result<Value, String> {
     run_hermes_cli(&app, &["doctor"]).await.map(|s| json!(s))
 }

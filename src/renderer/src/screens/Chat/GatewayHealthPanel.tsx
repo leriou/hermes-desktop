@@ -4,7 +4,8 @@ import {
   startGateway,
   stopGateway,
   copyDiagnostics,
-  copyToClipboard
+  copyToClipboard,
+  getBuildInfo
 } from "@renderer/lib/hermes-tauri";
 import {
   Activity,
@@ -13,11 +14,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Info,
-  Terminal
+  Terminal,
+  Hash,
+  Package,
+  FolderOpen
 } from "lucide-react";
 
 export function GatewayHealthPanel(): React.JSX.Element {
   const [health, setHealth] = useState<any>(null);
+  const [buildInfo, setBuildInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setSaved] = useState(false);
 
@@ -28,6 +33,10 @@ export function GatewayHealthPanel(): React.JSX.Element {
     } catch (e) {
       console.error(e);
     }
+  }, []);
+
+  useEffect(() => {
+    getBuildInfo().then(setBuildInfo).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -122,6 +131,28 @@ export function GatewayHealthPanel(): React.JSX.Element {
           </span>
         </div>
       </div>
+
+      {buildInfo && (
+        <div className="gateway-health-build-info">
+          <div className="path-item">
+            <Package size={14} />
+            <span className="path-label">Version:</span>
+            <span className="path-status">{buildInfo.version}</span>
+          </div>
+          <div className="path-item">
+            <Hash size={14} />
+            <span className="path-label">Commit:</span>
+            <span className="path-status">{buildInfo.gitCommit}</span>
+          </div>
+          <div className="path-item">
+            <FolderOpen size={14} />
+            <span className="path-label">App Data:</span>
+            <span className="path-status truncate" title={buildInfo.appDataDir}>
+              {buildInfo.appDataDir ? buildInfo.appDataDir.split("/").slice(-2).join("/") : "unknown"}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="gateway-health-actions">
         <button

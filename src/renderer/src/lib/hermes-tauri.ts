@@ -829,6 +829,18 @@ export function installUpdate(): Promise<void> {
 export function getAppVersion(): Promise<string> {
   return invoke("get_app_version");
 }
+export function getBuildInfo(): Promise<{
+  version: string;
+  gitCommit: string;
+  buildTimestamp: string;
+  buildTimeDisplay: string;
+  hermesHome: string;
+  pythonPath: string;
+  repoPath: string;
+  appDataDir: string;
+}> {
+  return invoke("get_build_info");
+}
 export function onUpdateAvailable(
   callback: (info: { version: string; releaseNotes: string }) => void,
 ): () => void {
