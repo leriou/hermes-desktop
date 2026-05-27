@@ -338,6 +338,9 @@ export function stopGateway(profile?: string): Promise<boolean> {
 export function gatewayStatus(): Promise<boolean> {
   return invoke("gateway_status");
 }
+export function copyDiagnostics(): Promise<string> {
+  return invoke("copy_diagnostics");
+}
 export function runtimeHealth(): Promise<{
   status: "Stopped" | "Starting" | "Ready" | "Reconnecting" | "Failed";
   restartCount: number;

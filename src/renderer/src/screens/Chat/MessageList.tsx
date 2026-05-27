@@ -14,6 +14,7 @@ import type {
   ToolGroupMessage,
   TodoMessage,
   ToolCallMessage,
+  TodoItem,
 } from "./types";
 
 interface MessageListProps {
@@ -22,6 +23,8 @@ interface MessageListProps {
   toolProgress: string | null;
   streamingText?: string;
   streamingReasoning?: string;
+  scrollerRef?: React.Ref<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
+  todos?: TodoItem[];
 }
 
 function getActiveToolCall(messages: ChatMessage[]): ToolCallMessage | null {
@@ -335,6 +338,8 @@ export const MessageList = memo(function MessageList({
   toolProgress,
   streamingText,
   streamingReasoning,
+  scrollerRef,
+  todos,
 }: MessageListProps): React.JSX.Element {
   const visibleMessages = useMemo(
     () =>
@@ -344,12 +349,13 @@ export const MessageList = memo(function MessageList({
         toolProgress,
         streamingText,
         streamingReasoning,
+        todos,
       }),
-    [messages, isLoading, toolProgress, streamingText, streamingReasoning],
+    [messages, isLoading, toolProgress, streamingText, streamingReasoning, todos],
   );
 
   return (
-    <>
+    <div className="chat-messages-inner" ref={scrollerRef}>
       {visibleMessages.map((msg, i) => {
         const k = (msg as { kind?: string }).kind;
         if (k === "reasoning") {
@@ -463,6 +469,6 @@ export const MessageList = memo(function MessageList({
           />
         );
       })}
-    </>
+    </div>
   );
 });
