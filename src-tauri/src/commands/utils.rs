@@ -19,8 +19,9 @@ pub async fn run_hermes_cli(app: &AppHandle, args: &[&str]) -> Result<String, St
         .await
         .map_err(|e| format!("Failed to run hermes CLI: {}", e))?;
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let capped_stdout = if stdout.len() > 10000 {
-        format!("{}... [truncated]", &stdout[..10000])
+    let capped_stdout = if stdout.len() > 100000 {
+        let trunc: String = stdout.chars().take(100_000).collect();
+        format!("{}... [truncated]", trunc)
     } else {
         stdout
     };
