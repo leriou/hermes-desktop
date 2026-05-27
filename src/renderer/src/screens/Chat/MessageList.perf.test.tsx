@@ -56,11 +56,10 @@ describe("MessageList perf smoke: long transcript", () => {
   it("renders 200 tool call rows without crashing", () => {
     const messages = makeToolRows(200);
     const start = performance.now();
-    const { container } = renderWithI18n(
+    renderWithI18n(
       <MessageList messages={messages} toolProgress={null} isLoading={false} />,
     );
     const elapsed = performance.now() - start;
-    const toolRows = container.querySelectorAll("[data-tool-row]");
     expect(elapsed).toBeLessThan(3000);
   });
 
