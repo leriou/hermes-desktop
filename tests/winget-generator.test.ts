@@ -45,14 +45,14 @@ describe("generateWingetManifests", () => {
     const distDir = join(TEST_DIR, "dist");
     mkdirSync(distDir, { recursive: true });
     writeFileSync(
-      join(distDir, "hermes-desktop-9.9.9-setup.exe"),
+      join(distDir, "hermes-caduceus-9.9.9-setup.exe"),
       "fake-installer-bytes",
     );
 
     generateWingetManifests({
       rootDir: TEST_DIR,
       version: "9.9.9",
-      name: "hermes-desktop",
+      name: "hermes-caduceus",
       publishOwner: "fathah",
     });
 
@@ -62,16 +62,16 @@ describe("generateWingetManifests", () => {
       "manifests",
       "n",
       "NousResearch",
-      "HermesDesktop",
+      "HermesCaduceus",
       "9.9.9",
     );
     expect(
-      existsSync(join(outDir, "NousResearch.HermesDesktop.installer.yaml")),
+      existsSync(join(outDir, "NousResearch.HermesCaduceus.installer.yaml")),
     ).toBe(true);
     expect(
-      existsSync(join(outDir, "NousResearch.HermesDesktop.locale.en-US.yaml")),
+      existsSync(join(outDir, "NousResearch.HermesCaduceus.locale.en-US.yaml")),
     ).toBe(true);
-    expect(existsSync(join(outDir, "NousResearch.HermesDesktop.yaml"))).toBe(
+    expect(existsSync(join(outDir, "NousResearch.HermesCaduceus.yaml"))).toBe(
       true,
     );
   });
@@ -81,14 +81,14 @@ describe("generateWingetManifests", () => {
     const distDir = join(TEST_DIR, "dist");
     mkdirSync(distDir, { recursive: true });
     writeFileSync(
-      join(distDir, "hermes-desktop-9.9.9-setup.exe"),
+      join(distDir, "hermes-caduceus-9.9.9-setup.exe"),
       "fake-installer-bytes",
     );
 
     generateWingetManifests({
       rootDir: TEST_DIR,
       version: "9.9.9",
-      name: "hermes-desktop",
+      name: "hermes-caduceus",
       publishOwner: "fathah",
     });
 
@@ -98,14 +98,14 @@ describe("generateWingetManifests", () => {
       "manifests",
       "n",
       "NousResearch",
-      "HermesDesktop",
+      "HermesCaduceus",
       "9.9.9",
-      "NousResearch.HermesDesktop.installer.yaml",
+      "NousResearch.HermesCaduceus.installer.yaml",
     );
     const content = readFileSync(outFile, "utf-8");
     expect(content).toContain("Version: 9.9.9");
     expect(content).toContain(
-      "Url: https://github.com/fathah/hermes-desktop/releases/download/v9.9.9/hermes-desktop-9.9.9-setup.exe",
+      "Url: https://github.com/fathah/hermes-caduceus/releases/download/v9.9.9/hermes-caduceus-9.9.9-setup.exe",
     );
     expect(content).toMatch(/Sha: [A-F0-9]{64}/);
     expect(content).toMatch(/Date: \d{4}-\d{2}-\d{2}/);
@@ -117,14 +117,14 @@ describe("generateWingetManifests", () => {
     const distDir = join(TEST_DIR, "dist");
     mkdirSync(distDir, { recursive: true });
     writeFileSync(
-      join(distDir, "hermes-desktop-9.9.9-setup.exe"),
+      join(distDir, "hermes-caduceus-9.9.9-setup.exe"),
       "fake-installer-bytes",
     );
 
     generateWingetManifests({
       rootDir: TEST_DIR,
       version: "9.9.9",
-      name: "hermes-desktop",
+      name: "hermes-caduceus",
       publishOwner: "fathah",
     });
 
@@ -134,13 +134,13 @@ describe("generateWingetManifests", () => {
       "manifests",
       "n",
       "NousResearch",
-      "HermesDesktop",
+      "HermesCaduceus",
       "9.9.9",
-      "NousResearch.HermesDesktop.locale.en-US.yaml",
+      "NousResearch.HermesCaduceus.locale.en-US.yaml",
     );
     const content = readFileSync(outFile, "utf-8");
     expect(content).toContain(
-      "Notes: https://github.com/fathah/hermes-desktop/releases/tag/v9.9.9",
+      "Notes: https://github.com/fathah/hermes-caduceus/releases/tag/v9.9.9",
     );
     expect(content).not.toContain("{{");
   });
@@ -153,7 +153,7 @@ describe("generateWingetManifests", () => {
       generateWingetManifests({
         rootDir: TEST_DIR,
         version: "9.9.9",
-        name: "hermes-desktop",
+        name: "hermes-caduceus",
         publishOwner: "fathah",
       }),
     ).toThrow(/installer not found/i);
@@ -164,7 +164,7 @@ describe("generateWingetManifests", () => {
     const distDir = join(TEST_DIR, "dist");
     mkdirSync(distDir, { recursive: true });
     writeFileSync(
-      join(distDir, "hermes-desktop-9.9.9-setup.exe"),
+      join(distDir, "hermes-caduceus-9.9.9-setup.exe"),
       "fake-installer-bytes",
     );
 
@@ -172,7 +172,7 @@ describe("generateWingetManifests", () => {
       generateWingetManifests({
         rootDir: TEST_DIR,
         version: "9.9.9",
-        name: "hermes-desktop",
+        name: "hermes-caduceus",
         publishOwner: "fathah",
       }),
     ).toThrow(/templates not found/i);

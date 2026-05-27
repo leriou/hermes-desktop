@@ -1,5 +1,5 @@
 /**
- * Canonical API type definitions for the Hermes Desktop app.
+ * Canonical API type definitions for the Hermes Caduceus app.
  *
  * The Tauri invoke adapter in hermes-tauri.ts must satisfy this interface.
  */

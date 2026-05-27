@@ -30,7 +30,7 @@ pub async fn copy_diagnostics(state: State<'_, AppState>, app: AppHandle) -> Res
     let build_ts = env!("BUILD_TIME").to_string();
 
     let mut report = String::new();
-    report.push_str(&format!("Hermes Desktop v{} (commit {})\n", version, commit));
+    report.push_str(&format!("Hermes Caduceus v{} (commit {})\n", version, commit));
     report.push_str(&format!("Build timestamp: {}\n", build_ts));
     report.push_str(&format!("Gateway status: {}\n", health.get("status").and_then(|v| v.as_str()).unwrap_or("unknown")));
     if let Some(err) = health.get("lastError").and_then(|v| v.as_str()) {

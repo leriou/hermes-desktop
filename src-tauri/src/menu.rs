@@ -127,7 +127,7 @@ pub fn setup_menu(app: &AppHandle) -> tauri::Result<()> {
             "menu-zoom-in" => { if let Some(w) = app_handle.get_webview_window("main") { let _ = w.eval("window.__tauriZoomLevel=Math.min(3,(window.__tauriZoomLevel||1)+0.1);if(window.__TAURI_INTERNALS__){import('@tauri-apps/api/webview').then(m=>m.getCurrentWebview().setZoom(window.__tauriZoomLevel))}"); } }
             "menu-zoom-out" => { if let Some(w) = app_handle.get_webview_window("main") { let _ = w.eval("window.__tauriZoomLevel=Math.max(0.3,(window.__tauriZoomLevel||1)-0.1);if(window.__TAURI_INTERNALS__){import('@tauri-apps/api/webview').then(m=>m.getCurrentWebview().setZoom(window.__tauriZoomLevel))}"); } }
             "menu-help-github" => { let _ = open_url(app_handle, "https://github.com/NousResearch/hermes-agent/"); }
-            "menu-help-report" => { let _ = open_url(app_handle, "https://github.com/fathah/hermes-desktop/issues"); }
+            "menu-help-report" => { let _ = open_url(app_handle, "https://github.com/fathah/hermes-caduceus/issues"); }
             "menu-zoom" => { if let Some(w) = app_handle.get_webview_window("main") { let _ = w.eval("window.__tauriZoomLevel=(window.__tauriZoomLevel||1)===1?1.5:1;if(window.__TAURI_INTERNALS__){import('@tauri-apps/api/webview').then(m=>m.getCurrentWebview().setZoom(window.__tauriZoomLevel))}"); } }
             "menu-bring-all-to-front" => { if let Some(w) = app_handle.get_webview_window("main") { let _ = w.set_focus(); } }
             _ => {}

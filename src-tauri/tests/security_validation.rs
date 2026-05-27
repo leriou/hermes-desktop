@@ -100,7 +100,7 @@ mod security {
 
     #[test]
     fn diagnostics_output_excludes_secrets() {
-        let sample = "Hermes Desktop v0.1.0 (commit abc1234)\nGateway status: Ready\n";
+        let sample = "Hermes Caduceus v0.1.0 (commit abc1234)\nGateway status: Ready\n";
         assert!(!sample.contains("api_key"));
         assert!(!sample.contains("Bearer"));
         assert!(!sample.contains("token"));

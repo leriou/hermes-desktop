@@ -1,17 +1,17 @@
 # Generated from this template by scripts/generate-winget-manifests.mjs.
-PackageIdentifier: NousResearch.HermesDesktop
+PackageIdentifier: NousResearch.HermesCaduceus
 PackageVersion: { { VERSION } }
 PackageLocale: en-US
 Publisher: Nous Research
-PublisherUrl: https://github.com/fathah/hermes-desktop
-PublisherSupportUrl: https://github.com/fathah/hermes-desktop/issues
+PublisherUrl: https://github.com/fathah/hermes-caduceus
+PublisherSupportUrl: https://github.com/fathah/hermes-caduceus/issues
 PackageName: Hermes Agent
-PackageUrl: https://github.com/fathah/hermes-desktop
+PackageUrl: https://github.com/fathah/hermes-caduceus
 License: MIT
-LicenseUrl: https://github.com/fathah/hermes-desktop/blob/main/LICENSE
+LicenseUrl: https://github.com/fathah/hermes-caduceus/blob/main/LICENSE
 ShortDescription: Self-improving AI assistant desktop app
 Description: |-
-  Hermes Desktop is a native desktop app for installing, configuring, and chatting
+  Hermes Caduceus is a native desktop app for installing, configuring, and chatting
   with Hermes Agent — a self-improving AI assistant with tool use, multi-platform
   messaging, and a closed learning loop.
 Tags:
