@@ -217,7 +217,7 @@ impl<R: Runtime> TuiGateway<R> {
             }
         }));
 
-        let res = timeout(Duration::from_secs(10), rx).await;
+        let res = timeout(Duration::from_secs(60), rx).await;
         self.app.unlisten(ready_handler_id.0);
 
         match res {
@@ -230,7 +230,7 @@ impl<R: Runtime> TuiGateway<R> {
                 Ok(())
             }
             _ => {
-                log_error("gateway", "start", "TIMEOUT waiting for gateway.ready (10s)");
+                log_error("gateway", "start", "TIMEOUT waiting for gateway.ready (60s)");
                 self.stop().await;
                 self.record_failure("Startup timeout".to_string(), GatewayStatus::Starting).await;
                 let mut inner = self.inner.lock().await;
@@ -388,7 +388,7 @@ impl<R: Runtime> TuiGateway<R> {
         // Proactive watchdog for startup timeout
         let watchdog_gw = self.clone();
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(15)).await;
+            tokio::time::sleep(Duration::from_secs(65)).await;
             let status = { watchdog_gw.inner.lock().await.status };
             if status == GatewayStatus::Starting || status == GatewayStatus::Reconnecting {
                 log_error("gateway", "watchdog", "STALE state detected after 15s, forcing failure");
@@ -467,7 +467,7 @@ impl<R: Runtime> TuiGateway<R> {
                 }
             }));
 
-            let res = timeout(Duration::from_secs(10), rx).await;
+            let res = timeout(Duration::from_secs(60), rx).await;
             gateway.app.unlisten(ready_handler_id.0);
 
             match res {

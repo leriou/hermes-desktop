@@ -2039,6 +2039,89 @@
   cursor: not-allowed;
 }
 
+.chat-voice-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+
+.chat-voice-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.chat-voice-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chat-voice-btn-active {
+  color: var(--color-red);
+}
+
+.chat-voice-btn-active:hover:not(:disabled) {
+  color: var(--color-red);
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.chat-voice-pct {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 8px;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  padding: 0 2px;
+  border-radius: 3px;
+  line-height: 1.2;
+}
+
+.chat-voice-pulse {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-red);
+  animation: voice-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.4; transform: translateX(-50%) scale(1.5); }
+}
+
+.chat-voice-loading {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-blue);
+  animation: voice-loading 0.8s ease-in-out infinite;
+}
+
+@keyframes voice-loading {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 .chat-attachment-strip {
   display: flex;
   flex-wrap: wrap;
@@ -3651,8 +3734,133 @@
   color: var(--text-primary);
 }
 
-.chat-model-custom-input:focus {
-  outline: none;
-  border-color: var(--border-focus);
+/* ── Message Timeline Navigator (Fisheye) ───────────────────────── */
+
+.chat-timeline-navigator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none; /* Let clicks pass through empty space */
+  transition: opacity 0.3s ease;
 }
+
+.chat-timeline-navigator--scrolling {
+  opacity: 0.3;
+}
+
+.chat-timeline-navigator--expanded {
+  pointer-events: auto; /* Capture clicks when expanded/hovered */
+}
+
+.chat-timeline-line-rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: var(--border-soft);
+  transform: translateX(-50%);
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.chat-timeline-navigator--expanded .chat-timeline-line-rail {
+  opacity: 0.5;
+}
+
+.chat-timeline-marker {
+  position: absolute;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px; /* Center horizontally */
+  margin-top: -10px; /* Center vertically on the coordinate */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 2;
+  /* Transform is handled inline by React for the fisheye effect */
+  transition: opacity 0.2s ease, background 0.2s ease;
+  border-radius: 50%;
+}
+
+.chat-timeline-marker:hover {
+  background: var(--surface-hover);
+}
+
+.chat-timeline-marker-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.chat-timeline-navigator--expanded .chat-timeline-marker-dot {
+  background: var(--text-secondary);
+}
+
+.chat-timeline-marker--close .chat-timeline-marker-dot {
+  background: var(--accent);
+  transform: scale(1.2);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.chat-timeline-marker--boundary .chat-timeline-marker-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.chat-timeline-tooltip {
+  position: absolute;
+  right: 100%;
+  margin-right: 12px;
+  background: var(--surface-card-strong);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-soft);
+  padding: 6px 10px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-float-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.chat-timeline-tooltip--visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.chat-timeline-tooltip-time {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-text);
+  letter-spacing: 0.05em;
+}
+
+.chat-timeline-tooltip-text {
+  font-size: 12px;
+  color: var(--text-primary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 

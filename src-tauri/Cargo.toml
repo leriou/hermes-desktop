@@ -36,6 +36,8 @@ regex = "1.12.3"
 serde_yaml = "0.9"
 rusqlite = { version = "0.31", features = ["bundled"] }
 hermes-core = { path = "../packages/hermes-core", default-features = false }
+cpal = "0.15"
+whisper-rs = { version = "0.12", features = ["coreml"] }
 
 [profile.release]
 panic = "abort"

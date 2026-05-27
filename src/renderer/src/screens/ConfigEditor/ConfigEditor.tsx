@@ -1,7 +1,20 @@
 import { readConfigYaml, writeConfigYaml } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import * as yaml from "js-yaml";
-import { Search, X, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  Search,
+  X,
+  ChevronUp,
+  ChevronDown,
+  Plus,
+  Settings,
+  Refresh,
+  Trash,
+  Save,
+  Check,
+  Eye,
+  Code,
+} from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
 
 interface ConfigEditorProps {
@@ -286,8 +299,16 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
     <div className="config-editor-container">
       <div className="config-editor-header">
         <div className="config-editor-header-left">
-          <h2 className="config-editor-title">{t("config.title")}</h2>
-          <span className="config-editor-path">{path}</span>
+          <h2 className="config-editor-title">
+            <Settings
+              size={18}
+              style={{ marginRight: 8, verticalAlign: "middle" }}
+            />
+            {t("config.title")}
+          </h2>
+          <span className="config-editor-path" title={path}>
+            {path}
+          </span>
         </div>
         <div className="config-editor-header-actions">
           <div className="config-view-toggle">
@@ -295,18 +316,20 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
               className={`config-view-btn ${viewMode === "structured" ? "active" : ""}`}
               onClick={() => setViewMode("structured")}
             >
-              {t("config.viewStructured", { defaultValue: "Structured" })}
+              <Eye size={13} style={{ marginRight: 4 }} />
+              {t("config.structured")}
             </button>
             <button
               className={`config-view-btn ${viewMode === "yaml" ? "active" : ""}`}
               onClick={() => setViewMode("yaml")}
             >
-              YAML
+              <Code size={13} style={{ marginRight: 4 }} />
+              {t("config.yaml")}
             </button>
           </div>
           {viewMode === "yaml" && (
             <button
-              className="btn btn-ghost config-editor-search-btn"
+              className="config-editor-search-btn"
               onClick={() => setSearchOpen(!searchOpen)}
               title="Ctrl+F"
             >
@@ -318,6 +341,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
             onClick={load}
             disabled={saving}
           >
+            <Refresh size={14} style={{ marginRight: 4 }} />
             {t("config.reload")}
           </button>
           <button
@@ -325,6 +349,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
             onClick={handleReset}
             disabled={!dirty || saving}
           >
+            <Trash size={14} style={{ marginRight: 4 }} />
             {t("config.discard")}
           </button>
           <button
@@ -332,11 +357,19 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
             onClick={handleSave}
             disabled={!dirty || saving}
           >
-            {saving
-              ? t("config.saving")
-              : saved
-                ? t("config.saved")
-                : t("config.save")}
+            {saving ? (
+              <span>{t("config.saving")}</span>
+            ) : saved ? (
+              <>
+                <Check size={14} style={{ marginRight: 4 }} />
+                <span>{t("config.saved")}</span>
+              </>
+            ) : (
+              <>
+                <Save size={14} style={{ marginRight: 4 }} />
+                <span>{t("config.save")}</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -518,6 +551,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
                   <StructuredBlock
                     sectionKey={key}
                     value={value}
+                    t={t}
                     onUpdate={(newValue) => {
                       if (!parsedYaml) return;
                       const updated = { ...parsedYaml, [key]: newValue };
@@ -543,10 +577,12 @@ export default ConfigEditor;
 function StructuredBlock({
   sectionKey,
   value,
+  t,
   onUpdate,
 }: {
   sectionKey: string;
   value: unknown;
+  t: (key: string, options?: any) => string;
   onUpdate: (newValue: unknown) => void;
 }): React.JSX.Element {
   if (sectionKey === "model" && typeof value === "object" && value !== null) {
@@ -562,10 +598,10 @@ function StructuredBlock({
     typeof value === "object" &&
     value !== null
   ) {
-    return <AliasBlock value={value as Record<string, unknown>} />;
+    return <AliasBlock value={value as Record<string, unknown>} t={t} />;
   }
   if (sectionKey === "fallback_providers" && Array.isArray(value)) {
-    return <FallbackBlock value={value} onUpdate={onUpdate} />;
+    return <FallbackBlock value={value} onUpdate={onUpdate} t={t} />;
   }
   if (
     (sectionKey === "display" || sectionKey === "approvals") &&
@@ -576,6 +612,7 @@ function StructuredBlock({
       <ScalarMapBlock
         value={value as Record<string, unknown>}
         onUpdate={onUpdate}
+        t={t}
       />
     );
   }
@@ -588,6 +625,7 @@ function StructuredBlock({
       <ProvidersBlock
         value={value as Record<string, unknown>}
         onUpdate={onUpdate}
+        t={t}
       />
     );
   }
@@ -615,7 +653,12 @@ function ModelBlock({
             className="input config-struct-input"
             type={f === "max_tokens" ? "number" : "text"}
             value={String(value[f] ?? "")}
-            onChange={(e) => onUpdate({ ...value, [f]: e.target.value })}
+            onChange={(e) =>
+              onUpdate({
+                ...value,
+                [f]: f === "max_tokens" ? Number(e.target.value) : e.target.value,
+              })
+            }
             placeholder={f}
           />
         </div>
@@ -626,8 +669,10 @@ function ModelBlock({
 
 function AliasBlock({
   value,
+  t,
 }: {
   value: Record<string, unknown>;
+  t: (k: string, o?: any) => string;
 }): React.JSX.Element {
   const entries = Object.entries(value);
   return (
@@ -644,24 +689,20 @@ function AliasBlock({
         </div>
       ))}
       {entries.length === 0 && (
-        <div className="config-struct-empty">
-          {t2("config.noAliases", { defaultValue: "No aliases configured" })}
-        </div>
+        <div className="config-struct-empty">{t("config.noAliases")}</div>
       )}
     </div>
   );
 }
 
-function t2(key: string, opts?: Record<string, unknown>): string {
-  return (opts?.defaultValue as string) || key;
-}
-
 function FallbackBlock({
   value,
   onUpdate,
+  t,
 }: {
   value: unknown[];
   onUpdate: (v: unknown) => void;
+  t: (k: string, o?: any) => string;
 }): React.JSX.Element {
   return (
     <div className="config-struct-fallback-list">
@@ -677,13 +718,14 @@ function FallbackBlock({
           <button
             className="btn-ghost config-struct-fallback-remove"
             onClick={() => onUpdate(value.filter((_, idx) => idx !== i))}
+            title="Remove"
           >
-            ×
+            <Trash size={12} />
           </button>
         </div>
       ))}
       {value.length === 0 && (
-        <div className="config-struct-empty">No fallback providers</div>
+        <div className="config-struct-empty">{t("config.noFallbacks")}</div>
       )}
     </div>
   );
@@ -692,9 +734,11 @@ function FallbackBlock({
 function ScalarMapBlock({
   value,
   onUpdate,
+  t,
 }: {
   value: Record<string, unknown>;
   onUpdate: (v: unknown) => void;
+  t: (k: string, o?: any) => string;
 }): React.JSX.Element {
   return (
     <div className="config-struct-fields">
@@ -710,7 +754,7 @@ function ScalarMapBlock({
         </div>
       ))}
       {Object.keys(value).length === 0 && (
-        <div className="config-struct-empty">No entries</div>
+        <div className="config-struct-empty">{t("common.noEntries")}</div>
       )}
     </div>
   );
@@ -719,9 +763,11 @@ function ScalarMapBlock({
 function ProvidersBlock({
   value,
   onUpdate,
+  t,
 }: {
   value: Record<string, unknown>;
   onUpdate: (v: unknown) => void;
+  t: (k: string, o?: any) => string;
 }): React.JSX.Element {
   function handleProviderFieldChange(
     provName: string,
@@ -800,7 +846,7 @@ function ProvidersBlock({
                 onClick={() => handleRemoveProvider(name)}
                 title="Remove provider"
               >
-                ×
+                <Trash size={14} />
               </button>
             </div>
             <div className="config-struct-fields">
@@ -842,7 +888,7 @@ function ProvidersBlock({
                       onClick={() => handleRemoveModel(name, modelId)}
                       title="Remove model"
                     >
-                      ×
+                      <Trash size={12} />
                     </button>
                   </div>
                 ))}
@@ -851,15 +897,16 @@ function ProvidersBlock({
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => handleAddModel(name)}
-              style={{ marginTop: 6 }}
+              style={{ marginTop: 8 }}
             >
-              + Model
+              <Plus size={12} style={{ marginRight: 4 }} />
+              Model
             </button>
           </div>
         );
       })}
       {Object.keys(value).length === 0 && (
-        <div className="config-struct-empty">No providers configured</div>
+        <div className="config-struct-empty">{t("config.noProviders")}</div>
       )}
     </div>
   );

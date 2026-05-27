@@ -4,6 +4,7 @@ export {
   Brain,
   Building,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   Clock,
   Copy,
@@ -25,6 +26,8 @@ export {
   Users,
   Wrench,
   X,
+  Save,
+  Eye,
 } from "lucide-react";
 
 export { RefreshCw as Refresh } from "lucide-react";

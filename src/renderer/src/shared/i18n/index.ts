@@ -24,6 +24,13 @@ import agentsEn from "./locales/en/agents";
 import soulEn from "./locales/en/soul";
 import personaEn from "./locales/en/persona";
 import pluginsEn from "./locales/en/plugins";
+import pluginsZh from "./locales/zh-CN/plugins";
+import pluginsZhTw from "./locales/zh-TW/plugins";
+import pluginsJa from "./locales/ja/plugins";
+import pluginsEs from "./locales/es/plugins";
+import pluginsId from "./locales/id/plugins";
+import pluginsPt from "./locales/pt-BR/plugins";
+import pluginsPtPt from "./locales/pt-PT/plugins";
 import memoryEn from "./locales/en/memory";
 import installEn from "./locales/en/install";
 import constantsEn from "./locales/en/constants";
@@ -215,7 +222,7 @@ export const resources = {
       agents: agentsEs,
       soul: soulEs,
       persona: personaEn,
-      plugins: pluginsEn,
+      plugins: pluginsEs,
       memory: memoryEs,
       install: installEs,
       constants: constantsEs,
@@ -241,7 +248,7 @@ export const resources = {
       agents: agentsId,
       soul: soulId,
       persona: personaEn,
-      plugins: pluginsEn,
+      plugins: pluginsId,
       memory: memoryId,
       install: installId,
       constants: constantsId,
@@ -267,7 +274,7 @@ export const resources = {
       agents: agentsZh,
       soul: soulZh,
       persona: personaEn,
-      plugins: pluginsEn,
+      plugins: pluginsZh,
       memory: memoryZh,
       install: installZh,
       constants: constantsZh,
@@ -293,7 +300,7 @@ export const resources = {
       agents: agentsZhTw,
       soul: soulZhTw,
       persona: personaEn,
-      plugins: pluginsEn,
+      plugins: pluginsZhTw,
       memory: memoryZhTw,
       install: installZhTw,
       constants: constantsZhTw,
@@ -319,7 +326,7 @@ export const resources = {
       agents: agentsPt,
       soul: soulPt,
       persona: personaEn,
-      plugins: pluginsEn,
+      plugins: pluginsPt,
       memory: memoryPt,
       install: installPt,
       constants: constantsPt,
@@ -345,7 +352,7 @@ export const resources = {
       agents: agentsPtPt,
       soul: soulPtPt,
       persona: personaEn,
-      plugins: pluginsEn,
+      plugins: pluginsPtPt,
       memory: memoryPtPt,
       install: installPtPt,
       constants: constantsPtPt,
@@ -371,7 +378,7 @@ export const resources = {
       agents: agentsJa,
       soul: soulJa,
       persona: personaEn,
-      plugins: pluginsEn,
+      plugins: pluginsJa,
       memory: memoryJa,
       install: installJa,
       constants: constantsJa,

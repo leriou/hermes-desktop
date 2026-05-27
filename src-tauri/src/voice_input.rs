@@ -56,7 +56,7 @@ struct InputStreamSpec {
 }
 
 fn model_dir() -> PathBuf {
-    let home = python::get_hermes_home(None);
+    let home = python::get_hermes_home::<tauri::Wry>(None);
     home.join("models").join("whisper")
 }
 
@@ -428,10 +428,13 @@ fn traditional_to_simplified_char(ch: char) -> char {
 }
 
 fn is_non_speech_token(seg: &str) -> bool {
-    matches!(
-        seg.trim().to_ascii_lowercase().as_str(),
-        "[music]" | "[sound]" | "[noise]" | "[silence]" | "(music)" | "(sound)" | "(noise)" | "(silence)"
-    )
+    let s = seg.trim().to_ascii_lowercase();
+    s.starts_with('[') && s.ends_with(']')
+        || matches!(
+            s.as_str(),
+            "[music]" | "[sound]" | "[noise]" | "[silence]" | "[blank_audio]"
+            | "(music)" | "(sound)" | "(noise)" | "(silence)"
+        )
 }
 
 /// Initialize the audio stream on the main thread during app setup.

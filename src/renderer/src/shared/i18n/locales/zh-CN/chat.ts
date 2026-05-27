@@ -38,6 +38,10 @@ export default {
   attachReadFailed: "{{name}}：无法读取",
   attachRemoteModeBinary:
     "{{name}}：PDF/二进制附件需要本地模式 — 图片和文本文件仍可使用。",
+  voiceStart: "语音输入",
+  voiceStop: "停止录音",
+  voiceDownloading: "正在下载模型... {{percent}}%",
+  voiceTranscribing: "正在转写...",
   fastMode: "快速模式",
   fastModeOn: "快速模式 开启",
   fastModeActive: "优先处理已激活 — 在支持的模型上降低延迟。点击禁用。",

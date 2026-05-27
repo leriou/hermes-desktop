@@ -7,7 +7,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Send, Square as Stop, Slash, Paperclip } from "lucide-react";
+import { Send, Square as Stop, Slash, Paperclip, Mic, MicOff } from "lucide-react";
 import { isImeComposing } from "./keyboard";
 import { useI18n } from "../../components/useI18n";
 import { SLASH_COMMANDS, type SlashCommand } from "./slashCommands";
@@ -20,6 +20,14 @@ import {
 import { AttachmentChip } from "../../components/AttachmentChip";
 import type { Attachment } from "@shared/attachments";
 import type { ClarifyRequest } from "./types";
+import {
+  voiceModelStatus,
+  voiceDownloadModel,
+  voiceStart,
+  voiceStop,
+  onVoiceDownloadProgress,
+  onVoiceRecordingStopped,
+} from "../../lib/hermes-tauri";
 
 export interface ChatInputHandle {
   setText(text: string): void;
@@ -38,6 +46,7 @@ interface ChatInputProps {
   onSubmit: (text: string, attachments: Attachment[]) => void;
   onQuickAsk: (text: string, attachments: Attachment[]) => void;
   onAbort: () => void;
+  onVoiceTranscript?: (text: string) => void;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
@@ -51,6 +60,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       onSubmit,
       onQuickAsk,
       onAbort,
+      onVoiceTranscript,
     },
     ref,
   ): React.JSX.Element {
@@ -64,6 +74,82 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const slashMenuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    type VoicePhase = "idle" | "downloading" | "recording" | "transcribing";
+    const [voicePhase, setVoicePhase] = useState<VoicePhase>("idle");
+    const [voiceDownloadPct, setVoiceDownloadPct] = useState(0);
+    const voicePhaseRef = useRef<VoicePhase>("idle");
+
+    async function handleVoiceToggle(): Promise<void> {
+      if (voicePhase === "recording") {
+        voicePhaseRef.current = "transcribing";
+        setVoicePhase("transcribing");
+        try {
+          const transcript = await voiceStop();
+          if (transcript && onVoiceTranscript) {
+            onVoiceTranscript(transcript);
+          }
+        } catch (err) {
+          console.error("[voice] Transcription failed:", err);
+        } finally {
+          voicePhaseRef.current = "idle";
+          setVoicePhase("idle");
+        }
+        return;
+      }
+
+      try {
+        const status = await voiceModelStatus();
+        if (!status.downloaded) {
+          voicePhaseRef.current = "downloading";
+          setVoicePhase("downloading");
+          setVoiceDownloadPct(0);
+          const unsub = onVoiceDownloadProgress((info) => {
+            setVoiceDownloadPct(info.percent);
+          });
+          try {
+            await voiceDownloadModel();
+          } finally {
+            unsub();
+          }
+        }
+
+        voicePhaseRef.current = "recording";
+        setVoicePhase("recording");
+        const unsubStopped = onVoiceRecordingStopped(() => {
+          if (voicePhaseRef.current !== "recording") return;
+          voicePhaseRef.current = "transcribing";
+          setVoicePhase("transcribing");
+          voiceStop()
+            .then((transcript) => {
+              if (transcript && onVoiceTranscript) {
+                onVoiceTranscript(transcript);
+              }
+            })
+            .catch((err) => console.error("[voice] Auto-transcription failed:", err))
+            .finally(() => {
+              voicePhaseRef.current = "idle";
+              setVoicePhase("idle");
+            });
+        });
+
+        try {
+          await voiceStart();
+        } catch (err) {
+          unsubStopped();
+          throw err;
+        }
+
+        // Auto-cleanup listener after 65s safety timeout
+        setTimeout(() => {
+          unsubStopped();
+        }, 65_000);
+      } catch (err) {
+        console.error("[voice] Start failed:", err);
+        voicePhaseRef.current = "idle";
+        setVoicePhase("idle");
+      }
+    }
 
     const autoResize = useCallback((): void => {
       const el = inputRef.current;
@@ -441,6 +527,37 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
           >
             <Paperclip size={16} />
           </button>
+          {voicePhase !== "idle" ? (
+            <button
+              className={`chat-voice-btn ${voicePhase === "recording" ? "chat-voice-btn-active" : ""}`}
+              onClick={handleVoiceToggle}
+              disabled={voicePhase === "downloading" || voicePhase === "transcribing"}
+              title={
+                voicePhase === "downloading"
+                  ? t("chat.voiceDownloading", { percent: voiceDownloadPct })
+                  : voicePhase === "recording"
+                    ? t("chat.voiceStop")
+                    : t("chat.voiceTranscribing")
+              }
+              type="button"
+            >
+              {voicePhase === "recording" ? <MicOff size={16} /> : <Mic size={16} />}
+              {voicePhase === "downloading" && (
+                <span className="chat-voice-pct">{voiceDownloadPct}%</span>
+              )}
+              {voicePhase === "recording" && <span className="chat-voice-pulse" />}
+              {voicePhase === "transcribing" && <span className="chat-voice-loading" />}
+            </button>
+          ) : (
+            <button
+              className="chat-voice-btn"
+              onClick={handleVoiceToggle}
+              title={t("chat.voiceStart")}
+              type="button"
+            >
+              <Mic size={16} />
+            </button>
+          )}
           <textarea
             ref={inputRef}
             className="chat-input"

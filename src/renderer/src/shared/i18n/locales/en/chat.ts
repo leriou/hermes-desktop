@@ -43,6 +43,10 @@ export default {
   attachReadFailed: "{{name}}: could not be read",
   attachRemoteModeBinary:
     "{{name}}: PDF/binary attachments require local mode — images and text files still work.",
+  voiceStart: "Voice input",
+  voiceStop: "Stop recording",
+  voiceDownloading: "Downloading model... {{percent}}%",
+  voiceTranscribing: "Transcribing...",
   fastMode: "Fast Mode",
   fastModeOn: "Fast Mode ON",
   fastModeActive:

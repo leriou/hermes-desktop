@@ -1276,6 +1276,35 @@ export function tuiCommandsCatalog(): Promise<any> {
 export function voiceTts(text: string): Promise<any> {
   return invoke("voice_tts", { text });
 }
+
+// Voice input
+export function voiceModelStatus(): Promise<{
+  downloaded: boolean;
+  path: string;
+  size: number;
+}> {
+  return invoke("voice_model_status");
+}
+export function voiceDownloadModel(): Promise<void> {
+  return invoke("voice_download_model");
+}
+export function voiceStart(): Promise<void> {
+  return invoke("voice_start");
+}
+export function voiceStop(): Promise<string> {
+  return invoke("voice_stop");
+}
+export function onVoiceDownloadProgress(
+  callback: (info: { percent: number }) => void,
+): () => void {
+  return listenOnce("voice-download-progress", callback);
+}
+export function onVoiceRecordingStopped(
+  callback: () => void,
+): () => void {
+  return listenOnce("voice-recording-stopped", callback);
+}
+
 export function onTuiEvent(
   callback: (params: { type: string; payload: any; sid?: string }) => void,
 ): () => void {

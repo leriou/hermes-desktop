@@ -36,6 +36,7 @@ export default {
   desktop: "Desktop",
   noResults: "No results found",
   noData: "No data yet",
+  noEntries: "No entries found",
   optional: "optional",
   devOnly: "Developer only",
   updateAvailable: "Update v{{version}}",

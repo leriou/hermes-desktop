@@ -560,3 +560,29 @@ pub async fn get_related_session_ids(app: AppHandle, session_id: String, profile
 pub async fn delete_session_chain(app: AppHandle, session_id: String, profile: Option<String>) -> Result<Value, String> {
     crate::session_utils::delete_session_chain(Some(&app), &session_id, profile)
 }
+
+// Voice input
+#[command]
+pub fn voice_model_status() -> Result<Value, String> {
+    crate::voice_input::voice_model_status()
+}
+
+#[command]
+pub async fn voice_download_model(app: AppHandle) -> Result<(), String> {
+    crate::voice_input::voice_download_model(app).await
+}
+
+#[command]
+pub fn voice_start(state: State<'_, AppState>) -> Result<(), String> {
+    crate::voice_input::voice_start(&state.voice)
+}
+
+#[command]
+pub async fn voice_stop(state: State<'_, AppState>) -> Result<String, String> {
+    let voice = state.voice.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::voice_input::voice_stop_and_transcribe(&voice)
+    })
+    .await
+    .map_err(|e| format!("Voice transcription task failed: {}", e))?
+}

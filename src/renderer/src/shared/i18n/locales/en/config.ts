@@ -10,4 +10,13 @@ export default {
   noMatch: "No match",
   matchCount: "{{current}} / {{total}}",
   yamlError: "YAML syntax error: {{message}}",
+  structured: "Structured",
+  yaml: "YAML",
+  gotoYaml: "View in YAML",
+  noAliases: "No aliases configured",
+  noFallbacks: "No fallback providers",
+  noProviders: "No providers configured",
+  emptyConfig: "No supported sections found.",
+  diffTitle: "Changes to save",
+  confirmSave: "Confirm Save",
 } as const;

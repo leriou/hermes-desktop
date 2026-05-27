@@ -11,16 +11,19 @@ mod cron_utils;
 mod soul_utils;
 mod model_utils;
 mod menu;
+mod voice_input;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::Mutex;
 use tauri::{Emitter, Runtime};
 use tui_gateway::TuiGateway;
 use ssh_tunnel::SshTunnelManager;
+use voice_input::VoiceState;
 
 pub struct AppState<R: Runtime = tauri::Wry> {
     pub gateway: Mutex<Option<Arc<TuiGateway<R>>>>,
     pub ssh_tunnel: SshTunnelManager,
+    pub voice: Arc<StdMutex<VoiceState>>,
 }
 
 use commands::*;
@@ -45,6 +48,7 @@ pub fn run() {
     .manage(AppState::<tauri::Wry> {
         gateway: Mutex::new(None),
         ssh_tunnel: SshTunnelManager::new(),
+        voice: Arc::new(StdMutex::new(VoiceState::new())),
     })
     .setup(|app| {
       use tauri::Manager;
@@ -53,6 +57,13 @@ pub fn run() {
       println!("Detected Python path: {:?}", python_path);
 
       menu::setup_menu(app.handle())?;
+
+      // Initialize audio stream on main thread (macOS CoreAudio requirement)
+      {
+        use tauri::Manager;
+        let state = app.state::<AppState>();
+        voice_input::init_audio(&state.voice);
+      }
 
       #[cfg(target_os = "macos")]
       {
@@ -138,7 +149,8 @@ pub fn run() {
         tui_set_model, tui_slash_exec, tui_steer, tui_submit_prompt, 
         tui_tools_configure, tui_tools_list, tui_tools_show, tui_undo, 
         uninstall_skill, update_cron_job, update_memory_entry, update_model, 
-        update_session_title, validate_hermes_home, verify_install, voice_tts, 
+        update_session_title, validate_hermes_home, verify_install, voice_tts,
+        voice_model_status, voice_download_model, voice_start, voice_stop, 
         write_config_yaml, write_memory, write_soul, write_user_profile
     ])
     .build(tauri::generate_context!())

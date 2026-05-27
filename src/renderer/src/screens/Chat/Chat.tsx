@@ -14,6 +14,7 @@ import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 
 import { MessageList } from "./MessageList";
+import { MessageTimelineNavigator } from "./MessageTimelineNavigator";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
 import { InteractionCenter } from "./InteractionCenter";
@@ -153,7 +154,7 @@ function Chat({
     messagesRef,
   });
 
-  const { setContainerRef, userScrolledUp, scrollToBottom } = useChatScroll(
+  const { containerRef, setContainerRef, userScrolledUp, scrollToBottom } = useChatScroll(
     messages,
     isLoading,
     handleLoadEarlierMessages,
@@ -557,14 +558,20 @@ function Chat({
             </div>
           </div>
         ) : (
-          <MessageList
-            messages={messages}
-            isLoading={isLoading}
-            toolProgress={toolProgress}
-            streamingText={streamingText}
-            streamingReasoning={streamingReasoning}
-            todos={todos}
-          />
+          <>
+            <MessageList
+              messages={messages}
+              isLoading={isLoading}
+              toolProgress={toolProgress}
+              streamingText={streamingText}
+              streamingReasoning={streamingReasoning}
+              todos={todos}
+            />
+            <MessageTimelineNavigator
+              messages={messages}
+              containerRef={containerRef}
+            />
+          </>
         )}
         {userScrolledUp && messages.length > 0 && (
           <button
@@ -595,6 +602,9 @@ function Chat({
           onSubmit={actions.handleSend}
           onQuickAsk={actions.handleQuickAsk}
           onAbort={actions.handleAbort}
+          onVoiceTranscript={(text) => {
+            chatInputRef.current?.setText(text);
+          }}
         />
         <div className="chat-bottom-bar">
           <ModelPicker

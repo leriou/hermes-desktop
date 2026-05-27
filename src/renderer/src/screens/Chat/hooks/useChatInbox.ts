@@ -154,11 +154,13 @@ export function useChatInbox({
   const pendingChunksRef = useRef(new Map<string, string>());
   const flushFramesRef = useRef(new Map<string, unknown>());
   const turnCompletedRef = useRef(new Map<string, boolean>());
+  const flushedTextRef = useRef(new Map<string, string>());
 
   function resetTurn(tabId: string): void {
     turnCompletedRef.current.delete(tabId);
     pendingChunksRef.current.delete(tabId);
     flushFramesRef.current.delete(tabId);
+    flushedTextRef.current.delete(tabId);
   }
 
   function clearPendingInteraction(tabId: string): void {
@@ -221,8 +223,10 @@ export function useChatInbox({
         pendingChunksRef.current.delete(tabId);
       }
 
+      const flushedText = flushedTextRef.current.get(tabId) ?? "";
+      flushedTextRef.current.delete(tabId);
+      const text = `${flushedText}${pendingChunk}`;
       const state = sessionsRef.current.get(tabId);
-      const text = `${state?.streamingText ?? ""}${pendingChunk}`;
       const reasoning = state?.streamingReasoning ?? "";
 
       if (!text && !reasoning) return;
@@ -255,9 +259,11 @@ export function useChatInbox({
       const batch = pendingChunksRef.current.get(tabId) ?? "";
       pendingChunksRef.current.delete(tabId);
       if (!batch) return;
+      const total = (flushedTextRef.current.get(tabId) ?? "") + batch;
+      flushedTextRef.current.set(tabId, total);
       const state = sessionsRef.current.get(tabId);
       updateTab(tabId, {
-        streamingText: `${state?.streamingText ?? ""}${batch}`,
+        streamingText: total,
         ...(!chatVisibleRef.current || tabId !== activeTabIdRef.current
           ? { unreadCount: Math.max(1, state?.unreadCount ?? 0) }
           : {}),
@@ -363,9 +369,10 @@ export function useChatInbox({
             "reasoning",
             state?.streamingReasoning || "",
           );
-          const hadStreaming = !!state?.streamingText || !!pendingChunk;
-          // Compute fallback text: already-flushed streamingText + unflushed pending chunk
-          const fallbackText = `${state?.streamingText ?? ""}${pendingChunk}`;
+          const flushedText = flushedTextRef.current.get(tabId) ?? "";
+          flushedTextRef.current.delete(tabId);
+          const hadStreaming = !!flushedText || !!pendingChunk;
+          const fallbackText = `${flushedText}${pendingChunk}`;
           const usage = recordField(payload, "usage");
           const model = stringField(usage, "model");
           updateTab(tabId, { streamingText: "", streamingReasoning: "" });
@@ -793,6 +800,7 @@ export function useChatInbox({
 
     return () => {
       flushFramesRef.current.clear();
+      flushedTextRef.current.clear();
       if (typeof cleanup === "function") {
         cleanup();
       }
