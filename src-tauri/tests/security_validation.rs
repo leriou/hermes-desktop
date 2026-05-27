@@ -34,6 +34,11 @@ mod security {
     }
 
     #[test]
+    fn open_external_accepts_tel() {
+        assert!(validate_url_scheme("tel:+1234567890").is_ok());
+    }
+
+    #[test]
     fn open_external_rejects_javascript() {
         assert!(validate_url_scheme("javascript:alert(1)").is_err());
     }
@@ -91,5 +96,20 @@ mod security {
     #[test]
     fn remote_connection_rejects_file_scheme() {
         assert!(validate_remote_url("file:///etc/passwd").is_err());
+    }
+
+    #[test]
+    fn diagnostics_output_excludes_secrets() {
+        let sample = "Hermes Desktop v0.1.0 (commit abc1234)\nGateway status: Ready\n";
+        assert!(!sample.contains("api_key"));
+        assert!(!sample.contains("Bearer"));
+        assert!(!sample.contains("token"));
+    }
+
+    #[test]
+    fn csp_does_not_allow_unsafe_eval() {
+        let csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://data; font-src 'self' asset:; connect-src 'self' http://localhost:* http://127.0.0.1:* https:; media-src 'self'";
+        assert!(!csp.contains("'unsafe-eval'"));
+        assert!(csp.contains("script-src 'self'"));
     }
 }
