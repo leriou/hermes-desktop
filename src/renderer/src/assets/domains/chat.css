@@ -1927,7 +1927,7 @@
   align-items: flex-end;
   gap: 8px;
   background: var(--surface-composer);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border);
   border-radius: var(--radius-composer);
   padding: 6px 6px 6px 16px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -2291,6 +2291,10 @@
  * juggling required. The chevron is purely visual; the click target is
  * the whole summary row.
  */
+.chat-message.chat-message-history {
+  padding: 2px 0;
+}
+
 .chat-message-history > .chat-history {
   flex: 1;
   min-width: 0;
@@ -3484,6 +3488,11 @@
   position: relative;
   display: flex;
   align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  padding: 2px 4px;
+  box-shadow: var(--shadow-button-press);
 }
 
 .chat-model-trigger {
@@ -3495,8 +3504,8 @@
   color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
   transition: all var(--transition);
 }
 

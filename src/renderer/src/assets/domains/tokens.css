@@ -379,23 +379,13 @@ body {
     color 0.3s ease;
 }
 
-/* ----- Scrollbar (thin, light, hover-visible) ----- */
-::-webkit-scrollbar {
-  width: var(--scrollbar-width, 6px);
-  height: var(--scrollbar-width, 6px);
+/* ----- Scrollbar: hidden by default, only Settings log shows it ----- */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb, rgba(255,255,255,0.08));
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-hover, rgba(255,255,255,0.16));
-}
-::-webkit-scrollbar-corner {
-  background: transparent;
+*::-webkit-scrollbar {
+  display: none;
 }
 
 /* ----- App Shell ----- */

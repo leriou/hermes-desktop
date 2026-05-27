@@ -543,6 +543,22 @@
   word-break: break-word;
 }
 
+.settings-hermes-doctor {
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+}
+.settings-hermes-doctor::-webkit-scrollbar {
+  display: block;
+  width: 3px;
+}
+.settings-hermes-doctor::-webkit-scrollbar-thumb {
+  background: rgba(127, 127, 127, 0.15);
+  border-radius: 2px;
+}
+.settings-hermes-doctor::-webkit-scrollbar-thumb:hover {
+  background: rgba(127, 127, 127, 0.25);
+}
+
 .settings-gateway-row {
   display: flex;
   align-items: center;
