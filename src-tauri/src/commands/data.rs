@@ -234,7 +234,7 @@ pub async fn update_model(app: AppHandle, id: String, fields: Value, profile: Op
 
 #[command]
 pub async fn run_hermes_backup(app: AppHandle, _profile: Option<String>) -> Result<Value, String> {
-    match run_hermes_cli(&app, &["backup"]) {
+    match run_hermes_cli(&app, &["backup"]).await {
         Ok(stdout) => Ok(json!({ "success": true, "path": stdout.trim() })),
         Err(e) => Ok(json!({ "success": false, "error": e })),
     }
@@ -242,7 +242,7 @@ pub async fn run_hermes_backup(app: AppHandle, _profile: Option<String>) -> Resu
 
 #[command]
 pub async fn run_hermes_import(app: AppHandle, archive_path: String, _profile: Option<String>) -> Result<Value, String> {
-    match run_hermes_cli(&app, &["import", &archive_path]) {
+    match run_hermes_cli(&app, &["import", &archive_path]).await {
         Ok(_) => Ok(json!({ "success": true })),
         Err(e) => Ok(json!({ "success": false, "error": e })),
     }
@@ -250,7 +250,7 @@ pub async fn run_hermes_import(app: AppHandle, archive_path: String, _profile: O
 
 #[command]
 pub async fn run_hermes_dump(app: AppHandle) -> Result<Value, String> {
-    run_hermes_cli(&app, &["dump"]).map(|s| json!(s))
+    run_hermes_cli(&app, &["dump"]).await.map(|s| json!(s))
 }
 
 #[command]
@@ -317,10 +317,10 @@ pub async fn read_logs(app: AppHandle, log_file: Option<String>, lines: Option<u
 #[command]
 pub async fn get_toolsets(_state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<Value, String> {
     // Use CLI only — matches Electron's getToolsets which always runs `hermes tools list`
-    run_cli_toolsets(&app, profile)
+    run_cli_toolsets(&app, profile).await
 }
 
-fn run_cli_toolsets(app: &AppHandle, profile: Option<String>) -> Result<Value, String> {
+async fn run_cli_toolsets(app: &AppHandle, profile: Option<String>) -> Result<Value, String> {
     let python_path = python::get_python_path(Some(app));
     let repo_path = python::get_hermes_repo(Some(app));
     let hermes_home = python::get_hermes_home_with_profile(Some(app), profile);
@@ -328,13 +328,13 @@ fn run_cli_toolsets(app: &AppHandle, profile: Option<String>) -> Result<Value, S
         return Ok(json!([]));
     }
 
-    let mut cmd = std::process::Command::new(&python_path);
-    cmd.args(["-m", "hermes_cli.main", "tools", "list"])
+    let output = tokio::process::Command::new(&python_path)
+        .args(["-m", "hermes_cli.main", "tools", "list"])
         .current_dir(repo_path)
         .env("HERMES_HOME", &hermes_home)
-        .env("COLUMNS", "300");
-
-    let output = cmd.output();
+        .env("COLUMNS", "300")
+        .output()
+        .await;
 
     match output {
         Ok(out) => {
@@ -423,8 +423,10 @@ pub async fn set_toolset_enabled(state: State<'_, AppState>, app: AppHandle, key
 
 #[command]
 pub async fn get_plugins(app: AppHandle, _profile: Option<String>) -> Result<Value, String> {
-    let output = run_hermes_cli(&app, &["plugins", "list"])?;
-    Ok(json!(parse_plugins_table(&output)))
+    match run_hermes_cli(&app, &["plugins", "list"]).await {
+        Ok(output) => Ok(json!(parse_plugins_table(&output))),
+        Err(e) => Err(e),
+    }
 }
 
 fn parse_plugins_table(output: &str) -> Vec<Value> {
@@ -487,7 +489,7 @@ fn parse_plugins_table(output: &str) -> Vec<Value> {
 #[command]
 pub async fn set_plugin_enabled(app: AppHandle, name: String, enabled: bool, _profile: Option<String>) -> Result<Value, String> {
     let action = if enabled { "enable" } else { "disable" };
-    run_hermes_cli(&app, &["plugins", action, &name])?;
+    run_hermes_cli(&app, &["plugins", action, &name]).await.map_err(|e| e)?;
     Ok(json!({ "success": true }))
 }
 
@@ -506,11 +508,12 @@ pub async fn install_skill(app: AppHandle, identifier: String, _profile: Option<
     let python_path = python::get_python_path(Some(&app));
     let repo_path = python::get_hermes_repo(Some(&app));
     let hermes_home = python::get_hermes_home(Some(&app));
-    let output = std::process::Command::new(python_path)
+    let output = tokio::process::Command::new(python_path)
         .args(["-m", "hermes_cli.main", "skills", "install", &identifier])
         .current_dir(repo_path)
         .env("HERMES_HOME", hermes_home)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
     if output.status.success() {
         Ok(json!({ "success": true }))
@@ -524,11 +527,12 @@ pub async fn uninstall_skill(app: AppHandle, name: String, _profile: Option<Stri
     let python_path = python::get_python_path(Some(&app));
     let repo_path = python::get_hermes_repo(Some(&app));
     let hermes_home = python::get_hermes_home(Some(&app));
-    let output = std::process::Command::new(python_path)
+    let output = tokio::process::Command::new(python_path)
         .args(["-m", "hermes_cli.main", "skills", "uninstall", &name])
         .current_dir(repo_path)
         .env("HERMES_HOME", hermes_home)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
     if output.status.success() {
         Ok(json!({ "success": true }))

@@ -1,34 +1,48 @@
 use serde_json::{json, Value};
 use tauri::{command, State, AppHandle};
 use crate::AppState;
-use crate::tui_gateway::TuiGateway;
+use crate::tui_gateway::{TuiGateway, GatewayStatus};
 use std::sync::Arc;
 #[command]
 pub async fn start_gateway(state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<bool, String> {
-    let mut gateway_guard = state.gateway.lock().await;
-    if let Some(gw) = gateway_guard.as_ref() {
-        if gw.is_running().await {
-            return Ok(true);
-        }
-    }
-
-    let gw = Arc::new(TuiGateway::new(app, profile));
-    eprintln!("[start_gateway] calling gw.start()...");
-    match gw.clone().start().await {
-        Ok(_) => {
-            eprintln!("[start_gateway] gateway started successfully");
-            *gateway_guard = Some(gw);
-            Ok(true)
-        }
-        Err(e) => {
-            let err_msg = e.to_string();
-            eprintln!("[start_gateway] FAILED: {}", err_msg);
-            if err_msg.contains("Python") || err_msg.contains("venv") {
-                Err("Python environment not found. Please ensure Hermes is installed correctly.".to_string())
-            } else {
-                Err(format!("Failed to start TUI Gateway: {}", err_msg))
+    let (gw, is_new) = {
+        let mut gateway_guard = state.gateway.lock().await;
+        if let Some(existing_gw) = gateway_guard.as_ref() {
+            let status = {
+                let inner = existing_gw.inner.lock().await;
+                inner.status
+            };
+            if status == GatewayStatus::Ready || status == GatewayStatus::Starting || status == GatewayStatus::Reconnecting {
+                return Ok(true);
+            }
+            if status == GatewayStatus::Failed {
+                existing_gw.stop().await;
             }
         }
+        let new_gw = Arc::new(TuiGateway::new(app, profile));
+        *gateway_guard = Some(new_gw.clone());
+        (new_gw, true)
+    };
+
+    if is_new {
+        eprintln!("[start_gateway] starting new gateway instance...");
+        match gw.start().await {
+            Ok(_) => {
+                eprintln!("[start_gateway] gateway started successfully");
+                Ok(true)
+            }
+            Err(e) => {
+                let err_msg = e.to_string();
+                eprintln!("[start_gateway] FAILED: {}", err_msg);
+                if err_msg.contains("Python") || err_msg.contains("venv") {
+                    Err("Python environment not found. Please ensure Hermes is installed correctly.".to_string())
+                } else {
+                    Err(format!("Failed to start TUI Gateway: {}", err_msg))
+                }
+            }
+        }
+    } else {
+        Ok(true)
     }
 }
 
@@ -39,6 +53,29 @@ pub async fn stop_gateway(state: State<'_, AppState>) -> Result<bool, String> {
         gw.stop().await;
     }
     Ok(true)
+}
+
+#[command]
+pub async fn runtime_health(state: State<'_, AppState>) -> Result<Value, String> {
+    let gw = {
+        let gateway_guard = state.gateway.lock().await;
+        gateway_guard.as_ref().cloned()
+    };
+
+    if let Some(gw) = gw {
+        Ok(gw.get_health().await)
+    } else {
+        Ok(json!({
+            "status": "Stopped",
+            "restartCount": 0,
+            "maxRestarts": 5,
+            "activeSessionId": null,
+            "lastError": null,
+            "lastReadyAt": null,
+            "pendingRequests": 0,
+            "paths": null
+        }))
+    }
 }
 
 #[command]

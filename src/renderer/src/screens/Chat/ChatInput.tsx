@@ -162,9 +162,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       [autoResize, ingestFiles],
     );
 
-    // Refocus the textarea when a streaming response ends
+    // Refocus the textarea when a streaming response ends, without stealing focus
     useEffect(() => {
-      if (!isLoading) inputRef.current?.focus();
+      if (!isLoading) {
+        const hasSelection = window.getSelection() && window.getSelection()!.toString().length > 0;
+        if (hasSelection) return;
+        
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl !== document.body && activeEl !== inputRef.current) {
+          return;
+        }
+        
+        inputRef.current?.focus();
+      }
     }, [isLoading]);
 
     // Close slash menu on click outside

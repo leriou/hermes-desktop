@@ -338,6 +338,25 @@ export function stopGateway(profile?: string): Promise<boolean> {
 export function gatewayStatus(): Promise<boolean> {
   return invoke("gateway_status");
 }
+export function runtimeHealth(): Promise<{
+  status: "Stopped" | "Starting" | "Ready" | "Reconnecting" | "Failed";
+  restartCount: number;
+  maxRestarts: number;
+  activeSessionId: string | null;
+  lastError: string | null;
+  lastReadyAt: number | null;
+  pendingRequests: number;
+  paths: {
+    python: string;
+    pythonExists: boolean;
+    repo: string;
+    repoExists: boolean;
+    home: string;
+    homeExists: boolean;
+  } | null;
+}> {
+  return invoke("runtime_health");
+}
 
 // Platform
 export function getPlatformEnabled(

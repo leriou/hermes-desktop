@@ -5,13 +5,13 @@ use super::utils::*;
 
 #[command]
 pub async fn kanban_archive_task(app: AppHandle, task_id: String, profile: Option<String>) -> Result<Value, String> {
-    run_kanban_cli(&app, &["archive", &task_id], profile.as_deref(), false)
+    run_kanban_cli(&app, &["archive", &task_id], profile.as_deref(), false).await
 }
 
 #[command]
 pub async fn kanban_assign_task(app: AppHandle, task_id: String, assignee: Option<String>, profile: Option<String>) -> Result<Value, String> {
     let assignee_val = assignee.as_deref().unwrap_or("none");
-    run_kanban_cli(&app, &["assign", &task_id, assignee_val], profile.as_deref(), false)
+    run_kanban_cli(&app, &["assign", &task_id, assignee_val], profile.as_deref(), false).await
 }
 
 #[command]
@@ -19,12 +19,12 @@ pub async fn kanban_block_task(app: AppHandle, task_id: String, reason: Option<S
     let mut args = vec!["block".to_string(), task_id.clone()];
     if let Some(r) = &reason { args.push(r.clone()); }
     let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &arg_refs, profile.as_deref(), false)
+    run_kanban_cli(&app, &arg_refs, profile.as_deref(), false).await
 }
 
 #[command]
 pub async fn kanban_comment_task(app: AppHandle, task_id: String, body: String, profile: Option<String>) -> Result<Value, String> {
-    run_kanban_cli(&app, &["comment", &task_id, &body], profile.as_deref(), false)
+    run_kanban_cli(&app, &["comment", &task_id, &body], profile.as_deref(), false).await
 }
 
 #[command]
@@ -35,7 +35,7 @@ pub async fn kanban_complete_task(app: AppHandle, task_id: String, result: Optio
         arg_refs.push(r.clone());
     }
     let refs: Vec<&str> = arg_refs.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &refs, profile.as_deref(), false)
+    run_kanban_cli(&app, &refs, profile.as_deref(), false).await
 }
 
 #[command]
@@ -44,7 +44,7 @@ pub async fn kanban_create_board(app: AppHandle, slug: String, name: Option<Stri
     if let Some(n) = &name { args.extend(["--name".to_string(), n.clone()]); }
     if switch_after.unwrap_or(false) { args.push("--switch".to_string()); }
     let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &refs, profile.as_deref(), false)
+    run_kanban_cli(&app, &refs, profile.as_deref(), false).await
 }
 
 #[command]
@@ -78,7 +78,7 @@ pub async fn kanban_create_task(app: AppHandle, input: Value, profile: Option<St
     }
     args.push("--json".to_string());
     let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &refs, profile.as_deref(), true)
+    run_kanban_cli(&app, &refs, profile.as_deref(), true).await
 }
 
 #[command]
@@ -89,9 +89,9 @@ pub async fn kanban_current_board(app: AppHandle, profile: Option<String>) -> Re
     if !python_path.exists() { return Ok(json!(null)); }
     let mut args = vec!["-m", "hermes_cli.main", "kanban", "boards", "show"];
     if let Some(p) = &profile { if p != "default" { args.extend(["-p", p]); } }
-    let output = std::process::Command::new(&python_path)
+    let output = tokio::process::Command::new(&python_path)
         .args(&args).current_dir(repo_path).env("HERMES_HOME", &hermes_home)
-        .output().map_err(|e| e.to_string())?;
+        .output().await.map_err(|e| e.to_string())?;
     if output.status.success() {
         Ok(json!(String::from_utf8_lossy(&output.stdout).trim()))
     } else {
@@ -104,12 +104,12 @@ pub async fn kanban_dispatch_once(app: AppHandle, dry_run: Option<bool>, profile
     let mut args = vec!["dispatch".to_string(), "--json".to_string()];
     if dry_run.unwrap_or(false) { args.push("--dry-run".to_string()); }
     let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &refs, profile.as_deref(), true)
+    run_kanban_cli(&app, &refs, profile.as_deref(), true).await
 }
 
 #[command]
 pub async fn kanban_get_task(app: AppHandle, task_id: String, profile: Option<String>) -> Result<Value, String> {
-    run_kanban_cli(&app, &["show", &task_id, "--json"], profile.as_deref(), true)
+    run_kanban_cli(&app, &["show", &task_id, "--json"], profile.as_deref(), true).await
 }
 
 #[command]
@@ -117,7 +117,7 @@ pub async fn kanban_list_boards(app: AppHandle, include_archived: Option<bool>, 
     let mut args = vec!["boards".to_string(), "list".to_string(), "--json".to_string()];
     if include_archived.unwrap_or(false) { args.push("--all".to_string()); }
     let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &refs, profile.as_deref(), true)
+    run_kanban_cli(&app, &refs, profile.as_deref(), true).await
 }
 
 #[command]
@@ -131,7 +131,7 @@ pub async fn kanban_list_tasks(app: AppHandle, filters: Option<Value>) -> Result
     }
     let profile = filters.as_ref().and_then(|f| f.get("profile")).and_then(|v| v.as_str()).map(|s| s.to_string());
     let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &refs, profile.as_deref(), true)
+    run_kanban_cli(&app, &refs, profile.as_deref(), true).await
 }
 
 #[command]
@@ -139,7 +139,7 @@ pub async fn kanban_reclaim_task(app: AppHandle, task_id: String, reason: Option
     let mut args = vec!["reclaim".to_string(), task_id];
     if let Some(r) = &reason { args.extend(["--reason".to_string(), r.clone()]); }
     let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &refs, profile.as_deref(), false)
+    run_kanban_cli(&app, &refs, profile.as_deref(), false).await
 }
 
 #[command]
@@ -147,20 +147,20 @@ pub async fn kanban_remove_board(app: AppHandle, slug: String, hard_delete: Opti
     let mut args = vec!["boards".to_string(), "rm".to_string(), slug];
     if hard_delete.unwrap_or(false) { args.push("--delete".to_string()); }
     let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_kanban_cli(&app, &refs, profile.as_deref(), false)
+    run_kanban_cli(&app, &refs, profile.as_deref(), false).await
 }
 
 #[command]
 pub async fn kanban_specify_task(app: AppHandle, task_id: String, profile: Option<String>) -> Result<Value, String> {
-    run_kanban_cli(&app, &["specify", &task_id], profile.as_deref(), false)
+    run_kanban_cli(&app, &["specify", &task_id], profile.as_deref(), false).await
 }
 
 #[command]
 pub async fn kanban_switch_board(app: AppHandle, slug: String, profile: Option<String>) -> Result<Value, String> {
-    run_kanban_cli(&app, &["boards", "switch", &slug], profile.as_deref(), false)
+    run_kanban_cli(&app, &["boards", "switch", &slug], profile.as_deref(), false).await
 }
 
 #[command]
 pub async fn kanban_unblock_task(app: AppHandle, task_id: String, profile: Option<String>) -> Result<Value, String> {
-    run_kanban_cli(&app, &["unblock", &task_id], profile.as_deref(), false)
+    run_kanban_cli(&app, &["unblock", &task_id], profile.as_deref(), false).await
 }

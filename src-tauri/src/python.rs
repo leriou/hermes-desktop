@@ -1,10 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::env;
 use std::fs;
-use tauri::AppHandle;
-use tauri::Manager;
+use tauri::{AppHandle, Manager, Runtime};
 
-pub fn get_hermes_home_with_profile(app: Option<&AppHandle>, profile: Option<String>) -> PathBuf {
+pub fn get_hermes_home_with_profile<R: Runtime>(app: Option<&AppHandle<R>>, profile: Option<String>) -> PathBuf {
     let home = get_hermes_home(app);
     if let Some(p) = profile {
         if p != "default" && !p.is_empty() {
@@ -14,7 +13,7 @@ pub fn get_hermes_home_with_profile(app: Option<&AppHandle>, profile: Option<Str
     home
 }
 
-pub fn get_hermes_home(app: Option<&AppHandle>) -> PathBuf {
+pub fn get_hermes_home<R: Runtime>(app: Option<&AppHandle<R>>) -> PathBuf {
     // 1. HERMES_HOME env var
     if let Ok(home) = env::var("HERMES_HOME") {
         if !home.trim().is_empty() {
@@ -89,7 +88,7 @@ fn default_hermes_home() -> PathBuf {
     home_dir.join(".hermes")
 }
 
-pub fn get_python_path(app: Option<&AppHandle>) -> PathBuf {
+pub fn get_python_path<R: Runtime>(app: Option<&AppHandle<R>>) -> PathBuf {
     let home = get_hermes_home(app);
     let repo = home.join("hermes-agent");
 
@@ -109,7 +108,7 @@ pub fn get_python_path(app: Option<&AppHandle>) -> PathBuf {
     repo.join("venv").join("bin").join("python")
 }
 
-pub fn get_hermes_repo(app: Option<&AppHandle>) -> PathBuf {
+pub fn get_hermes_repo<R: Runtime>(app: Option<&AppHandle<R>>) -> PathBuf {
     get_hermes_home(app).join("hermes-agent")
 }
 

@@ -1,17 +1,17 @@
 use serde_json::{json, Value};
 use crate::python;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 
-fn profile_home(app: Option<&AppHandle>, profile: Option<String>) -> std::path::PathBuf {
+fn profile_home<R: Runtime>(app: Option<&AppHandle<R>>, profile: Option<String>) -> std::path::PathBuf {
     python::get_hermes_home_with_profile(app, profile)
 }
 
-fn state_db_path(app: Option<&AppHandle>, profile: Option<String>) -> Option<std::path::PathBuf> {
+fn state_db_path<R: Runtime>(app: Option<&AppHandle<R>>, profile: Option<String>) -> Option<std::path::PathBuf> {
     let db = profile_home(app, profile).join("state.db");
     if db.exists() { Some(db) } else { None }
 }
 
-pub fn list_sessions(app: Option<&AppHandle>, profile: Option<String>, limit: Option<u32>, offset: Option<u32>) -> Result<Value, String> {
+pub fn list_sessions<R: Runtime>(app: Option<&AppHandle<R>>, profile: Option<String>, limit: Option<u32>, offset: Option<u32>) -> Result<Value, String> {
     if let Some(db_path) = state_db_path(app, profile.clone()) {
         match read_sessions_from_db(&db_path, limit, offset) {
             Ok(sessions) => return Ok(json!(sessions)),
@@ -120,7 +120,7 @@ fn read_sessions_from_db(db_path: &std::path::Path, limit: Option<u32>, offset: 
     Ok(sessions)
 }
 
-pub fn search_sessions(app: Option<&AppHandle>, query: &str, limit: Option<u32>, profile: Option<String>) -> Result<Value, String> {
+pub fn search_sessions<R: Runtime>(app: Option<&AppHandle<R>>, query: &str, limit: Option<u32>, profile: Option<String>) -> Result<Value, String> {
     if let Some(db_path) = state_db_path(app, profile) {
         match search_sessions_from_db(&db_path, query, limit.unwrap_or(50)) {
             Ok(results) => return Ok(json!(results)),
@@ -226,7 +226,7 @@ fn search_sessions_from_db(db_path: &std::path::Path, query: &str, limit: u32) -
     Ok(results)
 }
 
-pub fn get_session_messages(app: Option<&AppHandle>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
+pub fn get_session_messages<R: Runtime>(app: Option<&AppHandle<R>>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
     let home = profile_home(app, profile);
 
     let db_path = home.join("state.db").to_string_lossy().to_string();
@@ -259,7 +259,7 @@ pub fn get_session_messages(app: Option<&AppHandle>, session_id: &str, profile: 
     }
 }
 
-pub fn get_session_messages_before(app: Option<&AppHandle>, session_id: &str, before_timestamp: f64, limit: Option<u32>, profile: Option<String>) -> Result<Value, String> {
+pub fn get_session_messages_before<R: Runtime>(app: Option<&AppHandle<R>>, session_id: &str, before_timestamp: f64, limit: Option<u32>, profile: Option<String>) -> Result<Value, String> {
     let home = profile_home(app, profile);
     let db_path = home.join("state.db").to_string_lossy().to_string();
     let limit = limit.unwrap_or(50);
@@ -289,14 +289,14 @@ pub fn get_session_messages_before(app: Option<&AppHandle>, session_id: &str, be
     }
 }
 
-pub fn persist_message(app: Option<&AppHandle>, sid: &str, role: &str, content: &str, tool_call_id: Option<&str>, tool_name: Option<&str>, profile: Option<String>) {
+pub fn persist_message<R: Runtime>(app: Option<&AppHandle<R>>, sid: &str, role: &str, content: &str, tool_call_id: Option<&str>, tool_name: Option<&str>, profile: Option<String>) {
     let home = profile_home(app, profile);
     let desktop_dir = home.join("desktop").join("messages").to_string_lossy().to_string();
 
     hermes_core::persist_message_impl(&desktop_dir, sid, role, content, tool_call_id, tool_name);
 }
 
-fn cli_list_sessions(app: Option<&AppHandle>, profile: Option<String>, limit: Option<u32>) -> Result<Value, String> {
+fn cli_list_sessions<R: Runtime>(app: Option<&AppHandle<R>>, profile: Option<String>, limit: Option<u32>) -> Result<Value, String> {
     let python_path = python::get_python_path(app);
     let repo_path = python::get_hermes_repo(app);
     let hermes_home = python::get_hermes_home(app);
@@ -383,7 +383,7 @@ fn parse_relative_time(s: &str) -> u64 {
     now
 }
 
-pub fn get_related_session_ids(app: Option<&AppHandle>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
+pub fn get_related_session_ids<R: Runtime>(app: Option<&AppHandle<R>>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
     let db_path = state_db_path(app, profile).ok_or("state.db not found")?;
     let conn = rusqlite::Connection::open_with_flags(
         &db_path,
@@ -436,7 +436,7 @@ pub fn get_related_session_ids(app: Option<&AppHandle>, session_id: &str, profil
     Ok(json!(unique))
 }
 
-pub fn delete_session_chain(app: Option<&AppHandle>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
+pub fn delete_session_chain<R: Runtime>(app: Option<&AppHandle<R>>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
     let db_path = state_db_path(app, profile).ok_or("state.db not found")?;
     let ids = get_related_session_ids(app, session_id, None::<String>)
         .and_then(|v| Ok(v))

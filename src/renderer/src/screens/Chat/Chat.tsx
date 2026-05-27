@@ -16,7 +16,6 @@ import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { MessageList } from "./MessageList";
-import { TodoPanel } from "../../components/common/TodoPanel";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
 import { InteractionCenter } from "./InteractionCenter";
@@ -290,7 +289,7 @@ function Chat({
     setMessages,
   ]);
 
-  const { containerRef, bottomRef } = useChatScroll(messages, isLoading, handleLoadEarlierMessages);
+  const { setContainerRef, userScrolledUp, scrollToBottom } = useChatScroll(messages, isLoading, handleLoadEarlierMessages);
   const modelConfig = useModelConfig(profile);
   const {
     fastMode,
@@ -1048,7 +1047,7 @@ function Chat({
         onClear={handleClear}
       />
 
-      <div className="chat-messages" ref={containerRef}>
+      <div className="chat-messages">
         {messages.length === 0 ? (
           <ChatEmptyState onSelectSuggestion={handleSuggestion} />
         ) : (
@@ -1058,12 +1057,19 @@ function Chat({
             toolProgress={toolProgress}
             streamingText={streamingText}
             streamingReasoning={streamingReasoning}
+            scrollerRef={setContainerRef}
+            todos={todos}
           />
         )}
-        {isLoading && todos && todos.length > 0 && (
-          <TodoPanel todos={todos} defaultCollapsed={false} />
+        {userScrolledUp && messages.length > 0 && (
+          <button
+            className="chat-scroll-to-bottom-btn"
+            onClick={() => scrollToBottom(true)}
+            type="button"
+          >
+            Jump to latest ↓
+          </button>
         )}
-        <div ref={bottomRef} />
       </div>
 
       <div className="chat-input-area">
