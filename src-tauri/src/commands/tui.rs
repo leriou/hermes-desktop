@@ -1,8 +1,56 @@
 use serde_json::{json, Value};
-use tauri::{command, State, AppHandle};
+use tauri::{command, State, AppHandle, Manager};
 use crate::AppState;
 use crate::tui_gateway::{TuiGateway, GatewayStatus};
 use std::sync::Arc;
+
+#[command]
+pub async fn copy_diagnostics(state: State<'_, AppState>, app: AppHandle) -> Result<String, String> {
+    let gw = {
+        let gateway_guard = state.gateway.lock().await;
+        gateway_guard.as_ref().cloned()
+    };
+
+    let health = if let Some(gw) = gw {
+        gw.get_health().await
+    } else {
+        json!({
+            "status": "Stopped",
+            "restartCount": 0,
+            "maxRestarts": 5,
+            "activeSessionId": null,
+            "lastError": null,
+            "lastReadyAt": null,
+            "pendingRequests": 0,
+        })
+    };
+
+    let version = app.package_info().version.to_string();
+    let commit = env!("GIT_COMMIT").to_string();
+    let build_ts = env!("BUILD_TIME").to_string();
+
+    let mut report = String::new();
+    report.push_str(&format!("Hermes Desktop v{} (commit {})\n", version, commit));
+    report.push_str(&format!("Build timestamp: {}\n", build_ts));
+    report.push_str(&format!("Gateway status: {}\n", health.get("status").and_then(|v| v.as_str()).unwrap_or("unknown")));
+    if let Some(err) = health.get("lastError").and_then(|v| v.as_str()) {
+        report.push_str(&format!("Last error: {}\n", err));
+    }
+    report.push_str(&format!("Restarts: {}/{}\n",
+        health.get("restartCount").and_then(|v| v.as_u64()).unwrap_or(0),
+        health.get("maxRestarts").and_then(|v| v.as_u64()).unwrap_or(5),
+    ));
+    report.push_str(&format!("Pending RPC: {}\n",
+        health.get("pendingRequests").and_then(|v| v.as_u64()).unwrap_or(0),
+    ));
+    if let Some(paths) = health.get("paths").and_then(|v| v.as_object()) {
+        report.push_str("\nPaths:\n");
+        for (key, val) in paths {
+            report.push_str(&format!("  {}: {}\n", key, val));
+        }
+    }
+    Ok(report)
+}
 #[command]
 pub async fn start_gateway(state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<bool, String> {
     let (gw, is_new) = {

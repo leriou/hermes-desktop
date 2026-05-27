@@ -104,7 +104,7 @@ pub fn run() {
     })
     .invoke_handler(tauri::generate_handler![
         abort_chat, add_memory_entry, add_model, adopt_hermes_home, cancel_oauth_login, 
-        check_for_updates, check_install, clear_staged_attachments, copy_to_clipboard, 
+        check_for_updates, check_install, clear_staged_attachments, copy_diagnostics, copy_to_clipboard,
         create_cron_job, create_profile, delete_profile, delete_session, delete_session_chain, 
         discover_memory_providers, discover_provider_models, download_update, 
         gateway_status, get_build_info, runtime_health, get_app_version, get_config, get_connection_config,

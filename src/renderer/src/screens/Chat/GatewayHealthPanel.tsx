@@ -25,6 +25,7 @@ export function GatewayHealthPanel(): React.JSX.Element {
   const [buildInfo, setBuildInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -47,10 +48,13 @@ export function GatewayHealthPanel(): React.JSX.Element {
 
   async function handleRestart() {
     setLoading(true);
+    setError(null);
     try {
       await stopGateway();
       await startGateway();
       await fetchHealth();
+    } catch (e) {
+      setError(String(e));
     } finally {
       setLoading(false);
     }
@@ -62,8 +66,9 @@ export function GatewayHealthPanel(): React.JSX.Element {
       await copyToClipboard(diag);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      setError(null);
     } catch (e) {
-      alert("Failed to copy diagnostics: " + String(e));
+      setError("Failed to copy diagnostics: " + String(e));
     }
   }
 
@@ -112,6 +117,16 @@ export function GatewayHealthPanel(): React.JSX.Element {
             <span>Last Error</span>
           </div>
           <div className="error-box-content">{health.lastError}</div>
+        </div>
+      )}
+
+      {error && (
+        <div className="gateway-health-error-box">
+          <div className="error-box-header">
+            <AlertCircle size={14} />
+            <span>Action Error</span>
+          </div>
+          <div className="error-box-content">{error}</div>
         </div>
       )}
 
