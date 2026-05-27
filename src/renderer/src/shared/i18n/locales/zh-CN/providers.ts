@@ -17,6 +17,16 @@ export default {
   cached: "缓存",
   colModel: "模型",
   unknownHost: "无法连接到指定主机 — 请检查基础 URL",
+  routing: {
+    defaultModel: "默认模型",
+    provider: "提供商",
+    baseUrl: "接口地址",
+    baseUrlHint: "使用官方 API 请保持默认，或输入自定义接口地址",
+    maxTokens: "最大 Token 数",
+    fallbackProviders: "备用模型",
+    fallbackHint: "默认模型失败时，按顺序尝试以下备用模型",
+    addFallback: "添加备用",
+  },
   oauth: {
     sectionTitle: "订阅 / OAuth 套餐",
     sectionHint: "使用提供商订阅而非 API 密钥登录。授权在浏览器中完成。",

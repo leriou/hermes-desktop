@@ -327,3 +327,40 @@ pub async fn set_platform_enabled(app: AppHandle, platform: String, enabled: boo
         Ok(json!(false))
     }
 }
+
+#[command]
+pub async fn get_routing_config(app: AppHandle, profile: Option<String>) -> Result<Value, String> {
+    let config_path = python::get_hermes_home_with_profile(Some(&app), profile).join("config.yaml");
+    if !config_path.exists() {
+        return Ok(json!({
+            "defaultModel": null, "provider": null, "baseUrl": null,
+            "maxTokens": null, "fallbackProviders": []
+        }));
+    }
+    let content = fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
+    let doc: serde_yaml::Value = serde_yaml::from_str(&content).map_err(|e| format!("YAML parse error: {}", e))?;
+
+    let model = &doc["model"];
+    let default_model = model["default"].as_str();
+    let provider = model["provider"].as_str();
+    let base_url = model["base_url"].as_str();
+    let max_tokens = model["max_tokens"].as_i64();
+
+    let mut fallbacks = Vec::new();
+    if let serde_yaml::Value::Sequence(seq) = &doc["fallback_providers"] {
+        for item in seq {
+            fallbacks.push(json!({
+                "model": item["model"].as_str().unwrap_or(""),
+                "provider": item["provider"].as_str().unwrap_or(""),
+            }));
+        }
+    }
+
+    Ok(json!({
+        "defaultModel": default_model,
+        "provider": provider,
+        "baseUrl": base_url,
+        "maxTokens": max_tokens,
+        "fallbackProviders": fallbacks,
+    }))
+}

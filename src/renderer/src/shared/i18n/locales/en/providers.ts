@@ -17,6 +17,16 @@ export default {
   cached: "cached",
   colModel: "Model",
   unknownHost: "Cannot reach the specified host — check the base URL",
+  routing: {
+    defaultModel: "Default Model",
+    provider: "Provider",
+    baseUrl: "Base URL",
+    baseUrlHint: "Leave default for official API, or enter a custom endpoint",
+    maxTokens: "Max Tokens",
+    fallbackProviders: "Fallback Providers",
+    fallbackHint: "When the default model fails, these are tried in order",
+    addFallback: "Add Fallback",
+  },
   oauth: {
     sectionTitle: "Subscription / OAuth Plans",
     sectionHint:

@@ -145,6 +145,17 @@ export function getModelConfig(
 ): Promise<{ provider: string; model: string; baseUrl: string }> {
   return invoke("get_model_config", { profile });
 }
+export function getRoutingConfig(
+  profile?: string,
+): Promise<{
+  defaultModel: string | null;
+  provider: string | null;
+  baseUrl: string | null;
+  maxTokens: number | null;
+  fallbackProviders: Array<{ model: string; provider: string }>;
+}> {
+  return invoke("get_routing_config", { profile });
+}
 export function setModelConfig(
   provider: string,
   model: string,
