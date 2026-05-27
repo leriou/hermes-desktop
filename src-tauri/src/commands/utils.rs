@@ -3,31 +3,43 @@ use tauri::AppHandle;
 use crate::python;
 
 /// Run a hermes CLI subcommand and return stdout as String.
-pub fn run_hermes_cli(app: &AppHandle, args: &[&str]) -> Result<String, String> {
+pub async fn run_hermes_cli(app: &AppHandle, args: &[&str]) -> Result<String, String> {
     let python_path = python::get_python_path(Some(app));
     let repo_path = python::get_hermes_repo(Some(app));
     let hermes_home = python::get_hermes_home(Some(app));
     if !python_path.exists() {
         return Err("Python environment not found. Please install Hermes first.".to_string());
     }
-    let output = std::process::Command::new(&python_path)
+    let output = tokio::process::Command::new(&python_path)
         .args([&["-m", "hermes_cli.main"], args].concat())
         .current_dir(repo_path)
         .env("HERMES_HOME", &hermes_home)
         .env("COLUMNS", "300")
         .output()
+        .await
         .map_err(|e| format!("Failed to run hermes CLI: {}", e))?;
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let capped_stdout = if stdout.len() > 10000 {
+        format!("{}... [truncated]", &stdout[..10000])
+    } else {
+        stdout
+    };
+
     if output.status.success() {
-        Ok(stdout)
+        Ok(capped_stdout)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        Err(if stderr.is_empty() { stdout.clone() } else { stderr })
+        let capped_stderr = if stderr.len() > 10000 {
+            format!("{}... [truncated]", &stderr[..10000])
+        } else {
+            stderr
+        };
+        Err(if capped_stderr.is_empty() { capped_stdout } else { capped_stderr })
     }
 }
 
 /// Run a hermes kanban subcommand. If parse_json is true, parse stdout as JSON.
-pub fn run_kanban_cli(app: &AppHandle, args: &[&str], profile: Option<&str>, parse_json: bool) -> Result<Value, String> {
+pub async fn run_kanban_cli(app: &AppHandle, args: &[&str], profile: Option<&str>, parse_json: bool) -> Result<Value, String> {
     let mut full_args: Vec<String> = vec!["kanban".to_string()];
     full_args.extend(args.iter().map(|s| s.to_string()));
     if let Some(p) = profile {
@@ -42,17 +54,24 @@ pub fn run_kanban_cli(app: &AppHandle, args: &[&str], profile: Option<&str>, par
     if !python_path.exists() {
         return Ok(json!({ "success": false, "error": "Python environment not found" }));
     }
-    let output = std::process::Command::new(&python_path)
+    let output = tokio::process::Command::new(&python_path)
         .args([&["-m", "hermes_cli.main"], full_args.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice()].concat())
         .current_dir(repo_path)
         .env("HERMES_HOME", &hermes_home)
         .env("COLUMNS", "300")
         .output()
+        .await
         .map_err(|e| format!("Failed to run kanban: {}", e))?;
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        return Ok(json!({ "success": false, "error": if stderr.is_empty() { stdout.clone() } else { stderr } }));
+        let error_msg = if stderr.is_empty() { stdout } else { stderr };
+        let capped_error = if error_msg.len() > 10000 {
+            format!("{}... [truncated]", &error_msg[..10000])
+        } else {
+            error_msg
+        };
+        return Ok(json!({ "success": false, "error": capped_error }));
     }
     if parse_json {
         match serde_json::from_str::<Value>(stdout.trim()) {

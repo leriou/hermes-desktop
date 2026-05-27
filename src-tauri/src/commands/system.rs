@@ -150,9 +150,10 @@ pub async fn get_hermes_version(app: AppHandle) -> Result<Value, String> {
     let python_path = python::get_python_path(Some(&app));
     
     // 1. Python version
-    let py_ver = match std::process::Command::new(&python_path)
+    let py_ver = match tokio::process::Command::new(&python_path)
         .arg("--version")
-        .output() {
+        .output()
+        .await {
             Ok(output) => {
                 let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 if s.starts_with("Python ") {
@@ -170,9 +171,10 @@ pub async fn get_hermes_version(app: AppHandle) -> Result<Value, String> {
         };
 
     // 2. OpenAI SDK version
-    let sdk_ver = match std::process::Command::new(&python_path)
+    let sdk_ver = match tokio::process::Command::new(&python_path)
         .args(["-c", "import openai; print(openai.__version__)"])
-        .output() {
+        .output()
+        .await {
             Ok(output) => {
                 let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 if !s.is_empty() && !s.contains("Error") {
@@ -217,7 +219,7 @@ pub async fn refresh_hermes_version(app: AppHandle) -> Result<Value, String> {
 
 #[command]
 pub async fn run_hermes_doctor(app: AppHandle) -> Result<Value, String> {
-    run_hermes_cli(&app, &["doctor"]).map(|s| json!(s))
+    run_hermes_cli(&app, &["doctor"]).await.map(|s| json!(s))
 }
 
 #[command]
@@ -228,7 +230,7 @@ pub async fn run_hermes_update(app: AppHandle) -> Result<Value, String> {
         "detail": "Running hermes update...",
         "log": "Starting update...\n"
     })).map_err(|e| e.to_string())?;
-    match run_hermes_cli(&app, &["update"]) {
+    match run_hermes_cli(&app, &["update"]).await {
         Ok(stdout) => {
             app.emit("installprogress", json!({
                 "step": 1, "totalSteps": 1,
