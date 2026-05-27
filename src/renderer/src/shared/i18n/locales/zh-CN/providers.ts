@@ -2,7 +2,7 @@ export default {
   title: "提供商",
   subtitle: "配置 LLM 提供商、API 密钥和凭据池",
   tabs: {
-    model: "模型",
+    model: "模型检测",
     routing: "路由",
     apikeys: "API 密钥",
     tools: "工具",

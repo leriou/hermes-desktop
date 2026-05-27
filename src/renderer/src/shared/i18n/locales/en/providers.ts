@@ -2,7 +2,7 @@ export default {
   title: "Providers",
   subtitle: "Configure LLM providers, API keys, and credential pools",
   tabs: {
-    model: "Model",
+    model: "Detect Models",
     routing: "Routing",
     apikeys: "API Keys",
     tools: "Tools",
