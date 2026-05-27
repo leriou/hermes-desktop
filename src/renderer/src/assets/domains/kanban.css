@@ -425,7 +425,7 @@
 .config-editor-path {
   font-size: 12px;
   color: var(--text-muted);
-  font-family: monospace;
+  font-family: var(--font-mono, monospace);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -531,7 +531,7 @@
   border-radius: 6px;
   font-size: 13px;
   flex-shrink: 0;
-  font-family: monospace;
+  font-family: var(--font-mono, monospace);
 }
 
 .config-editor-error .btn-ghost {
@@ -551,8 +551,8 @@
   gap: 8px;
   flex-wrap: wrap;
   padding: 6px 12px;
-  background: rgba(234, 179, 8, 0.06);
-  border-bottom: 1px solid rgba(234, 179, 8, 0.15);
+  background: var(--warning-bg);
+  border-bottom: 1px solid var(--border-softer);
 }
 
 .config-schema-hint {
@@ -564,7 +564,7 @@
 
 .config-schema-hint-key {
   font-family: var(--font-mono, monospace);
-  color: var(--warning, #eab308);
+  color: var(--warning);
   font-weight: 600;
 }
 
@@ -576,8 +576,8 @@
 
 .config-diff-preview {
   padding: 10px 16px;
-  background: rgba(var(--info-rgb, 59, 130, 246), 0.06);
-  border-bottom: 1px solid rgba(var(--info-rgb, 59, 130, 246), 0.15);
+  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--border-softer);
 }
 
 .config-diff-title {
@@ -598,9 +598,9 @@
   font-family: var(--font-mono, monospace);
   font-size: 11px;
   padding: 2px 8px;
-  background: rgba(var(--info-rgb, 59, 130, 246), 0.12);
+  background: var(--surface-active);
   border-radius: 4px;
-  color: var(--info, #3b82f6);
+  color: var(--accent-primary);
 }
 
 .config-diff-actions {
@@ -622,7 +622,7 @@
 .config-outline {
   width: 160px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-right: 1px solid var(--border-softer);
   background: var(--bg-secondary);
   overflow-y: auto;
   padding: 8px 0;
@@ -639,19 +639,17 @@
   background: none;
   border: none;
   cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .config-outline-item:hover {
-  background: rgba(var(--info-rgb, 59, 130, 246), 0.08);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .config-outline-item.active {
-  color: var(--info, #3b82f6);
-  background: rgba(var(--info-rgb, 59, 130, 246), 0.1);
+  color: var(--accent-primary);
+  background: var(--surface-active);
   font-weight: 600;
 }
 
@@ -659,10 +657,10 @@
 
 .config-view-toggle {
   display: flex;
-  background: var(--bg-tertiary, rgba(255, 255, 255, 0.04));
+  background: var(--bg-tertiary);
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border-softer);
 }
 
 .config-view-btn {
@@ -672,18 +670,16 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .config-view-btn.active {
-  background: var(--info, #3b82f6);
+  background: var(--accent-primary);
   color: #fff;
 }
 
 .config-view-btn:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
 }
 
 /* ── Structured view ── */
@@ -703,7 +699,7 @@
 }
 
 .config-structured-section {
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  border-bottom: 1px solid var(--border-softer);
   padding: 16px 20px;
 }
 
@@ -722,7 +718,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 13px;
   font-weight: 600;
-  color: var(--info, #3b82f6);
+  color: var(--accent-primary);
 }
 
 .config-structured-goto {
@@ -829,7 +825,7 @@
 }
 
 .config-struct-fallback-remove:hover {
-  color: var(--error, #f87171);
+  color: var(--error);
 }
 
 .config-struct-providers {
@@ -839,7 +835,7 @@
 }
 
 .config-struct-provider-card {
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-softer);
   border-radius: 6px;
   padding: 8px 12px;
 }
@@ -866,7 +862,7 @@
   outline: none;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-family: "JetBrains Mono", "Menlo", "Monaco", monospace;
+  font-family: var(--font-mono, monospace);
   font-size: 14px;
   line-height: 1.8;
   letter-spacing: 0.3px;
@@ -882,5 +878,52 @@
 
 .config-editor-textarea:focus {
   outline: none;
+}
+
+.config-struct-provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.config-struct-provider-remove {
+  color: var(--text-muted);
+  padding: 0 4px;
+  font-size: 14px;
+}
+
+.config-struct-provider-remove:hover {
+  color: var(--error);
+}
+
+.config-struct-provider-models {
+  margin-top: 8px;
+}
+
+.config-struct-provider-models-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.config-struct-model-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.config-struct-model-id {
+  flex: 1;
+}
+
+.config-struct-model-remove {
+  color: var(--text-muted);
+  padding: 0 4px;
+  font-size: 14px;
+}
+
+.config-struct-model-remove:hover {
+  color: var(--error);
 }
 

@@ -5,7 +5,6 @@ import {
   getHermesHome,
   getHermesVersion,
   readLogs,
-  readConfigYaml,
   refreshHermesVersion,
   runHermesBackup,
   runHermesDoctor,
@@ -17,7 +16,6 @@ import {
   setSshConfig,
   testRemoteConnection,
   testSshConnection,
-  writeConfigYaml,
 } from "@renderer/lib/hermes-tauri";
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -146,14 +144,6 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const [dumpOutput, setDumpOutput] = useState<string | null>(null);
   const [dumpRunning, setDumpRunning] = useState(false);
 
-  // Config YAML editor
-  const [configYamlContent, setConfigYamlContent] = useState("");
-  const [configYamlPath, setConfigYamlPath] = useState("");
-  const [configYamlEditing, setConfigYamlEditing] = useState(false);
-  const [configYamlSaving, setConfigYamlSaving] = useState(false);
-  const [configYamlStatus, setConfigYamlStatus] = useState<"saved" | "error" | null>(null);
-  const [configYamlError, setConfigYamlError] = useState<string | null>(null);
-
   // Analytics consent
   const [analyticsEnabled, setAnalyticsEnabled] = useState(() =>
     getAnalyticsConsent(),
@@ -199,13 +189,6 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
           /* ignore */
         }
       }
-    });
-
-    // Load config.yaml
-    readConfigYaml(profile).then((result) => {
-      setConfigYamlContent(result.content || "");
-      setConfigYamlPath(result.path || "");
-      setConfigYamlEditing(false);
     });
   }, [profile]);
 
@@ -895,110 +878,6 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
           />
         </div>
       )}
-
-      <div className="settings-section">
-        <div className="settings-section-title">
-          <FileText size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
-          config.yaml
-          {configYamlStatus && (
-            <span className={`settings-saved ${configYamlStatus === "error" ? "text-error" : ""}`} style={{ marginLeft: 8 }}>
-              {configYamlStatus === "saved" ? "Saved" : configYamlError || "Error"}
-            </span>
-          )}
-        </div>
-        {configYamlPath && (
-          <div className="settings-field-hint" style={{ marginBottom: 8 }}>
-            {configYamlPath}
-          </div>
-        )}
-        {configYamlError && !configYamlStatus && (
-          <div className="settings-field-hint text-error" style={{ marginBottom: 8 }}>
-            {configYamlError}
-          </div>
-        )}
-        <div className="settings-config-editor">
-          {configYamlEditing ? (
-            <textarea
-              className="settings-config-textarea"
-              value={configYamlContent}
-              onChange={(e) => {
-                setConfigYamlContent(e.target.value);
-                setConfigYamlError(null);
-              }}
-              spellCheck={false}
-              rows={20}
-            />
-          ) : (
-            <pre className="settings-config-preview">{configYamlContent || "(empty file)"}</pre>
-          )}
-        </div>
-        <div className="settings-hermes-actions" style={{ marginTop: 8 }}>
-          {configYamlEditing ? (
-            <>
-              <button
-                className="btn btn-primary"
-                disabled={configYamlSaving}
-                onClick={async () => {
-                  const content = configYamlContent;
-                  // Basic YAML validation: reject if it looks like raw JSON or has tab indentation
-                  if (content.includes("\t")) {
-                    setConfigYamlError("YAML cannot contain tab characters. Use spaces for indentation.");
-                    return;
-                  }
-                  setConfigYamlSaving(true);
-                  setConfigYamlError(null);
-                  try {
-                    await writeConfigYaml(content, profile);
-                    setConfigYamlEditing(false);
-                    setConfigYamlStatus("saved");
-                    setTimeout(() => setConfigYamlStatus(null), 2000);
-                  } catch (e) {
-                    setConfigYamlError(String(e));
-                    setConfigYamlStatus("error");
-                  } finally {
-                    setConfigYamlSaving(false);
-                  }
-                }}
-              >
-                {configYamlSaving ? "Saving..." : "Save"}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  // Revert to saved version
-                  readConfigYaml(profile).then((result) => {
-                    setConfigYamlContent(result.content || "");
-                    setConfigYamlEditing(false);
-                    setConfigYamlError(null);
-                  });
-                }}
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setConfigYamlEditing(true)}
-              >
-                Edit
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  readConfigYaml(profile).then((result) => {
-                    setConfigYamlContent(result.content || "");
-                    setConfigYamlPath(result.path || "");
-                  });
-                }}
-              >
-                {t("settings.refresh")}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
 
       <div className="settings-section">
         <div className="settings-section-title">
