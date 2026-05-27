@@ -294,24 +294,10 @@ describe("useChatInbox", () => {
     ]);
   });
 
-  it("coalesces live assistant deltas into the next animation frame", () => {
+  it("coalesces live assistant deltas via microtask flush", async () => {
     const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
       const current = sessions.get(tabId);
       if (current) sessions.set(tabId, { ...current, ...patch });
-    });
-    const frameCallbacks: FrameRequestCallback[] = [];
-    const requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
-      frameCallbacks.push(callback);
-      return frameCallbacks.length;
-    });
-    const cancelAnimationFrame = vi.fn();
-    Object.defineProperty(window, "requestAnimationFrame", {
-      configurable: true,
-      value: requestAnimationFrame,
-    });
-    Object.defineProperty(window, "cancelAnimationFrame", {
-      configurable: true,
-      value: cancelAnimationFrame,
     });
     const sessions = new Map<string, SessionState>([["tab-1", sessionState()]]);
 
@@ -337,13 +323,14 @@ describe("useChatInbox", () => {
       payload: { text: "lo" },
     });
 
-    expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
+    // Deltas should not flush synchronously — they coalesce via microtask
     expect(
       updateTab.mock.calls.some(([, patch]) => "streamingText" in patch),
     ).toBe(false);
 
-    act(() => {
-      frameCallbacks[0]?.(performance.now());
+    // Allow microtask to resolve
+    await act(async () => {
+      await Promise.resolve();
     });
 
     expect(updateTab).toHaveBeenCalledWith(
