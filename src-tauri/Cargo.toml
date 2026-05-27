@@ -2,7 +2,7 @@
 name = "app"
 version = "0.1.0"
 description = "Hermes Caduceus — AI Agent Desktop"
-authors = ["you"]
+authors = ["leriou"]
 license = ""
 repository = ""
 edition = "2021"

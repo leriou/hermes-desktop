@@ -72,7 +72,7 @@ pub fn run() {
         let window = app.get_webview_window("main").unwrap();
         window.set_effects(
           EffectsBuilder::new()
-            .effect(Effect::UnderPageBackground)
+            .effect(Effect::UnderWindowBackground)
             .build(),
         )?;
       }

@@ -11,7 +11,7 @@
 
 **设置流程：**
 ```bash
-# 假设你在项目根目录 hermes-desktop
+# 假设你在项目根目录 hermes-caduceus
 # 为 UI Agent 创建独立的工作空间
 git worktree add ../hermes-ui-agent -b feat/ui-smoothness
 

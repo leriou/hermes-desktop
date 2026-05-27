@@ -1,6 +1,6 @@
-# 为 Hermes Desktop 做贡献
+# 为 Hermes Caduceus 做贡献
 
-感谢你愿意为 Hermes Desktop 做出贡献。无论是修复 bug、添加新功能、完善文档，还是修正一个拼写错误，每一份贡献都很有价值。
+感谢你愿意为 Hermes Caduceus 做出贡献。无论是修复 bug、添加新功能、完善文档，还是修正一个拼写错误，每一份贡献都很有价值。
 
 ## 语言
 
@@ -61,7 +61,7 @@
 
 ## 报告 Bug
 
-如果你发现了 bug，请在 GitHub 上 [提交 issue](https://github.com/NousResearch/hermes-desktop/issues/new)，并尽量包含：
+如果你发现了 bug，请在 GitHub 上 [提交 issue](https://github.com/fathah/hermes-caduceus/issues/new)，并尽量包含：
 
 - 清晰的标题和描述
 - 复现步骤
@@ -70,7 +70,7 @@
 
 ## 功能请求
 
-如果你有新想法，也欢迎 [提交 issue](https://github.com/NousResearch/hermes-desktop/issues/new)，并描述：
+如果你有新想法，也欢迎 [提交 issue](https://github.com/fathah/hermes-caduceus/issues/new)，并描述：
 
 - 你想解决的问题
 - 你希望它如何工作
@@ -79,24 +79,18 @@
 ## 项目结构
 
 ```text
-src/main/                Electron 主进程、IPC 处理器、Hermes 集成
-src/preload/             安全的 renderer bridge
-src/renderer/src/        React 应用和 UI 组件
+src-tauri/               Tauri 后端（Rust）：IPC 命令、Hermes 集成、网关
+src/renderer/src/        React 前端：UI 组件、页面、hooks
 resources/               应用图标和打包资源
 build/                   打包配置资源
 ```
 
 ## 代码风格
 
-- 项目使用 TypeScript、React 和 Electron。
+- 项目使用 TypeScript、React 和 Tauri。
 - 运行 `bun run lint` 检查 lint 错误。
 - 运行 `bun run typecheck` 验证类型安全。
 - 尽量遵循当前仓库现有模式和约定。
-
-## 社区
-
-- 欢迎加入 [Nous Research Discord](https://discord.gg/NousResearch)，与其他贡献者交流。
-- 也可以查看 [文档](https://hermes-agent.nousresearch.com/docs/) 了解 Hermes 的整体工作方式。
 
 ## 许可证
 

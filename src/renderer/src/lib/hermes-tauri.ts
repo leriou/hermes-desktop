@@ -1136,15 +1136,6 @@ export function readLogs(
   return invoke("read_logs", { logFile, lines });
 }
 
-// Routing / Fallback config
-export function getRoutingConfig(profile?: string): Promise<{
-  defaultModel: string;
-  defaultProvider: string;
-  defaultBaseUrl: string;
-  fallbacks: Array<{ model: string; provider: string }>;
-}> {
-  return invoke("get_routing_config", { profile });
-}
 export function setRoutingConfig(
   data: {
     defaultModel?: string;

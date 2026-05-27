@@ -1,6 +1,6 @@
-# Contributing to Hermes Desktop
+# Contributing to Hermes Caduceus
 
-Thanks for your interest in contributing to Hermes Desktop! Whether it's a bug fix, a new feature, improved docs, or just a typo — every contribution helps.
+Thanks for your interest in contributing to Hermes Caduceus! Whether it's a bug fix, a new feature, improved docs, or just a typo — every contribution helps.
 
 ## Languages
 
@@ -61,7 +61,7 @@ A maintainer will review your PR and may request changes. Once approved, it will
 
 ## Reporting Bugs
 
-Found a bug? [Open an issue](https://github.com/NousResearch/hermes-desktop/issues/new) with:
+Found a bug? [Open an issue](https://github.com/fathah/hermes-caduceus/issues/new) with:
 
 - A clear title and description.
 - Steps to reproduce the issue.
@@ -70,7 +70,7 @@ Found a bug? [Open an issue](https://github.com/NousResearch/hermes-desktop/issu
 
 ## Requesting Features
 
-Have an idea? [Open an issue](https://github.com/NousResearch/hermes-desktop/issues/new) and describe:
+Have an idea? [Open an issue](https://github.com/fathah/hermes-caduceus/issues/new) and describe:
 
 - The problem you're trying to solve.
 - How you'd like it to work.
@@ -79,24 +79,18 @@ Have an idea? [Open an issue](https://github.com/NousResearch/hermes-desktop/iss
 ## Project Structure
 
 ```text
-src/main/                Electron main process, IPC handlers, Hermes integration
-src/preload/             Secure renderer bridge
-src/renderer/src/        React app and UI components
+src-tauri/               Tauri backend (Rust): IPC commands, Hermes integration, gateway
+src/renderer/src/        React frontend: UI components, screens, hooks
 resources/               App icons and packaged assets
 build/                   Packaging resources
 ```
 
 ## Code Style
 
-- The project uses TypeScript, React, and Electron.
+- The project uses TypeScript, React, and Tauri.
 - Run `bun run lint` to check for lint errors.
 - Run `bun run typecheck` to verify type safety.
 - Follow existing patterns and conventions in the codebase.
-
-## Community
-
-- Join the [Nous Research Discord](https://discord.gg/NousResearch) to chat with other contributors.
-- Check the [documentation](https://hermes-agent.nousresearch.com/docs/) for more context on how Hermes works.
 
 ## License
 

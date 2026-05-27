@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "hermes-caduceus",
-  "version": "0.1.0",
-  "identifier": "com.nousresearch.hermes",
+  "productName": "Hermes Caduceus",
+  "version": "0.4.5",
+  "identifier": "com.leriou.hermes.caduceus",
   "build": {
     "frontendDist": "../out/renderer",
     "devUrl": "http://localhost:19642",
@@ -24,7 +24,8 @@
         "decorations": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
-        "center": true
+        "center": true,
+        "transparent": true
       }
     ],
     "security": {

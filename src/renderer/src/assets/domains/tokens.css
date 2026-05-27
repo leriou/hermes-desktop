@@ -44,7 +44,7 @@
   --md-inline-code-text: #d4a846;
   --selection: rgba(107, 143, 181, 0.30);
   /* 5-layer surface system */
-  --surface-canvas: #1a1a1e;
+  --surface-canvas: transparent;
   --surface-sidebar: rgba(28, 28, 32, 0.92);
   --surface-panel: rgba(40, 40, 44, 0.85);
   --surface-card: rgba(40, 40, 44, 0.80);
@@ -108,7 +108,7 @@
   --md-inline-code-text: #9a6530;
   --selection: rgba(93, 125, 168, 0.18);
   /* Soft card tokens */
-  --surface-canvas: #f6f5f2;
+  --surface-canvas: transparent;
   --surface-sidebar: rgba(244, 243, 240, 0.86);
   --surface-panel: rgba(255, 255, 255, 0.72);
   --surface-card: rgba(255, 255, 255, 0.82);

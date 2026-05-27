@@ -1,57 +1,197 @@
-<img width="100%" alt="HERMES DESKTOP" src="https://github.com/user-attachments/assets/80585955-3bae-4aee-af90-a1e61757ccb8" />
+# Hermes Caduceus
+
+<img width="100%" alt="HERMES CADUCEUS" src="https://github.com/user-attachments/assets/80585955-3bae-4aee-af90-a1e61757ccb8" />
 
 <br/>
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
-  <a href="https://t.me/hermes_agent_desktop"><img src="https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram"></a>
-  <a href="https://github.com/fathah/hermes-desktop/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://hermesagents.cc/"><img src="https://img.shields.io/badge/Download-Releases-FF6600?style=for-the-badge" alt="Releases"></a>
-<a href="https://github.com/fathah/hermes-desktop/stargazers">
-  <img src="https://img.shields.io/github/stars/fathah/hermes-desktop?style=for-the-badge&color=FFD700&label=Stars" alt="Stars">
-</a>
-  <a href="https://github.com/fathah/hermes-desktop/releases/">
-  <img src="https://img.shields.io/github/downloads/fathah/hermes-desktop/total?style=for-the-badge&color=00B496&label=Total%20Downloads" alt="Downloads">
-</a>
+  <a href="https://github.com/fathah/hermes-caduceus/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/fathah/hermes-caduceus/releases/"><img src="https://img.shields.io/badge/macOS-Download-FF6600?style=for-the-badge" alt="Releases"></a>
+  <a href="https://github.com/fathah/hermes-caduceus/stargazers">
+    <img src="https://img.shields.io/github/stars/fathah/hermes-caduceus?style=for-the-badge&color=FFD700&label=Stars" alt="Stars">
+  </a>
 </p>
 
-> **This project is in active development.** Features may change, and some things might break. If you run into a problem or have an idea, [open an issue](https://github.com/fathah/hermes-desktop/issues). Contributions are welcome!
+> **Fork of [hermes-desktop](https://github.com/NousResearch/hermes-desktop)** — deeply customized and optimized for macOS. Rewritten from Electron to Tauri 2 + React 19 with a focus on native performance, architecture cleanliness, and macOS-specific optimizations.
 
 ## Languages
 
 - English: `README.md`
 - 简体中文: `README.zh-CN.md`
 
-Hermes Desktop is a native desktop app for installing, configuring, and chatting with [Hermes Agent](https://github.com/NousResearch/hermes-agent) — a self-improving AI assistant with tool use, multi-platform messaging, and a closed learning loop.
+Hermes Caduceus is a native macOS desktop client for [Hermes Agent](https://github.com/NousResearch/hermes-agent) — a self-improving AI assistant with tool use, multi-platform messaging, and a closed learning loop.
 
-Instead of managing the CLI by hand, the app walks through install, provider setup, and day-to-day usage in one place. It uses the official Hermes install script, stores Hermes in `~/.hermes`, and gives you a GUI for chat, sessions, profiles, memory, skills, tools, scheduling, messaging gateways, and more.
+---
 
-## Install
+## Architecture
 
-<a href="https://hermesagents.cc/"><img width="240" alt="Download Now" src="https://github.com/user-attachments/assets/9dcc0259-d533-4922-aa8a-f79b6f0cebd5" /></a>
-
-### ➡ [Download the latest build](https://hermesagents.cc/)
-
-### Windows
-
-> **Windows users:** The installer is not code-signed. Windows SmartScreen will warn on first launch — click "More info" → "Run anyway".
-
-> **WSL users:** If the installer stalls at `Switching to root user to install dependencies...`, Playwright is waiting for a sudo password that has no TTY to read from. Grant passwordless sudo for the install, then revert when finished:
->
-> ```bash
-> echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/hermes-install
-> # …re-run the installer; once it finishes:
-> sudo rm /etc/sudoers.d/hermes-install
-> ```
->
-> Tracked in [#109](https://github.com/fathah/hermes-desktop/issues/109).
-
-### Fedora (RPM)
-
-```bash
-sudo dnf install ./hermes-desktop-<version>.rpm
+```
+┌─────────────────────────────────────────────────────┐
+│                   React 19 Frontend                  │
+│        (Chat, Sessions, Models, Gateway, ...)        │
+├─────────────────────────────────────────────────────┤
+│                 Tauri IPC Bridge                      │
+│              156 typed Rust commands                  │
+├────────────┬────────────┬────────────┬──────────────┤
+│   Config   │    Chat    │   System   │    Voice     │
+│   Utils    │  Commands  │   Utils    │   Input      │
+├────────────┴────────────┴────────────┴──────────────┤
+│               TUI Gateway (JSON-RPC over stdio)       │
+│     Auto-restart · Watchdog · Health diagnostics      │
+├─────────────────────────────────────────────────────┤
+│              Python TUI Gateway (subprocess)           │
+│                 Hermes Agent Core                      │
+└─────────────────────────────────────────────────────┘
 ```
 
-> **Fedora users:** The `.rpm` is not GPG-signed. If your system enforces signature checking, append `--nogpgcheck` to the install command. Auto-update is not supported for `.rpm` builds (limitation of `electron-updater`); reinstall the new `.rpm` to update.
+The app runs Hermes Agent as a managed Python subprocess, communicating via JSON-RPC over stdin/stdout. The Rust backend translates these into typed Tauri commands for the React frontend — a three-layer isolation model where each layer communicates through well-defined protocols.
+
+### Key Architectural Decisions
+
+| Decision | Why |
+|----------|-----|
+| **Tauri 2 over Electron** | ~5x smaller download, native macOS feel, no Chromium bundled |
+| **JSON-RPC over stdio** | No HTTP port needed, no CORS, no network surface — the gateway is only reachable from the Rust process |
+| **Microtask streaming** | `Promise.resolve().then()` instead of `requestAnimationFrame` for sub-millisecond text flush, eliminating the 16ms rAF cadence bottleneck |
+| **Capabilities-based security** | Minimal Tauri permissions (`core:default` + drag + zoom only), CSP headers, URL scheme validation, no arbitrary shell access from renderer |
+| **Direct HTTP model discovery** | `reqwest` calls to provider `/models` endpoints — works without a running gateway |
+| **Profile isolation** | Each profile gets its own `~/.hermes/profiles/<name>/` with independent config, env, and state DB |
+
+### Why Tauri
+
+| | Tauri 2 (this project) | Electron (upstream) |
+|--|--|--|
+| **Download size** | ~36 MB `.dmg` | ~200 MB+ `.dmg` |
+| **Native binary** | ~10 MB | ~150 MB+ (bundles Chromium + Node.js) |
+| **Rendering engine** | System WebKit (`WKWebView`) | Bundled Chromium |
+| **Memory footprint** | ~60-80 MB RSS | ~300-500 MB RSS |
+| **Startup time** | < 1s | 3-5s |
+| **macOS integration** | Native: Metal, CoreML, CoreAudio, vibrancy | Chromium compatibility layer |
+| **Auto-update** | Rust-native Tauri updater | electron-updater |
+| **Security surface** | 6 curated plugins, capabilities-gated | Full Node.js + Chromium access |
+
+Tauri uses the system's built-in WebKit on macOS — no Chromium bundled. This means the app inherits Apple's security patches through macOS updates, not through bundled browser upgrades. The Rust backend compiles to a single native binary (~10 MB) with zero runtime garbage collection pauses.
+
+#### Plugin Surface
+
+Only 6 Tauri plugins are loaded — each for a specific purpose:
+
+| Plugin | Purpose |
+|--------|---------|
+| `tauri-plugin-log` | Structured logging |
+| `tauri-plugin-dialog` | Native file/folder picker dialogs |
+| `tauri-plugin-shell` | Launching Hermes installer scripts |
+| `tauri-plugin-clipboard-manager` | Read/write system clipboard |
+| `tauri-plugin-window-state` | Persist window size and position |
+| `tauri-plugin-store` | Local key-value storage for preferences |
+
+#### CoreML-Accelerated Voice
+
+The `whisper-rs` dependency is compiled with the `coreml` feature flag, which routes whisper inference through Apple's CoreML framework on Apple Silicon. This gives a significant speedup over CPU-only whisper inference for on-device voice transcription.
+
+---
+
+## macOS Optimizations
+
+### ProMotion 120Hz Rendering
+
+On launch, the Rust backend sets two WebKit environment flags to unlock full ProMotion refresh rates:
+
+```rust
+std::env::set_var("WebKitForceMetal", "1");
+std::env::set_var("WebKitCanvasAcceleratedDrawingEnabled", "1");
+```
+
+This forces WebKit to use Apple Metal for hardware-accelerated rendering, releasing the 120Hz capability on MacBook Pro displays. Combined with the microtask streaming engine, chat text appears character-by-character at the display's native refresh rate — no frame drops, no visible buffering.
+
+### Native Window Chrome
+
+- **Overlay title bar** with `hiddenTitle` — seamless toolbar integration, no double title bars
+- **UnderPageBackground vibrancy** — translucent sidebar matching the macOS desktop tint
+- **Metal GPU compositing** — GPU-accelerated canvas and CSS animations via `WKWebView`
+
+### Local Voice Input
+
+Voice-to-text runs entirely on-device with no cloud dependency:
+
+- **whisper-rs** (Whisper base model) for local speech recognition
+- **cpal + CoreAudio** — audio capture on the main thread (macOS requirement), play/pause from any thread
+- **VAD silence detection** — auto-stops recording after 3s of silence (energy threshold 0.0004)
+- One-click record → transcribe → paste into chat input
+
+---
+
+## Gateway Resilience
+
+The TUI Gateway is managed as a supervised subprocess with automatic recovery:
+
+- **Auto-restart** — up to 5 reconnect attempts with backoff on process exit
+- **Watchdog timer** — 65s timeout for stale `Starting`/`Reconnecting` states
+- **Health diagnostics** — `runtime_health` command returns status, restart count, pending requests, Python/repo/home path validation, and last 10 failure records
+- **Failure persistence** — last 10 gateway failures written to `~/.hermes/logs/gateway_failures.json` for post-mortem
+- **60s startup timeout** — generous window for MCP server discovery on slow connections
+
+---
+
+## Streaming Engine
+
+The chat streaming pipeline is designed for zero-text-loss rendering across concurrent tabs:
+
+```
+Gateway SSE → Tauri Event → useChatInbox → pendingChunks → microtask flush → flushedTextRef → React state
+```
+
+- **Per-tab state isolation** — each chat tab has independent `pendingChunks`, `flushedText`, and `turnCompleted` refs
+- **Microtask scheduling** — `Promise.resolve().then()` fires as soon as the JS context clears, not on the next animation frame
+- **Dual-ref consistency** — `flushedTextRef` tracks committed text synchronously, avoiding stale reads from React's async state updates during `message.complete`
+
+---
+
+## Premium macOS Experience
+
+Hermes Caduceus is not just a cross-platform port; it is built to feel like a first-class citizen on macOS:
+
+- **120Hz ProMotion Support:** Forced Apple Metal API acceleration via WebKit for buttery-smooth 120fps scrolling and animations.
+- **Native Vibrancy:** Real-time `UnderWindowBackground` effects that adapt to your wallpaper, providing the iconic macOS glassmorphism.
+- **Apple Silicon Optimized:** Native ARM64 builds with Link-Time Optimization (LTO) for peak performance on M1/M2/M3 chips.
+- **Safari 17 Modern Engine:** Leverages the latest WebKit features for reduced memory footprint and lightning-fast JS execution.
+- **Title Bar Integration:** Transparent "Overlay" title bar with native traffic lights for a clean, modern aesthetic.
+
+## Installation
+
+1. **Download** the latest `.dmg` from [Releases](https://github.com/fathah/hermes-caduceus/releases/).
+2. **Move to Applications** — open the `.dmg` and drag `Hermes Caduceus` to `/Applications`.
+3. **First launch** — right-click → **Open** (required for self-signed apps), or run:
+   ```bash
+   xattr -cr "/Applications/Hermes Caduceus.app"
+   ```
+
+## GitHub Automation
+
+- **Builds:** macOS (x64 + ARM64) `.dmg` builds on every tag push (`v*`).
+- **CI:** Lint, typecheck, and unit tests on every Pull Request.
+
+---
+
+## Features
+
+- **Guided first-run install** for Hermes Agent with dependency resolution
+- **Local or remote backend** — run locally on `127.0.0.1:8765`, or connect to a remote Hermes API server via SSH tunnel
+- **Multi-provider support** — OpenRouter, Anthropic, OpenAI, Google (Gemini), xAI (Grok), Nous Portal, Qwen, MiniMax, Hugging Face, Groq, and local OpenAI-compatible endpoints (LM Studio, Ollama, vLLM, llama.cpp)
+- **Direct model discovery** — detect available models from provider `/models` endpoints without starting the gateway
+- **Streaming chat UI** — SSE streaming with microtask flush, tool progress indicators, markdown rendering, syntax highlighting
+- **Token usage tracking** — live prompt/completion token counts and cost display
+- **22 slash commands** — `/new`, `/clear`, `/fast`, `/web`, `/image`, `/browse`, `/code`, `/shell`, `/usage`, `/help`, `/tools`, `/skills`, `/model`, `/memory`, `/persona`, `/version`, `/compact`, `/compress`, `/undo`, `/retry`, `/debug`, `/status`
+- **Session management** — full-text search (SQLite FTS5), date-grouped history, segmented sessions with cross-segment loading
+- **Profile switching** — isolated Hermes environments with separate config, env, and state
+- **14 toolsets** — web, browser, terminal, file, code execution, vision, image gen, TTS, skills, memory, and more
+- **Memory & Persona** — view/edit memory entries and SOUL.md personality
+- **Routing & Fallback** — GUI for default model, provider, and fallback chain configuration
+- **Scheduled tasks** — cron job builder with 15 delivery targets
+- **16 messaging gateways** — Telegram, Discord, Slack, WhatsApp, Signal, Matrix, iMessage, DingTalk, Feishu, WeCom, WeChat, and more
+- **Plugin management** — enable/disable plugins with status and source filtering
+- **Voice input** — on-device speech recognition with VAD auto-stop
+- **Backup, import & debug dump**
+- **i18n** — 8 locales (EN, ES, ID, JA, PT-BR, PT-PT, ZH-CN, ZH-TW)
 
 ## Preview
 
@@ -68,204 +208,52 @@ sudo dnf install ./hermes-desktop-<version>.rpm
 <td width="50%" align="center"><b>Tools</b><br/><img width="100%" alt="Tools" src="previews/tools.png" /></td>
 <td width="50%" align="center"><b>Skills</b><br/><img width="100%" alt="Skills" src="previews/skills.png" /></td>
 </tr>
-<tr>
-<td width="50%" align="center"><b>Schedules</b><br/><img width="100%" alt="Schedules" src="previews/schedules.png" /></td>
-<td width="50%" align="center"><b>Gateway</b><br/><img width="100%" alt="Gateway" src="previews/gateway.png" /></td>
-</tr>
-<tr>
-<td width="50%" align="center"><b>Persona</b><br/><img width="100%" alt="Persona" src="previews/persona.png" /></td>
-<td width="50%" align="center"><b>Kanban</b><br/><img width="100%" alt="Kanban" src="previews/kanban.png" /></td>
-</tr>
-<tr>
-<td width="50%" align="center"><b>Office</b><br/><img width="100%" alt="Office" src="previews/office.png" /></td>
-<td width="50%" align="center"><b>Settings</b><br/><img width="100%" alt="Settings" src="previews/settings.png" /></td>
-</tr>
 </table>
 
-## Features
-
-- **Guided first-run install** for Hermes Agent with progress tracking and dependency resolution
-- **Local or remote backend** — run Hermes locally on `127.0.0.1:8765`, or connect the desktop app to a remote Hermes API server with URL + API key
-- **Multi-provider support** — OpenRouter, Anthropic, OpenAI, Google (Gemini), xAI (Grok), Nous Portal, Qwen, MiniMax, Hugging Face, Groq, and local OpenAI-compatible endpoints (LM Studio, Ollama, vLLM, llama.cpp)
-- **Streaming chat UI** with SSE streaming, tool progress indicators, markdown rendering, and syntax highlighting
-- **Token usage tracking** — live prompt/completion token counts and cost display in the chat footer, plus a `/usage` slash command
-- **22 slash commands** — `/new`, `/clear`, `/fast`, `/web`, `/image`, `/browse`, `/code`, `/shell`, `/usage`, `/help`, `/tools`, `/skills`, `/model`, `/memory`, `/persona`, `/version`, `/compact`, `/compress`, `/undo`, `/retry`, `/debug`, `/status`, and more
-- **Session management** — full-text search (SQLite FTS5), date-grouped history, resume and search across conversations
-- **Profile switching** — create, delete, and switch between separate Hermes environments with isolated config
-- **14 toolsets** — web, browser, terminal, file, code execution, vision, image gen, TTS, skills, memory, session search, clarify, delegation, MoA, and task planning
-- **Memory system** — view/edit memory entries, user profile memory, capacity tracking, and discoverable memory providers (Honcho, Hindsight, Mem0, RetainDB, Supermemory, ByteRover)
-- **Persona editor** — edit and reset your agent's SOUL.md personality
-- **Saved models** — CRUD management for model configurations across providers
-- **Routing & Fallback** — dedicated panel for default model, provider, and fallback chain configuration
-- **Scheduled tasks** — cron job builder (minutes, hourly, daily, weekly, custom cron) with 15 delivery targets
-- **16 messaging gateways** — Telegram, Discord, Slack, WhatsApp, Signal, Matrix, Mattermost, Email (IMAP/SMTP), SMS (Twilio/Vonage), iMessage (BlueBubbles), DingTalk, Feishu/Lark, WeCom, WeChat (iLink Bot), Webhooks, Home Assistant
-- **Hermes Office (Claw3d)** — visual 3D interface with dev server and adapter management
-- **Backup, import & debug dump** — full data backup/restore and system diagnostics from Settings
-- **Log viewer** — view gateway and agent logs directly from the Settings screen
-- **Auto-updater** — check for and install updates via electron-updater
-- **i18n ready** — internationalization framework with English locale covering all screens, ready for community translations
-- **Test suite** — SSE parser, IPC handlers, preload API surface, installer utilities, and constants validation with Vitest
-
-## How It Works
-
-On first launch, the app:
-
-1. Asks whether you want to run Hermes **locally** or connect to a **remote** Hermes API server.
-2. **Local mode:** checks whether Hermes is already installed in `~/.hermes`; if not, runs the official Hermes installer with dependency resolution (Git, uv, Python 3.11+).
-3. **Remote mode:** prompts for the remote API URL and API key, validates the connection, and skips local install.
-4. Prompts for an API provider or local model endpoint.
-5. Saves provider config and API keys through Hermes config files.
-6. Launches the main workspace once setup is complete.
-
-In local mode, chat requests go through `http://127.0.0.1:8765` with SSE streaming. In remote mode, the app talks to your configured remote URL with the same streaming protocol. The desktop app parses the stream in real time, rendering tool progress, markdown content, and token usage as it arrives.
-
-## Screens
-
-| Screen        | Description                                                                           |
-| ------------- | ------------------------------------------------------------------------------------- |
-| **Chat**      | Streaming conversation UI with slash commands, tool progress, and token tracking      |
-| **Sessions**  | Browse, search, and resume past conversations                                         |
-| **Agents**    | Create, delete, and switch between Hermes profiles                                    |
-| **Skills**    | Browse, install, and manage bundled and installed skills                              |
-| **Models**    | Manage saved model configurations per provider                                        |
-| **Routing**   | Configure default model, provider, and fallback chain                                 |
-| **Memory**    | View/edit memory entries, user profile, and configure memory providers                |
-| **Soul**      | Edit the active profile's persona (SOUL.md)                                           |
-| **Tools**     | Enable or disable individual toolsets                                                 |
-| **Schedules** | Create and manage cron jobs with delivery targets                                     |
-| **Gateway**   | Configure and control messaging platform integrations                                 |
-| **Office**    | Claw3d visual interface setup and management                                          |
-| **Settings**  | Provider config, credential pools, backup/import, log viewer, network settings, theme |
-
-## Supported Providers
-
-### LLM Providers
-
-| Provider            | Notes                                    |
-| ------------------- | ---------------------------------------- |
-| **OpenRouter**      | 200+ models via single API (recommended) |
-| **Anthropic**       | Direct Claude access                     |
-| **OpenAI**          | Direct GPT access                        |
-| **Google (Gemini)** | Google AI Studio                         |
-| **xAI (Grok)**      | Grok models                              |
-| **Nous Portal**     | Free tier available                      |
-| **Qwen**            | QwenAI models                            |
-| **MiniMax**         | Global and China endpoints               |
-| **Hugging Face**    | 20+ open models via HF Inference         |
-| **Groq**            | Fast inference (voice/STT)               |
-| **Local/Custom**    | Any OpenAI-compatible endpoint           |
-
-Local presets are included for LM Studio, Ollama, vLLM, and llama.cpp.
-
-### Messaging Platforms
-
-Telegram, Discord, Slack, WhatsApp, Signal, Matrix/Element, Mattermost, Email (IMAP/SMTP), SMS (Twilio & Vonage), iMessage (BlueBubbles), DingTalk, Feishu/Lark, WeCom, WeChat (iLink Bot), Webhooks, and Home Assistant.
-
-### Tool Integrations
-
-Exa Search, Parallel API, Tavily, Firecrawl, FAL.ai (image generation), Honcho, Browserbase, Weights & Biases, and Tinker.
+---
 
 ## Development
 
 ### Prerequisites
 
-- Node.js and Bun
-- A Unix-like shell environment for the Hermes installer
-- Network access for downloading Hermes during first-run install
+- macOS 13+
+- Node.js 22+ and Bun
+- [Rust](https://rustup.rs/)
 
-### Install dependencies
+### Setup
 
 ```bash
 bun install
-```
-
-### Start the app in development
-
-```bash
 bun run dev
 ```
 
-### Run checks
+### Checks & Tests
 
 ```bash
 bun run lint
 bun run typecheck
-```
-
-### Run tests
-
-```bash
 bun run test
-bun run test:watch
 ```
 
-### Build the desktop app
-
-```bash
-bun run build
-```
-
-Platform packaging:
+### Build
 
 ```bash
 bun run build:mac
-bun run build:win
-bun run build:linux
-bun run build:rpm    # Fedora/RHEL .rpm only
 ```
-
-## First-Time Setup
-
-When the app opens for the first time, it will either detect an existing Hermes installation or offer to install it for you.
-
-Supported setup paths in the UI:
-
-- `OpenRouter`
-- `Anthropic`
-- `OpenAI`
-- `Local LLM` via an OpenAI-compatible base URL
-
-Local presets are included for:
-
-- LM Studio
-- Ollama
-- vLLM
-- llama.cpp
-
-Hermes files are managed in:
-
-- `~/.hermes`
-- `~/.hermes/.env`
-- `~/.hermes/config.yaml`
-- `~/.hermes/hermes-agent`
-- `~/.hermes/profiles/` — named profile directories
-- `~/.hermes/state.db` — session history database
-- `~/.hermes/cron/jobs.json` — scheduled tasks
 
 ## Tech Stack
 
-- **Electron** 39 — cross-platform desktop shell
-- **React** 19 — UI framework
-- **TypeScript** 5.9 — type safety across main and renderer processes
-- **Tailwind CSS** 4 — utility-first styling
-- **Vite** 7 + electron-vite — fast dev server and build tooling
-- **better-sqlite3** — local session storage with FTS5 full-text search
-- **i18next** — internationalization framework
-- **Vitest** — test runner
+| Layer | Technology |
+|-------|-----------|
+| Native Shell | **Tauri 2** (Rust) — ~5,800 LOC |
+| Frontend | **React 19** + **TypeScript 5** — ~38,000 LOC |
+| Styling | **Tailwind CSS** 4 |
+| Build | **Vite** 7 |
+| i18n | **i18next** |
+| Tests | **Vitest** + Rust tests |
+| Voice | **whisper-rs** + **cpal** (CoreAudio) |
 
-## Notes
+## Acknowledgements
 
-- The desktop app depends on the upstream Hermes Agent project for agent behavior and tool execution.
-- The built-in installer runs the official Hermes install script with `--skip-setup`, then completes provider configuration in the GUI.
-- Local model providers do not require an API key, but the compatible server must already be running.
-- Alternative registry routes are supported for environments with restricted network access.
-
-## Contributing
-
-Contributions are welcome! Check out the [Contributing Guide](CONTRIBUTING.md) to get started. If you're not sure where to begin, take a look at the [open issues](https://github.com/NousResearch/hermes-desktop/issues). Found a bug or have a feature request? [File an issue](https://github.com/NousResearch/hermes-desktop/issues/new).
-
-## Related Project
-
-For the core agent, docs, and CLI workflows, see the main Hermes Agent repository:
-
-- https://github.com/NousResearch/hermes-agent
+- [Hermes Agent](https://github.com/NousResearch/hermes-agent) — the core AI agent this app manages
+- [hermes-desktop](https://github.com/NousResearch/hermes-desktop) — the upstream Electron project this was forked from

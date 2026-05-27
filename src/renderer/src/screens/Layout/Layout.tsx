@@ -34,7 +34,6 @@ import { rewriteTranscript } from "../Chat/renderTranscript";
 import { getStoreItem } from "@renderer/utils/store";
 import RemoteNotice from "../../components/RemoteNotice";
 import VerifyWarningBanner from "../../components/VerifyWarningBanner";
-import hermeslogo from "../../assets/hermes.png";
 import hermesicon from "../../assets/hermes-icon.png";
 import { cache } from "../../utils/prefetchCache";
 import {
@@ -570,12 +569,6 @@ function Layout({
             height={26}
             alt=""
             className="sidebar-logo-icon"
-          />
-          <img
-            src={hermeslogo}
-            height={30}
-            alt=""
-            className="sidebar-logo-full"
           />
         </div>
 

@@ -2,7 +2,7 @@
   "name": "hermes-caduceus",
   "version": "0.4.5",
   "description": "Hermes Agent Desktop — self-improving AI assistant",
-  "author": "fathah",
+  "author": "leriou",
   "homepage": "https://github.com/fathah/hermes-caduceus",
   "scripts": {
     "format": "prettier --write .",
