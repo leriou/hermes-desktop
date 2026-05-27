@@ -3529,6 +3529,7 @@
 /* ── Verbose toggle button in status bar ──────────────────────────── */
 
 .chat-status-verbose-btn {
+  position: relative;
   background: none;
   border: 1px solid var(--border, rgba(127, 127, 127, 0.2));
   border-radius: 4px;
@@ -3549,6 +3550,27 @@
   background: var(--bg-elevated, rgba(127, 127, 127, 0.12));
   color: var(--text-primary);
   border-color: var(--text-muted);
+}
+
+.chat-status-verbose-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  box-shadow: var(--shadow-card-soft);
+}
+
+.chat-status-verbose-btn:hover .chat-status-verbose-tooltip {
+  opacity: 1;
 }
 
 @keyframes fadeIn {

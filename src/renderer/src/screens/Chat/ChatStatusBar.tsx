@@ -125,9 +125,12 @@ export const ChatStatusBar = memo(function ChatStatusBar({
           <button
             className={`chat-status-verbose-btn ${verbose ? "chat-status-verbose-active" : ""}`}
             onClick={onToggleVerbose}
-            title={verbose ? "Compact tool display" : "Verbose tool display"}
+            aria-label={verbose ? "Compact tool display" : "Verbose tool display"}
           >
             {verbose ? "⊒" : "⊟"}
+            <span className="chat-status-verbose-tooltip">
+              {verbose ? "Compact tool display" : "Verbose tool display"}
+            </span>
           </button>
         </>
       )}
