@@ -4,6 +4,7 @@ import {
   normalizeApprovalRequest,
   normalizeClarifyRequest,
   normalizeSecretRequest,
+  normalizeSudoRequest,
   normalizeTuiEvent,
   textFromPayload,
 } from "./tuiEvents";
@@ -74,6 +75,30 @@ describe("TUI gateway event helpers", () => {
     expect(
       normalizeClarifyRequest({ choices: ["yes", 1, "no"] }).choices,
     ).toEqual(["yes", "no"]);
+  });
+});
+
+describe("normalizeSudoRequest", () => {
+  it("extracts request_id from both snake_case and camelCase", () => {
+    expect(
+      normalizeSudoRequest({ request_id: "sudo-1" }),
+    ).toEqual({ requestId: "sudo-1" });
+    expect(
+      normalizeSudoRequest({ requestId: "sudo-2" }),
+    ).toEqual({ requestId: "sudo-2" });
+  });
+
+  it("produces empty string when no request id", () => {
+    expect(normalizeSudoRequest({})).toEqual({ requestId: "" });
+  });
+});
+
+it("normalizeApprovalRequest falls back to empty arrays for missing pattern keys", () => {
+  expect(normalizeApprovalRequest({ command: "ls" })).toEqual({
+    command: "ls",
+    description: "",
+    patternKey: "",
+    patternKeys: [],
   });
 });
 

@@ -533,6 +533,40 @@ describe("useChatInbox", () => {
     expect(updateTab).toHaveBeenCalledWith("tab-1", expect.objectContaining({ hermesSessionId: "sid-new" }));
   });
 
+  it("clears streaming refs on terminal error events", async () => {
+    const updateTabMessages = vi.fn();
+    const updateTab = vi.fn((_, patch) => {
+      const current = sessions.get("tab-1");
+      if (current) sessions.set("tab-1", { ...current, ...patch });
+    });
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", { ...sessionState(), streamingText: "partial" }],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    eventHandler?.({ type: "error", sid: "sid-1", payload: { message: "timeout" } });
+
+    await waitFor(() => {
+      expect(updateTab).toHaveBeenCalledWith(
+        "tab-1",
+        expect.objectContaining({
+          isLoading: false,
+          toolProgress: null,
+        }),
+      );
+    });
+  });
+
   it.skip("coalesces live assistant deltas into the next animation frame", () => {
     const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
       const current = sessions.get(tabId);
