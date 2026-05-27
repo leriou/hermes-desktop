@@ -147,19 +147,52 @@ fn resolve_models_url(provider: &str, base_url: Option<&str>) -> String {
 }
 
 fn extract_model_ids(body: &Value) -> Vec<String> {
+    let mut ids: Vec<String> = Vec::new();
     // OpenAI-compatible: { "data": [ { "id": "model-name" }, ... ] }
     if let Some(data) = body.get("data").and_then(|v| v.as_array()) {
-        return data.iter().filter_map(|m| {
+        ids = data.iter().filter_map(|m| {
             m.get("id").and_then(|v| v.as_str()).map(|s| s.to_string())
         }).collect();
     }
     // Google: { "models": [ { "name": "models/gemini-pro" }, ... ] }
-    if let Some(models) = body.get("models").and_then(|v| v.as_array()) {
-        return models.iter().filter_map(|m| {
-            m.get("name").or(m.get("id"))
-                .and_then(|v| v.as_str())
-                .map(|s| s.trim_start_matches("models/").to_string())
-        }).collect();
+    if ids.is_empty() {
+        if let Some(models) = body.get("models").and_then(|v| v.as_array()) {
+            ids = models.iter().filter_map(|m| {
+                m.get("name").or(m.get("id"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim_start_matches("models/").to_string())
+            }).collect();
+        }
     }
-    vec![]
+    // Sort: group by prefix (gpt-, claude-, glm-, gemini-), then version-descending
+    ids.sort_by(|a, b| {
+        let pa = model_sort_key(a);
+        let pb = model_sort_key(b);
+        pb.cmp(&pa)
+    });
+    ids
+}
+
+/// Produce a sort key that groups by model family prefix and orders
+/// higher versions first: "gpt-5.5" > "gpt-5" > "gpt-4.1" > "claude-opus-4.7"
+fn model_sort_key(id: &str) -> String {
+    let lower = id.to_lowercase();
+    // Extract prefix (letters+hyphens before the first digit)
+    let prefix: String = lower.chars()
+        .take_while(|c| !c.is_ascii_digit())
+        .collect();
+    // Rest is the version-like suffix
+    let version = &lower[prefix.len()..];
+    // Pad numeric segments to fixed width so "5.5" > "5" > "4.1" lexicographically
+    let padded_version: String = version.split(|c: char| c == '.' || c == '-')
+        .map(|seg| {
+            if let Ok(n) = seg.parse::<u32>() {
+                format!("{:06}", n)
+            } else {
+                seg.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(".");
+    format!("{}{}", prefix, padded_version)
 }
