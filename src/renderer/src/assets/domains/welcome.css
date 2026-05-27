@@ -1,0 +1,572 @@
+/* ========================================================================
+   WELCOME SCREEN
+   ======================================================================== */
+.welcome-screen {
+  text-align: center;
+  gap: 0;
+}
+
+.welcome-logo {
+  border-radius: var(--radius-lg);
+}
+
+.welcome-title {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.welcome-subtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 36px;
+  max-width: 400px;
+  line-height: 1.7;
+}
+
+.welcome-button {
+  padding: 12px 32px;
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+
+.welcome-note {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.welcome-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 480px;
+}
+
+.welcome-divider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+  margin: 20px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.welcome-divider::before,
+.welcome-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.welcome-terminal-option {
+  width: 100%;
+  text-align: left;
+}
+
+.welcome-terminal-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.welcome-terminal-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.welcome-terminal-box code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-all;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.welcome-copy-btn {
+  flex-shrink: 0;
+}
+
+.welcome-recheck-btn {
+  padding: 10px 24px;
+}
+
+.welcome-recheck-btn + .welcome-recheck-btn {
+  margin-top: 10px;
+}
+
+.welcome-remote-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.welcome-remote-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.welcome-remote-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.welcome-remote-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.welcome-remote-input:focus {
+  border-color: var(--accent);
+}
+
+.welcome-remote-error {
+  font-size: 12px;
+  color: var(--error, #ef4444);
+  margin: 0;
+}
+
+.welcome-remote-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ========================================================================
+   INSTALL SCREEN
+   ======================================================================== */
+.install-screen {
+  padding-top: 60px;
+  justify-content: flex-start;
+}
+
+.install-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 28px;
+  color: var(--text-primary);
+}
+
+.install-progress-container {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.install-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.install-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.install-percent {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.install-step-info {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.install-step-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.install-step-detail {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.install-log {
+  width: 100%;
+  max-width: 620px;
+  flex: 1;
+  min-height: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 20px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-all;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.install-progress-fill--error {
+  background: var(--error) !important;
+}
+
+.install-error-banner {
+  width: 100%;
+  max-width: 620px;
+  background: var(--error-bg);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Pre-install confirmation (issue #272) */
+.install-confirm {
+  width: 100%;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.install-confirm-location {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.install-confirm-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.install-confirm-path {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  word-break: break-all;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.install-confirm-state {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.install-confirm-state--replace {
+  padding: 10px 12px;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+}
+
+.install-confirm-note,
+.install-confirm-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.install-confirm-hint {
+  color: var(--text-muted);
+}
+
+.install-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.install-confirm-error {
+  font-size: 13px;
+  color: var(--error);
+  margin: 0;
+}
+
+.verify-warning-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--warning-bg);
+  border-bottom: 1px solid var(--warning);
+}
+
+.verify-warning-text {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.verify-warning-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.install-error-text {
+  font-size: 13px;
+  color: var(--error);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.install-error-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.install-error {
+  text-align: center;
+  margin-top: 16px;
+  color: var(--error);
+  font-size: 14px;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+.install-done {
+  margin-top: 20px;
+}
+
+/* ========================================================================
+   SETUP SCREEN
+   ======================================================================== */
+.setup-screen {
+  padding-top: 60px;
+  justify-content: flex-start;
+}
+
+.setup-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.setup-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+.setup-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 620px;
+  margin-bottom: 32px;
+}
+
+.setup-provider-card {
+  padding: 16px 12px;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+}
+
+.setup-provider-card:hover {
+  border-color: var(--border-bright);
+  background: var(--bg-tertiary);
+}
+
+.setup-provider-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.setup-provider-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.setup-provider-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.setup-provider-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-text);
+  margin-top: 6px;
+}
+
+.setup-form {
+  width: 100%;
+  max-width: 580px;
+}
+
+.setup-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.setup-input-group {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.setup-input-group .input {
+  padding-right: 60px;
+}
+
+.setup-toggle-visibility {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  transition: color var(--transition);
+}
+
+.setup-toggle-visibility:hover {
+  color: var(--text-primary);
+}
+
+.setup-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-text);
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  margin-bottom: 20px;
+  font-family: var(--font-sans);
+  transition: color var(--transition);
+}
+
+.setup-link:hover {
+  color: var(--accent-hover);
+}
+
+.setup-local-presets {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.setup-local-preset {
+  padding: 6px 14px;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.setup-local-preset:hover {
+  border-color: var(--border-bright);
+}
+
+.setup-local-preset.active {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: var(--accent-subtle);
+}
+
+.setup-field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  margin-bottom: 16px;
+}
+
+.setup-label-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.setup-error {
+  color: var(--error);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.setup-continue {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+}
+
