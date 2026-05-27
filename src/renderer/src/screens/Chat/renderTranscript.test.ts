@@ -201,6 +201,96 @@ describe("buildRenderableTranscript", () => {
     });
   });
 
+  it("handles out-of-order tool completion (complete arrives for a tool not yet started)", () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "fix the bug" },
+      {
+        id: "tc1-complete",
+        sessionId: "s1",
+        kind: "tool_call",
+        role: "agent",
+        callId: "tool-1",
+        name: "Read",
+        args: "{}",
+        result: "file contents",
+        success: true,
+        durationS: 0.5,
+      },
+    ];
+
+    const result = buildRenderableTranscript({
+      messages,
+      isLoading: false,
+      toolProgress: null,
+    });
+
+    // Should group the tool call even without a matching tool.start
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("u1");
+    expect(result[1]).toMatchObject({
+      kind: "tool_group",
+      toolName: "Read",
+      calls: [{ callId: "tool-1", result: "file contents" }],
+    });
+  });
+
+  it("filters empty bubble after tool group", () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "read file" },
+      {
+        id: "tc1",
+        kind: "tool_call",
+        role: "agent",
+        callId: "t1",
+        name: "Read",
+        args: "{}",
+        result: "contents",
+      },
+      { id: "a1", role: "agent", content: "" },
+    ];
+
+    const result = buildRenderableTranscript({
+      messages,
+      isLoading: false,
+      toolProgress: null,
+    });
+
+    // Empty assistant bubble after tool group should be filtered
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("u1");
+    expect(result[1].kind).toBe("tool_group");
+  });
+
+  it("produces stable output for identical input (pure check)", () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "hello" },
+      {
+        id: "tc1",
+        kind: "tool_call",
+        role: "agent",
+        callId: "t1",
+        name: "Bash",
+        args: '{"command":"ls"}',
+        result: "file1\nfile2",
+        durationS: 1.2,
+      },
+      { id: "a1", role: "agent", content: "Here are the files." },
+    ];
+
+    const args = {
+      messages,
+      isLoading: false,
+      toolProgress: null as string | null,
+      streamingText: "",
+      streamingReasoning: "",
+    };
+
+    const result1 = buildRenderableTranscript(args);
+    const result2 = buildRenderableTranscript(args);
+
+    expect(result1).toEqual(result2);
+  });
+
   it("renders inline tool progress when isLoading and streamingText is present, even if lastMessageIsAgent is false", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "Hello" },
