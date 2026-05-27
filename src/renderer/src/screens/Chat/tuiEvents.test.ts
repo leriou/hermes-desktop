@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyEvent,
   normalizeApprovalRequest,
   normalizeClarifyRequest,
   normalizeSecretRequest,
@@ -73,5 +74,89 @@ describe("TUI gateway event helpers", () => {
     expect(
       normalizeClarifyRequest({ choices: ["yes", 1, "no"] }).choices,
     ).toEqual(["yes", "no"]);
+  });
+});
+
+describe("classifyEvent", () => {
+  it("classifies streaming events as additive", () => {
+    expect(classifyEvent("message.delta")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("thinking.delta")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("reasoning.delta")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
+  });
+
+  it("classifies terminal events", () => {
+    expect(classifyEvent("message.complete")).toEqual({
+      category: "terminal",
+      safeAfterAbort: true,
+    });
+    expect(classifyEvent("error")).toEqual({
+      category: "terminal",
+      safeAfterAbort: true,
+    });
+  });
+
+  it("classifies tool events as additive", () => {
+    expect(classifyEvent("tool.start")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("tool.complete")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("tool.progress")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
+  });
+
+  it("classifies status-only events", () => {
+    expect(classifyEvent("message.start")).toEqual({
+      category: "status",
+      safeAfterAbort: true,
+    });
+    expect(classifyEvent("status.update")).toEqual({
+      category: "status",
+      safeAfterAbort: true,
+    });
+    expect(classifyEvent("tool.generating")).toEqual({
+      category: "status",
+      safeAfterAbort: true,
+    });
+  });
+
+  it("classifies interaction request events as status", () => {
+    expect(classifyEvent("approval.request")).toEqual({
+      category: "status",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("clarify.request")).toEqual({
+      category: "status",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("sudo.request")).toEqual({
+      category: "status",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("secret.request")).toEqual({
+      category: "status",
+      safeAfterAbort: false,
+    });
+  });
+
+  it("classifies unknown events as ignored", () => {
+    expect(classifyEvent("some.random.event")).toEqual({
+      category: "ignored",
+      safeAfterAbort: true,
+    });
   });
 });

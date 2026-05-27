@@ -119,3 +119,46 @@ export function normalizeSecretRequest(
     prompt: asString(payload.prompt),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Event classification contract
+// ---------------------------------------------------------------------------
+
+export type EventCategory =
+  | "additive"
+  | "terminal"
+  | "replacing"
+  | "status"
+  | "ignored";
+
+export interface EventClassification {
+  category: EventCategory;
+  safeAfterAbort: boolean;
+}
+
+const EVENT_CLASSIFICATIONS: Record<string, EventClassification> = {
+  "message.delta": { category: "additive", safeAfterAbort: false },
+  "thinking.delta": { category: "additive", safeAfterAbort: false },
+  "reasoning.delta": { category: "additive", safeAfterAbort: false },
+  "message.complete": { category: "terminal", safeAfterAbort: true },
+  error: { category: "terminal", safeAfterAbort: true },
+  "message.start": { category: "status", safeAfterAbort: true },
+  "status.update": { category: "status", safeAfterAbort: true },
+  "tool.generating": { category: "status", safeAfterAbort: true },
+  "tool.start": { category: "additive", safeAfterAbort: false },
+  "tool.complete": { category: "additive", safeAfterAbort: false },
+  "tool.progress": { category: "additive", safeAfterAbort: false },
+  "approval.request": { category: "status", safeAfterAbort: false },
+  "clarify.request": { category: "status", safeAfterAbort: false },
+  "sudo.request": { category: "status", safeAfterAbort: false },
+  "secret.request": { category: "status", safeAfterAbort: false },
+};
+
+export function classifyEvent(type: string): EventClassification {
+  return (
+    EVENT_CLASSIFICATIONS[type] ?? {
+      category: "ignored",
+      safeAfterAbort: true,
+    }
+  );
+}
