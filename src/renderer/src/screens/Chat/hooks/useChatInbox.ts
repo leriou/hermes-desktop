@@ -15,6 +15,7 @@ import { createSystemEvent, systemEventFromError } from "../systemEvents";
 import { rewriteTranscript } from "../renderTranscript";
 import { getStoreItem } from "@renderer/utils/store";
 import {
+  classifyEvent,
   normalizeApprovalRequest,
   normalizeClarifyRequest,
   normalizeSecretRequest,
@@ -162,25 +163,34 @@ export function useChatInbox({
 
   useEffect(() => {
     function tabForEvent(event: NormalizedTuiEvent): string | null {
+      // 1. Event carries a session id — try to find matching tab
       if (event.sessionId) {
-        const existing = findTabBySessionId(event.sessionId);
-        if (existing) return existing;
+        const matched = findTabBySessionId(event.sessionId);
+        if (matched) return matched;
+        // Adopt session id into active tab only if it has no session id yet
+        // and the event is a live event type (message.start, message.delta, etc.)
+        const active = activeTabIdRef.current;
+        if (
+          LIVE_EVENT_TYPES.has(event.type) &&
+          active &&
+          !sessionsRef.current.get(active)?.hermesSessionId &&
+          !sessionsRef.current.get(active)?.dbSessionId
+        ) {
+          updateTab(active, { hermesSessionId: event.sessionId });
+          return active;
+        }
+        // Session id matches no tab — drop the event
+        return null;
       }
+
+      // 2. Events without session id: only route to active tab for safe events
+      const classification = classifyEvent(event.type);
+      if (classification.category === "additive" && !classification.safeAfterAbort) {
+        return null;
+      }
+
       const active = activeTabIdRef.current;
-      if (!active) return null;
-      const state = sessionsRef.current.get(active);
-      if (!state) return null;
-      if (
-        event.sessionId &&
-        !state.hermesSessionId &&
-        state.isLoading &&
-        LIVE_EVENT_TYPES.has(event.type)
-      ) {
-        updateTab(active, { hermesSessionId: event.sessionId });
-        return active;
-      }
-      if (!event.sessionId) return active;
-      return null;
+      return active;
     }
 
     function commitStreaming(tabId: string, sid?: string): void {

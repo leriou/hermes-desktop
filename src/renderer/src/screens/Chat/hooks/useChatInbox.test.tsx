@@ -437,6 +437,102 @@ describe("useChatInbox", () => {
     });
   });
 
+  it("ignores events with a session id that matches no existing tab", () => {
+    const updateTab = vi.fn();
+    const updateTabMessages = vi.fn();
+    const sessions = new Map<string, SessionState>([["tab-1", sessionState()]]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => null,
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    eventHandler?.({ type: "message.delta", sid: "unknown-sid", payload: { text: "orphan" } });
+
+    expect(updateTab).not.toHaveBeenCalled();
+    expect(updateTabMessages).not.toHaveBeenCalled();
+  });
+
+  it("drops additive events that have no session id", () => {
+    const updateTab = vi.fn();
+    const updateTabMessages = vi.fn();
+    const sessions = new Map<string, SessionState>([["tab-1", sessionState()]]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => null,
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    // message.delta with no sid — additive, should be dropped
+    eventHandler?.({ type: "message.delta", payload: { text: "orphan delta" } });
+
+    expect(updateTab).not.toHaveBeenCalled();
+    expect(updateTabMessages).not.toHaveBeenCalled();
+  });
+
+  it("routes events with matching session id to the correct tab even if it is not active", () => {
+    const updateTab = vi.fn((_, patch) => {
+      const current = sessions.get("tab-2");
+      if (current) sessions.set("tab-2", { ...current, ...patch });
+    });
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", sessionState()],
+      ["tab-2", sessionState()],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: (sid) => (sid === "sid-2" ? "tab-2" : null),
+        updateTab,
+        updateTabMessages: vi.fn(),
+      }),
+    );
+
+    eventHandler?.({ type: "message.start", sid: "sid-2", payload: {} });
+
+    expect(updateTab).toHaveBeenCalledWith("tab-2", expect.objectContaining({ isLoading: true }));
+  });
+
+  it("adopts runtime session id on message.start only once per tab", () => {
+    const updateTab = vi.fn();
+    const freshState: SessionState = {
+      ...sessionState(),
+      hermesSessionId: "",
+      dbSessionId: "",
+    };
+    const sessions = new Map<string, SessionState>([["tab-1", freshState]]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => null,
+        updateTab,
+        updateTabMessages: vi.fn(),
+      }),
+    );
+
+    // First message.start — should bind to active tab since tab has no session id yet
+    eventHandler?.({ type: "message.start", sid: "sid-new", payload: {} });
+    expect(updateTab).toHaveBeenCalledWith("tab-1", expect.objectContaining({ hermesSessionId: "sid-new" }));
+  });
+
   it.skip("coalesces live assistant deltas into the next animation frame", () => {
     const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
       const current = sessions.get(tabId);
