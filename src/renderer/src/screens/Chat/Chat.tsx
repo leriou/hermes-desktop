@@ -3,8 +3,6 @@ import {
   clearStagedAttachments,
   copyToClipboard,
   deleteSessionChain,
-  getSessionMessages,
-  getSessionMessagesBefore,
   isRemoteMode,
   onContextMenuCopyChat,
   onContextMenuSelectBubble,
@@ -16,6 +14,7 @@ import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { MessageList } from "./MessageList";
+import { TodoPanel } from "../../components/common/TodoPanel";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
 import { InteractionCenter } from "./InteractionCenter";
@@ -27,29 +26,14 @@ import { useModelConfig } from "./hooks/useModelConfig";
 import { useFastMode } from "./hooks/useFastMode";
 import { useLocalCommands } from "./hooks/useLocalCommands";
 import { useSessionLifecycle } from "./hooks/useSessionLifecycle";
+import { useLoadEarlier } from "./hooks/useLoadEarlier";
+import { useDragDrop } from "./hooks/useDragDrop";
+import { useApproval } from "./hooks/useApproval";
+import { useGatewayCommands } from "./hooks/useGatewayCommands";
 import { useI18n } from "../../components/useI18n";
 import { buildChatTranscript } from "./transcriptUtils";
-import { shortModelName } from "./sessionDisplay";
 import { createSystemEvent, systemEventFromError } from "./systemEvents";
 import { createTauriChatGatewayClient } from "./tauriChatGatewayClient";
-import {
-  DEFAULT_JUDGMENT_SETTINGS,
-  createRuleBasedJudgmentEngine,
-  type JudgmentAdvice,
-} from "./judgmentEngine";
-import {
-  createApprovalHistoryEntry,
-  getImmediateApprovalDecision,
-  loadApprovalHistory,
-  loadApprovalPolicy,
-  normalizeApprovalPolicy,
-  pruneApprovalHistory,
-  saveApprovalHistory,
-  saveApprovalPolicy,
-  type ApprovalDecision,
-  type ApprovalDecisionSource,
-  type ApprovalPolicy,
-} from "./approvalPolicy";
 import type { ChatMessage } from "./types";
 
 export type { ChatMessage } from "./types";
@@ -120,27 +104,12 @@ function Chat({
   todos = [],
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
-  const [dragActive, setDragActive] = useState(false);
   const [remoteMode, setRemoteMode] = useState(false);
   const [verbose, setVerbose] = useState(
     () => getStoreItem("hermes-verbose") === "true",
   );
-  const [approvalPolicy, setApprovalPolicyState] = useState<ApprovalPolicy>(
-    () => loadApprovalPolicy(),
-  );
-  const [approvalHistory, setApprovalHistory] = useState(() =>
-    loadApprovalHistory(sessionId || ""),
-  );
-  const [approvalSubmitting, setApprovalSubmitting] = useState(false);
-  const [dismissedApproval, setDismissedApproval] =
-    useState<typeof pendingApproval>(null);
-  const [approvalJudgment, setApprovalJudgment] =
-    useState<JudgmentAdvice | null>(null);
-  const approvalSubmittingRef = useRef(false);
-  const dragCounter = useRef(0);
   const chatInputRef = useRef<ChatInputHandle>(null);
   const gatewayClient = useMemo(() => createTauriChatGatewayClient(), []);
-  const judgmentEngine = useMemo(() => createRuleBasedJudgmentEngine(), []);
 
   const { state: session, dispatch } = useSessionLifecycle(
     messages,
@@ -163,133 +132,25 @@ function Chat({
     };
   }, []);
 
-  const loadingEarlierRef = useRef(false);
-  const noMoreEarlierRef = useRef(false);
-  const relatedExhaustedRef = useRef(-1);
+  const messagesRef = useRef(messages);
   useEffect(() => {
-    noMoreEarlierRef.current = false;
-    relatedExhaustedRef.current = -1;
-  }, [sessionId]);
+    messagesRef.current = messages;
+  });
 
-  const handleLoadEarlierMessages = useCallback(async () => {
-    if (loadingEarlierRef.current || noMoreEarlierRef.current) return;
-    const primarySid = dbSessionId ?? session.hermesSessionId ?? sessionId;
-    if (!primarySid) return;
+  // --- Extracted hooks ---
 
-    const loadBatch = async (sid: string, beforeTs: number | null) => {
-      if (beforeTs !== null) {
-        return getSessionMessagesBefore(sid, beforeTs, 50, profile);
-      }
-      return getSessionMessages(sid, profile);
-    };
-
-    const toChatMessages = (items: any[]): ChatMessage[] =>
-      items
-        .map((it: any): ChatMessage | null => {
-          const ts = it.timestamp ? Math.round(it.timestamp * 1000) : undefined;
-          switch (it.kind) {
-            case "user":
-              return { id: `db-${it.id}`, role: "user" as const, content: it.content, timestamp: ts };
-            case "assistant":
-              return { id: `db-${it.id}`, role: "agent" as const, content: it.content, timestamp: ts };
-            case "tool_call":
-              return { id: `db-${it.id}`, kind: "tool_call" as const, role: "agent" as const, callId: it.callId || "", name: it.name || "tool", args: it.args || "", timestamp: ts };
-            case "tool_result": {
-              let content = it.content || "";
-              if (content.length > 8000) content = content.slice(0, 8000) + `\n\n... (${content.length} chars total)`;
-              return { id: `db-${it.id}`, kind: "tool_result" as const, role: "agent" as const, callId: it.callId || "", name: it.name || "tool", content, timestamp: ts };
-            }
-            default:
-              return null;
-          }
-        })
-        .filter((m): m is ChatMessage => m !== null);
-
-    loadingEarlierRef.current = true;
-    try {
-      // Build the session chain: [primary, ...related older sessions]
-      const sessionChain = [primarySid];
-      if (relatedSessionIds.length > 1) {
-        const idx = relatedSessionIds.indexOf(primarySid);
-        if (idx > 0) {
-          for (let i = idx - 1; i >= 0; i--) {
-            sessionChain.push(relatedSessionIds[i]);
-          }
-        }
-      }
-
-      const currentMessages = messagesRef.current;
-      const firstWithTs = currentMessages.find((m) => (m as any).timestamp);
-      const beforeTs = firstWithTs
-        ? ((firstWithTs as any).timestamp as number) / 1000
-        : null;
-      if (beforeTs === null && currentMessages.length > 0) return;
-
-      // Try loading from the current session first
-      const earlier = await loadBatch(primarySid, beforeTs);
-      let chatMessages = toChatMessages(earlier || []);
-
-      if (chatMessages.length > 0) {
-        const el = document.querySelector(".chat-messages");
-        const oldHeight = el?.scrollHeight ?? 0;
-        setMessages((prev) => {
-          const existingIds = new Set(prev.map((m) => m.id));
-          const unique = chatMessages.filter((m) => !existingIds.has(m.id));
-          if (unique.length === 0) return prev;
-          return [...unique, ...prev];
-        });
-        requestAnimationFrame(() => {
-          const el = document.querySelector(".chat-messages");
-          if (el) el.scrollTop = el.scrollHeight - oldHeight;
-        });
-        return;
-      }
-
-      // Current session exhausted — try older related sessions
-      const startIdx = Math.max(0, relatedExhaustedRef.current + 1);
-      for (let i = startIdx; i < sessionChain.length - 1; i++) {
-        const olderSid = sessionChain[i + 1];
-        if (!olderSid) continue;
-        const olderRaw = await getSessionMessages(olderSid, profile);
-        chatMessages = toChatMessages(olderRaw || []);
-        if (chatMessages.length === 0) {
-          relatedExhaustedRef.current = i;
-          continue;
-        }
-        // Check if all messages are already loaded
-        const existingIds = new Set(messagesRef.current.map((m) => m.id));
-        const unique = chatMessages.filter((m) => !existingIds.has(m.id));
-        if (unique.length === 0) {
-          relatedExhaustedRef.current = i;
-          continue;
-        }
-        const el = document.querySelector(".chat-messages");
-        const oldHeight = el?.scrollHeight ?? 0;
-        setMessages((prev) => [...unique, ...prev]);
-        requestAnimationFrame(() => {
-          const el = document.querySelector(".chat-messages");
-          if (el) el.scrollTop = el.scrollHeight - oldHeight;
-        });
-        return;
-      }
-
-      // All sessions exhausted
-      noMoreEarlierRef.current = true;
-    } catch {
-      /* ignore */
-    } finally {
-      loadingEarlierRef.current = false;
-    }
-  }, [
-    dbSessionId,
-    session.hermesSessionId,
+  const { handleLoadEarlierMessages } = useLoadEarlier({
     sessionId,
+    dbSessionId,
+    hermesSessionId: session.hermesSessionId,
     relatedSessionIds,
     profile,
     setMessages,
-  ]);
+    messagesRef,
+  });
 
   const { setContainerRef, userScrolledUp, scrollToBottom } = useChatScroll(messages, isLoading, handleLoadEarlierMessages);
+
   const modelConfig = useModelConfig(profile);
   const {
     fastMode,
@@ -351,402 +212,60 @@ function Chat({
     [setMessages],
   );
 
-  const setApprovalPolicy = useCallback((next: ApprovalPolicy) => {
-    const normalized = normalizeApprovalPolicy(next);
-    setApprovalPolicyState(normalized);
-    saveApprovalPolicy(normalized);
-    setApprovalHistory((prev) => {
-      const pruned = pruneApprovalHistory(
-        prev,
-        Date.now(),
-        normalized.historyTtlMinutes,
-      );
-      saveApprovalHistory(sessionId || "", pruned);
-      return pruned;
-    });
-  }, [sessionId]);
+  const { executeGatewayCommand } = useGatewayCommands({
+    gatewayClient,
+    setMessages,
+    addAgentMessage,
+    addStatusMessage,
+    addSystemEvent,
+    setIsLoading,
+    dispatch,
+    onSessionStateChange,
+    sessionModel: session.sessionModel,
+    isLoading,
+    currentModel: modelConfig.currentModel,
+    displayModel: modelConfig.displayModel,
+  });
 
-  const visibleApproval =
-    pendingApproval && pendingApproval !== dismissedApproval
-      ? pendingApproval
-      : null;
-
-  const recordApprovalDecision = useCallback(
-    (
-      request: NonNullable<typeof pendingApproval>,
-      decision: ApprovalDecision,
-      source: ApprovalDecisionSource,
-    ) => {
-      const judgment = approvalJudgment
-        ? {
-            reason: approvalJudgment.reason,
-            confidence: approvalJudgment.confidence,
-            risk: approvalJudgment.risk,
-          }
-        : undefined;
-      const entry = createApprovalHistoryEntry(
-        request,
-        decision,
-        source,
-        Date.now(),
-        judgment,
-      );
-      setApprovalHistory((prev) => {
-        const next = pruneApprovalHistory(
-          [...prev, entry],
-          Date.now(),
-          approvalPolicy.historyTtlMinutes,
-        );
-        saveApprovalHistory(sessionId || "", next);
-        return next;
-      });
-    },
-    [approvalJudgment, approvalPolicy.historyTtlMinutes],
-  );
-
-  const handleDismissApprovalHistory = useCallback(() => {
-    setApprovalHistory([]);
-    saveApprovalHistory(sessionId || "", []);
-  }, [sessionId]);
-
-  const handleApprovalDecision = useCallback(
-    async (decision: ApprovalDecision, source: ApprovalDecisionSource) => {
-      const request = visibleApproval;
-      const sid = session.hermesSessionId ?? sessionId;
-      if (!request || !sid || approvalSubmittingRef.current) return;
-      approvalSubmittingRef.current = true;
-      setApprovalSubmitting(true);
-      setDismissedApproval(request);
-      setApprovalJudgment(null);
-      onSessionStateChange?.({ pendingApproval: null });
-      recordApprovalDecision(request, decision, source);
-      try {
-        await gatewayClient.respondApproval(sid, decision, false);
-      } catch (err) {
-        addErrorEvent(err);
-      } finally {
-        approvalSubmittingRef.current = false;
-        setApprovalSubmitting(false);
-      }
-    },
-    [
-      addErrorEvent,
-      gatewayClient,
-      onSessionStateChange,
-      recordApprovalDecision,
-      session.hermesSessionId,
-      sessionId,
-      visibleApproval,
-    ],
-  );
-
-  useEffect(() => {
-    if (!visibleApproval) return;
-    const immediate = getImmediateApprovalDecision(approvalPolicy);
-    if (!immediate) return;
-    void handleApprovalDecision(immediate.decision, immediate.source);
-  }, [approvalPolicy, handleApprovalDecision, visibleApproval]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!visibleApproval) {
-      setApprovalJudgment(null);
-      return;
-    }
-    void judgmentEngine
-      .judgeApproval({
-        request: visibleApproval,
-        settings: {
-          ...DEFAULT_JUDGMENT_SETTINGS,
-          enabled: true,
-          model: modelConfig.currentModel || modelConfig.displayModel,
-          allowAutoDecision: false,
-        },
-      })
-      .then((advice) => {
-        if (!cancelled) setApprovalJudgment(advice);
-      })
-      .catch(() => {
-        if (!cancelled) setApprovalJudgment(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    judgmentEngine,
-    modelConfig.currentModel,
-    modelConfig.displayModel,
+  const {
+    approvalPolicy,
+    approvalHistory,
+    approvalSubmitting,
+    approvalJudgment,
     visibleApproval,
-  ]);
+    setApprovalPolicy,
+    handleDismissApprovalHistory,
+    handleApprovalDecision,
+  } = useApproval({
+    sessionId,
+    hermesSessionId: session.hermesSessionId,
+    pendingApproval,
+    onSessionStateChange,
+    respondApproval: useCallback(
+      (sid: string, decision: any, auto: boolean) =>
+        gatewayClient.respondApproval(sid, decision, auto),
+      [gatewayClient],
+    ),
+    addErrorEvent,
+    currentModel: modelConfig.currentModel,
+    displayModel: modelConfig.displayModel,
+  });
 
-  const syncSessionBinding = useCallback(
-    async (runtimeSessionId: string | null) => {
-      if (!runtimeSessionId) return;
-      try {
-        const res = await gatewayClient.sessionTitle(runtimeSessionId);
-        if (res?.session_key) {
-          onSessionStateChange?.({
-            hermesSessionId: runtimeSessionId,
-            dbSessionId: res.session_key,
-            ...(res.title ? { title: res.title } : {}),
-          });
-        }
-      } catch {
-        /* ignore */
-      }
-    },
-    [onSessionStateChange],
-  );
+  const {
+    dragActive,
+    handleDragEnter,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useDragDrop({
+    onFiles: useCallback(
+      (files: File[]) => void chatInputRef.current?.addFiles(files),
+      [],
+    ),
+  });
 
-  const gatewayMessagesToChat = useCallback((items: any[]): ChatMessage[] => {
-    const now = Date.now();
-    const out: ChatMessage[] = [];
-    items.forEach((msg, idx) => {
-      const id = `gw-${now}-${idx}`;
-      if (msg.role === "user" && (msg.text || msg.content)) {
-        out.push({ id, role: "user", content: msg.text || msg.content });
-        return;
-      }
-      if (msg.role === "assistant" && (msg.text || msg.content)) {
-        out.push({ id, role: "agent", content: msg.text || msg.content });
-        return;
-      }
-      if (msg.role === "tool") {
-        out.push({
-          id,
-          kind: "tool_result",
-          role: "agent",
-          callId: "",
-          name: msg.name || "tool",
-          content: msg.context || msg.text || msg.content || "",
-        });
-      }
-    });
-    return out;
-  }, []);
+  // --- Keyboard shortcut ---
 
-  const runCommandDispatchResult = useCallback(
-    async (runtimeSessionId: string, result: any): Promise<boolean> => {
-      const payload = result?.result ?? result ?? {};
-      if (payload.notice) {
-        addStatusMessage("Goal updated", String(payload.notice), "info");
-      }
-      if (payload.output) {
-        addStatusMessage("Command result", String(payload.output), "info");
-      }
-      if (payload.warning) {
-        addStatusMessage("Command warning", String(payload.warning), "warning");
-      }
-      if (payload.type === "send" && payload.message) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `user-command-${Date.now()}`,
-            role: "user",
-            content: String(payload.message),
-            timestamp: Date.now(),
-          },
-        ]);
-        await gatewayClient.submitPrompt(
-          runtimeSessionId,
-          String(payload.message),
-        );
-        return true;
-      }
-      setIsLoading(false);
-      return true;
-    },
-    [addStatusMessage, gatewayClient, setMessages],
-  );
-
-  const executeGatewayCommand = useCallback(
-    async (runtimeSessionId: string, command: string): Promise<boolean> => {
-      const trimmed = command.trim();
-      const [cmd, ...rest] = trimmed.split(/\s+/);
-      const arg = rest.join(" ").trim();
-
-      if (cmd === "/compress") {
-        const result = await gatewayClient.compress(
-          runtimeSessionId,
-          arg || undefined,
-        );
-        const payload = result?.result ?? result ?? {};
-        if (Array.isArray(payload.messages)) {
-          setMessages(gatewayMessagesToChat(payload.messages));
-        }
-        if (payload.info?.model) {
-          dispatch({ type: "setSessionModel", value: payload.info.model });
-          onSessionStateChange?.({ model: payload.info.model });
-        }
-        if (payload.info?.title) {
-          dispatch({ type: "setSessionTitle", value: payload.info.title });
-          onSessionStateChange?.({ title: payload.info.title });
-        }
-        if (payload.usage) {
-          dispatch({
-            type: "setUsage",
-            value: {
-              promptTokens:
-                payload.usage.input ?? payload.usage.promptTokens ?? 0,
-              completionTokens:
-                payload.usage.output ?? payload.usage.completionTokens ?? 0,
-              totalTokens:
-                payload.usage.total ?? payload.usage.totalTokens ?? 0,
-              cost: payload.usage.cost_usd ?? payload.usage.cost,
-              calls: payload.usage.calls,
-              cacheRead: payload.usage.cache_read,
-              cacheWrite: payload.usage.cache_write,
-              reasoning: payload.usage.reasoning,
-              contextUsed: payload.usage.context_used,
-              contextMax: payload.usage.context_max,
-              contextPercent: payload.usage.context_percent,
-            },
-          });
-          onSessionStateChange?.({
-            usage: {
-              promptTokens:
-                payload.usage.input ?? payload.usage.promptTokens ?? 0,
-              completionTokens:
-                payload.usage.output ?? payload.usage.completionTokens ?? 0,
-              totalTokens:
-                payload.usage.total ?? payload.usage.totalTokens ?? 0,
-              cost: payload.usage.cost_usd ?? payload.usage.cost,
-              calls: payload.usage.calls,
-              cacheRead: payload.usage.cache_read,
-              cacheWrite: payload.usage.cache_write,
-              reasoning: payload.usage.reasoning,
-              contextUsed: payload.usage.context_used,
-              contextMax: payload.usage.context_max,
-              contextPercent: payload.usage.context_percent,
-            },
-          });
-        }
-        const summaryText = [
-          payload.summary?.headline,
-          payload.summary?.token_line,
-          payload.summary?.note,
-        ]
-          .filter(Boolean)
-          .join("\n");
-
-        const formatTokens = (val: any) => {
-          if (typeof val === 'number') return val.toLocaleString();
-          if (typeof val === 'string') {
-            const num = parseInt(val, 10);
-            return isNaN(num) ? val : num.toLocaleString();
-          }
-          return '';
-        };
-        const beforeTok = formatTokens(payload.before_tokens);
-        const afterTok = formatTokens(payload.after_tokens);
-        const compressTitle = (beforeTok && afterTok)
-          ? `Session compressed (${beforeTok} ➜ ${afterTok} tok)`
-          : "Session compressed";
-
-        addSystemEvent(
-          "context_compress",
-          compressTitle,
-          summaryText ||
-            "Older context was summarized. Continue chatting in the same thread.",
-        );
-        await syncSessionBinding(runtimeSessionId);
-        setIsLoading(false);
-        return true;
-      }
-
-      if (cmd === "/model") {
-        if (!arg) {
-          const model =
-            session.sessionModel ||
-            modelConfig.currentModel ||
-            modelConfig.displayModel ||
-            "Not set";
-          addAgentMessage(`**Current model:** \`${model}\``);
-          setIsLoading(false);
-          return true;
-        }
-        const switchMsgId = `model-switch-${Date.now()}`;
-        onSessionStateChange?.({
-          pendingModelSwitch: arg,
-          pendingModelSwitchMessageId: switchMsgId,
-        });
-        addSystemEvent("model_switch", "Switching model", shortModelName(arg), {
-          tone: "info",
-          id: switchMsgId,
-        });
-        try {
-          const result = await gatewayClient.setModel(runtimeSessionId, arg);
-          const payload = result?.result ?? result ?? {};
-          if (payload.warning) {
-            addSystemEvent(
-              "model_switch",
-              "Model switch warning",
-              String(payload.warning),
-              { tone: "warning" },
-            );
-          }
-        } finally {
-          setIsLoading(false);
-        }
-        return true;
-      }
-
-      if (cmd === "/goal") {
-        const result = await gatewayClient.dispatchCommand(
-          runtimeSessionId,
-          "goal",
-          arg,
-        );
-        return runCommandDispatchResult(runtimeSessionId, result);
-      }
-
-      if (cmd === "/steer") {
-        if (!arg) {
-          addStatusMessage("Steer failed", "usage: /steer <prompt>", "error");
-          setIsLoading(false);
-          return true;
-        }
-        if (isLoading) {
-          const result = await gatewayClient.steer(runtimeSessionId, arg);
-          const payload = result?.result ?? result ?? {};
-          if (payload.status === "queued") {
-            addStatusMessage("Steer queued", arg, "success");
-          } else {
-            addStatusMessage("Steer rejected", arg, "warning");
-          }
-          setIsLoading(false);
-          return true;
-        }
-        const result = await gatewayClient.dispatchCommand(
-          runtimeSessionId,
-          "steer",
-          arg,
-        );
-        return runCommandDispatchResult(runtimeSessionId, result);
-      }
-
-      return false;
-    },
-    [
-      addAgentMessage,
-      addSystemEvent,
-      addStatusMessage,
-      dispatch,
-      gatewayMessagesToChat,
-      gatewayClient,
-      isLoading,
-      modelConfig.currentModel,
-      modelConfig.displayModel,
-      onSessionStateChange,
-      runCommandDispatchResult,
-      session.sessionModel,
-      setMessages,
-      syncSessionBinding,
-      modelConfig,
-    ],
-  );
-
-  // Cmd/Ctrl+N → new chat
   useEffect(() => {
     if (!visible) return;
     function onKey(e: KeyboardEvent): void {
@@ -759,10 +278,8 @@ function Chat({
     return () => window.removeEventListener("keydown", onKey);
   }, [onNewChat, visible]);
 
-  const messagesRef = useRef(messages);
-  useEffect(() => {
-    messagesRef.current = messages;
-  });
+  // --- Context menu handlers ---
+
   useEffect(() => {
     if (!visible) return;
     const unsub = onContextMenuCopyChat((format) => {
@@ -793,6 +310,8 @@ function Chat({
       selection?.selectAllChildren(bubble);
     });
   }, [visible]);
+
+  // --- Clear / verbose ---
 
   const handleClear = useCallback(() => {
     if (isLoading) {
@@ -838,6 +357,8 @@ function Chat({
       return next;
     });
   }, []);
+
+  // --- Actions ---
 
   const localCommands = useLocalCommands({
     profile,
@@ -901,53 +422,6 @@ function Chat({
   const handleClearFolder = useCallback(() => {
     dispatch({ type: "setContextFolder", value: null });
   }, [dispatch]);
-
-  const eventHasFiles = useCallback((e: React.DragEvent): boolean => {
-    const types = e.dataTransfer?.types;
-    if (!types) return false;
-    for (let i = 0; i < types.length; i++) {
-      if (types[i] === "Files") return true;
-    }
-    return false;
-  }, []);
-
-  const handleDragEnter = useCallback(
-    (e: React.DragEvent) => {
-      if (!eventHasFiles(e)) return;
-      e.preventDefault();
-      dragCounter.current += 1;
-      if (dragCounter.current === 1) setDragActive(true);
-    },
-    [eventHasFiles],
-  );
-
-  const handleDragOver = useCallback(
-    (e: React.DragEvent) => {
-      if (!eventHasFiles(e)) return;
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
-    },
-    [eventHasFiles],
-  );
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    dragCounter.current = Math.max(0, dragCounter.current - 1);
-    if (dragCounter.current === 0) setDragActive(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      if (!eventHasFiles(e)) return;
-      e.preventDefault();
-      dragCounter.current = 0;
-      setDragActive(false);
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) return;
-      void chatInputRef.current?.addFiles(files);
-    },
-    [eventHasFiles],
-  );
 
   const handleSelectModel = useCallback(
     async (provider: string, model: string, baseUrl: string) => {
@@ -1047,7 +521,7 @@ function Chat({
         onClear={handleClear}
       />
 
-      <div className="chat-messages">
+      <div className="chat-messages" ref={setContainerRef}>
         {messages.length === 0 ? (
           <ChatEmptyState onSelectSuggestion={handleSuggestion} />
         ) : (
@@ -1057,9 +531,10 @@ function Chat({
             toolProgress={toolProgress}
             streamingText={streamingText}
             streamingReasoning={streamingReasoning}
-            scrollerRef={setContainerRef}
-            todos={todos}
           />
+        )}
+        {isLoading && todos && todos.length > 0 && (
+          <TodoPanel todos={todos} defaultCollapsed={false} />
         )}
         {userScrolledUp && messages.length > 0 && (
           <button
