@@ -1042,13 +1042,13 @@
   overflow-x: auto;
   -webkit-user-select: text;
   user-select: text;
-  box-shadow: 0 1px 2px rgba(24, 27, 31, 0.04);
+  box-shadow: none;
   border: 1px solid var(--border-softer);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .chat-bubble:hover {
-  box-shadow: 0 2px 8px rgba(24, 27, 31, 0.06);
+  box-shadow: var(--shadow-card-soft);
   border-color: var(--border-soft);
 }
 
@@ -1069,11 +1069,11 @@
 
 @media (prefers-color-scheme: dark) {
   .chat-bubble {
-    border-color: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    border-color: var(--border-softer);
+    box-shadow: none;
   }
   .chat-bubble:hover {
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+    box-shadow: var(--shadow-card-soft);
   }
   .chat-bubble-agent {
     background: var(--agent-bubble);
@@ -1926,12 +1926,12 @@
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  background: var(--surface-card-strong);
+  background: var(--surface-composer);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-composer);
   padding: 6px 6px 6px 16px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: var(--shadow-card-soft);
+  box-shadow: var(--shadow-composer);
 }
 
 .chat-input-wrapper:focus-within {
@@ -2429,8 +2429,9 @@
   font-size: 12px;
   line-height: 1.4;
   color: var(--text-secondary);
-  background: var(--code-bg, rgba(127, 127, 127, 0.04));
-  border: 1px solid transparent;
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
   animation: toolRowIn 0.2s ease;
 }
 
