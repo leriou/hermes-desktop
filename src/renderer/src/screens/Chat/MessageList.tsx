@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useEffect, useCallback } from "react";
+import { memo, useMemo, useRef, useEffect, useCallback, useState } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ReasoningRow, ToolResultRow } from "./HistoryRow";
@@ -8,6 +8,8 @@ import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { buildRenderableTranscript } from "./renderTranscript";
 import { TodoPanel } from "../../components/common/TodoPanel";
+import { runtimeHealth } from "@renderer/lib/hermes-tauri";
+import { RefreshCw } from "lucide-react";
 import type {
   ChatMessage,
   SystemEventMessage,
@@ -331,6 +333,33 @@ function SystemEventRow({
   );
 }
 
+function GatewayStatusBanner() {
+  const [status, setStatus] = useState<string>("Stopped");
+  
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const h = await runtimeHealth();
+        setStatus(h.status);
+      } catch {
+        setStatus("Stopped");
+      }
+    };
+    check();
+    const id = setInterval(check, 3000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (status === "Ready" || status === "Stopped") return null;
+
+  return (
+    <div className="gateway-status-banner">
+      <RefreshCw size={12} className="animate-spin" />
+      <span>Gateway is {status.toLowerCase()}...</span>
+    </div>
+  );
+}
+
 export const MessageList = memo(function MessageList({
   messages,
   isLoading,
@@ -402,17 +431,19 @@ export const MessageList = memo(function MessageList({
   }, [externalScrollerRef]);
 
   return (
-    <Virtuoso
-      ref={virtuosoRef}
-      scrollerRef={handleVirtuosoScrollerRef}
-      atBottomStateChange={(atBottom) => {
-        isAtBottomRef.current = atBottom;
-      }}
-      data={visibleMessages}
-      initialItemCount={visibleMessages.length}
-      style={{ height: "100%", width: "100%" }}
-      increaseViewportBy={300}
-      followOutput={(isAtBottom) => (isAtBottom ? "smooth" : false)}
+    <div className="chat-messages-container" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <GatewayStatusBanner />
+      <Virtuoso
+        ref={virtuosoRef}
+        scrollerRef={handleVirtuosoScrollerRef}
+        atBottomStateChange={(atBottom) => {
+          isAtBottomRef.current = atBottom;
+        }}
+        data={visibleMessages}
+        initialItemCount={visibleMessages.length}
+        style={{ flex: 1, width: "100%" }}
+        increaseViewportBy={300}
+        followOutput={(isAtBottom) => (isAtBottom ? "smooth" : false)}
       itemContent={(i, msg) => {
         const k = (msg as { kind?: string }).kind;
         if (k === "reasoning") {
@@ -537,5 +568,6 @@ export const MessageList = memo(function MessageList({
         );
       }}
     />
+    </div>
   );
 });

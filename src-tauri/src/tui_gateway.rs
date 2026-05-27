@@ -71,6 +71,13 @@ fn log_error(component: &str, action: &str, msg: &str) {
     eprintln!("[{}] {} | ERROR | {}", component.to_uppercase(), action.to_uppercase(), msg);
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GatewayFailure {
+    pub timestamp: u64,
+    pub error: String,
+    pub status_at_failure: GatewayStatus,
+}
+
 pub struct TuiGateway<R: Runtime = tauri::Wry> {
     app: AppHandle<R>,
     profile: Option<String>,
@@ -89,6 +96,7 @@ pub(crate) struct TuiGatewayInner {
     pub(crate) active_session_id: Option<String>,
     pub(crate) last_error: Option<String>,
     pub(crate) last_ready_at: Option<u64>,
+    pub(crate) failures: Vec<GatewayFailure>,
 }
 
 impl<R: Runtime> TuiGateway<R> {
@@ -105,10 +113,33 @@ impl<R: Runtime> TuiGateway<R> {
                 active_session_id: None,
                 last_error: None,
                 last_ready_at: None,
+                failures: Vec::with_capacity(10),
             })),
             pending_requests: Arc::new(StdMutex::new(HashMap::new())),
             session_aliases: Arc::new(StdMutex::new(HashMap::new())),
             next_id: StdMutex::new(1),
+        }
+    }
+
+    pub async fn record_failure(&self, error: String, status: GatewayStatus) {
+        let mut inner = self.inner.lock().await;
+        let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+        inner.last_error = Some(error.clone());
+        if inner.failures.len() >= 10 {
+            inner.failures.remove(0);
+        }
+        inner.failures.push(GatewayFailure {
+            timestamp,
+            error,
+            status_at_failure: status,
+        });
+        
+        // Quietly persist to a diagnostic file
+        let home = python::get_hermes_home(Some(&self.app));
+        let diag_file = home.join("logs").join("gateway_failures.json");
+        if let Ok(json) = serde_json::to_string(&inner.failures) {
+            let _ = std::fs::create_dir_all(diag_file.parent().unwrap());
+            let _ = std::fs::write(diag_file, json);
         }
     }
 
@@ -128,6 +159,7 @@ impl<R: Runtime> TuiGateway<R> {
             "lastError": inner.last_error,
             "lastReadyAt": inner.last_ready_at,
             "pendingRequests": pending_count,
+            "failures": inner.failures,
             "paths": {
                 "python": python_path.to_string_lossy(),
                 "pythonExists": python_path.exists(),
@@ -166,9 +198,10 @@ impl<R: Runtime> TuiGateway<R> {
         }
 
         if let Err(e) = self.clone().spawn_process().await {
+            let s = { self.inner.lock().await.status };
+            self.record_failure(e.to_string(), s).await;
             let mut inner = self.inner.lock().await;
             inner.status = GatewayStatus::Failed;
-            inner.last_error = Some(e.to_string());
             return Err(e);
         }
 
@@ -199,9 +232,9 @@ impl<R: Runtime> TuiGateway<R> {
             _ => {
                 log_error("gateway", "start", "TIMEOUT waiting for gateway.ready (10s)");
                 self.stop().await;
+                self.record_failure("Startup timeout".to_string(), GatewayStatus::Starting).await;
                 let mut inner = self.inner.lock().await;
                 inner.status = GatewayStatus::Failed;
-                inner.last_error = Some("Startup timeout".to_string());
                 Err(anyhow!("Gateway timeout or failed to start"))
             }
         }
@@ -352,6 +385,20 @@ impl<R: Runtime> TuiGateway<R> {
             }
         });
 
+        // Proactive watchdog for startup timeout
+        let watchdog_gw = self.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(15)).await;
+            let status = { watchdog_gw.inner.lock().await.status };
+            if status == GatewayStatus::Starting || status == GatewayStatus::Reconnecting {
+                log_error("gateway", "watchdog", "STALE state detected after 15s, forcing failure");
+                watchdog_gw.record_failure("Watchdog: Startup/Reconnect timeout".to_string(), status).await;
+                let mut inner = watchdog_gw.inner.lock().await;
+                inner.status = GatewayStatus::Failed;
+                // No need to call stop() as it's already failed/not-ready
+            }
+        });
+
         Ok(())
     }
 
@@ -372,10 +419,10 @@ impl<R: Runtime> TuiGateway<R> {
 
             if restart_count >= max_restarts {
                 log_error("gateway", "reconnect", &format!("Max restarts reached ({}), stopping reconnection.", max_restarts));
+                gateway.record_failure("Max restarts reached".to_string(), status).await;
                 {
                     let mut inner = gateway.inner.lock().await;
                     inner.status = GatewayStatus::Failed;
-                    inner.last_error = Some("Max restarts reached".to_string());
                 }
                 let _ = gateway.app.emit("tui-event", EventParams {
                     event_type: "gateway.connection_lost".to_string(),
@@ -403,6 +450,7 @@ impl<R: Runtime> TuiGateway<R> {
 
             if let Err(e) = gateway.clone().spawn_process().await {
                 log_error("gateway", "reconnect", &format!("Reconnect spawn failed: {}", e));
+                gateway.record_failure(format!("Reconnect spawn failed: {}", e), GatewayStatus::Reconnecting).await;
                 TuiGateway::handle_exit(gateway.clone());
                 return;
             }
@@ -450,6 +498,7 @@ impl<R: Runtime> TuiGateway<R> {
                 }
                 _ => {
                     log_error("gateway", "reconnect", "Reconnect timeout, retrying...");
+                    gateway.record_failure("Reconnect timeout".to_string(), GatewayStatus::Reconnecting).await;
                     TuiGateway::handle_exit(gateway.clone());
                 }
             }
