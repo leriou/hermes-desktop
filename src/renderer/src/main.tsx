@@ -1,4 +1,16 @@
 import "./assets/main.css";
+import "./assets/domains/tokens.css";
+import "./assets/domains/welcome.css";
+import "./assets/domains/layout.css";
+import "./assets/domains/chat.css";
+import "./assets/domains/settings.css";
+import "./assets/domains/agents.css";
+import "./assets/domains/sessions.css";
+import "./assets/domains/skills.css";
+import "./assets/domains/plugins.css";
+import "./assets/domains/memory.css";
+import "./assets/domains/models.css";
+import "./assets/domains/ui-styles.css";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
