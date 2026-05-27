@@ -294,7 +294,7 @@ describe("useChatInbox", () => {
     ]);
   });
 
-  it.skip("does not append duplicate bubbles on duplicate message.complete events", async () => {
+  it("does not append duplicate bubbles on duplicate message.complete events", async () => {
     const updateTabMessages = vi.fn();
     const updateTab = vi.fn((_, patch) => {
       const current = sessions.get("tab-1");
@@ -567,6 +567,97 @@ describe("useChatInbox", () => {
     });
   });
 
+  it("clears pending interaction state on error", async () => {
+    const updateTabMessages = vi.fn();
+    const updateTab = vi.fn((_, patch) => {
+      const current = sessions.get("tab-1");
+      if (current) sessions.set("tab-1", { ...current, ...patch });
+    });
+    const sessions = new Map<string, SessionState>([
+      [
+        "tab-1",
+        {
+          ...sessionState(),
+          pendingApproval: {
+            command: "rm -rf /",
+            description: "dangerous",
+            patternKey: "danger",
+            patternKeys: ["danger"],
+          },
+          pendingClarify: { requestId: "c1", question: "which?", choices: [] },
+        },
+      ],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    eventHandler?.({ type: "error", sid: "sid-1", payload: { message: "fail" } });
+
+    await waitFor(() => {
+      expect(updateTab).toHaveBeenCalledWith(
+        "tab-1",
+        expect.objectContaining({
+          pendingApproval: null,
+          pendingClarify: null,
+        }),
+      );
+    });
+  });
+
+  it("allows retry after error resets turn guard", async () => {
+    const updateTabMessages = vi.fn();
+    const updateTab = vi.fn((_, patch) => {
+      const current = sessions.get("tab-1");
+      if (current) sessions.set("tab-1", { ...current, ...patch });
+    });
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", { ...sessionState(), streamingText: "partial" }],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    // First complete — normal
+    eventHandler?.({ type: "message.complete", sid: "sid-1", payload: {} });
+    await waitFor(() => expect(updateTabMessages).toHaveBeenCalledTimes(1));
+
+    // Error arrives — should reset turn guard
+    eventHandler?.({ type: "error", sid: "sid-1", payload: { message: "fail" } });
+    await waitFor(() =>
+      expect(updateTab).toHaveBeenCalledWith(
+        "tab-1",
+        expect.objectContaining({ isLoading: false }),
+      ),
+    );
+
+    // New start + complete should work (turn guard was reset by error)
+    eventHandler?.({ type: "message.start", sid: "sid-1", payload: {} });
+    eventHandler?.({
+      type: "message.complete",
+      sid: "sid-1",
+      payload: { text: "retry answer" },
+    });
+
+    await waitFor(() => expect(updateTabMessages).toHaveBeenCalledTimes(3));
+  });
+
   it("drops late additive events after abort", () => {
     const updateTab = vi.fn();
     const updateTabMessages = vi.fn();
@@ -667,24 +758,10 @@ describe("useChatInbox", () => {
     });
   });
 
-  it.skip("coalesces live assistant deltas into the next animation frame", () => {
+  it("coalesces live assistant deltas within the same microtask", async () => {
     const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
       const current = sessions.get(tabId);
       if (current) sessions.set(tabId, { ...current, ...patch });
-    });
-    const frameCallbacks: FrameRequestCallback[] = [];
-    const requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
-      frameCallbacks.push(callback);
-      return frameCallbacks.length;
-    });
-    const cancelAnimationFrame = vi.fn();
-    Object.defineProperty(window, "requestAnimationFrame", {
-      configurable: true,
-      value: requestAnimationFrame,
-    });
-    Object.defineProperty(window, "cancelAnimationFrame", {
-      configurable: true,
-      value: cancelAnimationFrame,
     });
     const sessions = new Map<string, SessionState>([["tab-1", sessionState()]]);
 
@@ -699,6 +776,7 @@ describe("useChatInbox", () => {
       }),
     );
 
+    // Two deltas in the same synchronous tick — should be coalesced
     eventHandler?.({
       type: "message.delta",
       sid: "sid-1",
@@ -710,15 +788,17 @@ describe("useChatInbox", () => {
       payload: { text: "lo" },
     });
 
-    expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
+    // Before microtask fires, no streamingText update yet
     expect(
       updateTab.mock.calls.some(([, patch]) => "streamingText" in patch),
     ).toBe(false);
 
-    act(() => {
-      frameCallbacks[0]?.(performance.now());
+    // Let microtask drain
+    await act(async () => {
+      await Promise.resolve();
     });
 
+    // After microtask fires, coalesced text should be flushed in one call
     expect(updateTab).toHaveBeenCalledWith(
       "tab-1",
       expect.objectContaining({

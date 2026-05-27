@@ -137,17 +137,29 @@ export interface EventClassification {
 }
 
 const EVENT_CLASSIFICATIONS: Record<string, EventClassification> = {
+  // Additive — streaming content that must not leak after abort
   "message.delta": { category: "additive", safeAfterAbort: false },
   "thinking.delta": { category: "additive", safeAfterAbort: false },
   "reasoning.delta": { category: "additive", safeAfterAbort: false },
-  "message.complete": { category: "terminal", safeAfterAbort: true },
-  error: { category: "terminal", safeAfterAbort: true },
-  "message.start": { category: "status", safeAfterAbort: true },
-  "status.update": { category: "status", safeAfterAbort: true },
-  "tool.generating": { category: "status", safeAfterAbort: true },
   "tool.start": { category: "additive", safeAfterAbort: false },
   "tool.complete": { category: "additive", safeAfterAbort: false },
   "tool.progress": { category: "additive", safeAfterAbort: false },
+  "subagent.start": { category: "additive", safeAfterAbort: false },
+  "subagent.complete": { category: "additive", safeAfterAbort: false },
+  "subagent.progress": { category: "additive", safeAfterAbort: false },
+
+  // Terminal — end-of-turn, always safe to process
+  "message.complete": { category: "terminal", safeAfterAbort: true },
+  error: { category: "terminal", safeAfterAbort: true },
+
+  // Status — metadata/control, safe after abort unless they queue user action
+  "message.start": { category: "status", safeAfterAbort: true },
+  "status.update": { category: "status", safeAfterAbort: true },
+  "tool.generating": { category: "status", safeAfterAbort: true },
+  "session.info": { category: "status", safeAfterAbort: true },
+  "todo.update": { category: "status", safeAfterAbort: true },
+
+  // Interaction requests — require user action, discard after abort
   "approval.request": { category: "status", safeAfterAbort: false },
   "clarify.request": { category: "status", safeAfterAbort: false },
   "sudo.request": { category: "status", safeAfterAbort: false },

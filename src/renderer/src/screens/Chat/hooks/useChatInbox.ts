@@ -155,6 +155,21 @@ export function useChatInbox({
   const flushFramesRef = useRef(new Map<string, unknown>());
   const turnCompletedRef = useRef(new Map<string, boolean>());
 
+  function resetTurn(tabId: string): void {
+    turnCompletedRef.current.delete(tabId);
+    pendingChunksRef.current.delete(tabId);
+    flushFramesRef.current.delete(tabId);
+  }
+
+  function clearPendingInteraction(tabId: string): void {
+    updateTab(tabId, {
+      pendingApproval: null,
+      pendingClarify: null,
+      pendingSudo: null,
+      pendingSecret: null,
+    });
+  }
+
   useEffect(() => {
     sessionsRef.current = sessions;
     activeTabIdRef.current = activeTabId;
@@ -299,7 +314,7 @@ export function useChatInbox({
 
       switch (event.type) {
         case "message.start":
-          turnCompletedRef.current.delete(tabId);
+          resetTurn(tabId);
           updateTab(tabId, {
             isLoading: true,
             toolProgress: null,
@@ -407,10 +422,6 @@ export function useChatInbox({
           updateTab(tabId, {
             isLoading: false,
             toolProgress: null,
-            pendingApproval: null,
-            pendingClarify: null,
-            pendingSudo: null,
-            pendingSecret: null,
             todos: [],
             ...sidPatch,
             ...(Object.keys(usage).length
@@ -418,6 +429,7 @@ export function useChatInbox({
               : {}),
             ...(model ? { model } : {}),
           });
+          clearPendingInteraction(tabId);
           const warning = stringField(payload, "warning");
           if (warning) {
             const current = sessionsRef.current.get(tabId);
@@ -585,6 +597,7 @@ export function useChatInbox({
 
         case "error":
           commitStreaming(tabId, runtimeSid);
+          resetTurn(tabId);
           const errorMessage = stringField(payload, "message");
           updateTabMessages(tabId, (prev) => [
             ...prev,
@@ -594,11 +607,8 @@ export function useChatInbox({
             isLoading: false,
             toolProgress: null,
             streamingReasoning: "",
-            pendingApproval: null,
-            pendingClarify: null,
-            pendingSudo: null,
-            pendingSecret: null,
           });
+          clearPendingInteraction(tabId);
           break;
 
         case "session.info":

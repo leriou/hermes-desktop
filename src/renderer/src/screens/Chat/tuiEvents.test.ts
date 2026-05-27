@@ -157,6 +157,29 @@ describe("classifyEvent", () => {
       category: "status",
       safeAfterAbort: true,
     });
+    expect(classifyEvent("session.info")).toEqual({
+      category: "status",
+      safeAfterAbort: true,
+    });
+    expect(classifyEvent("todo.update")).toEqual({
+      category: "status",
+      safeAfterAbort: true,
+    });
+  });
+
+  it("classifies subagent events as additive", () => {
+    expect(classifyEvent("subagent.start")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("subagent.complete")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
+    expect(classifyEvent("subagent.progress")).toEqual({
+      category: "additive",
+      safeAfterAbort: false,
+    });
   });
 
   it("classifies interaction request events as status", () => {
