@@ -25,6 +25,7 @@ import {
 } from "@renderer/lib/hermes-tauri";
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import Chat, { ChatMessage } from "../Chat/Chat";
+import { ChatEmptyState } from "../Chat/ChatEmptyState";
 import { SessionSidebar } from "../Chat/SessionSidebar";
 import { useSessionManager } from "../Chat/hooks/useSessionManager";
 import { useChatInbox } from "../Chat/hooks/useChatInbox";
@@ -55,6 +56,7 @@ import {
   Code,
   Route,
 } from "../../assets/icons";
+import { Home } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
 
@@ -88,6 +90,7 @@ function TabSpinner(): React.JSX.Element {
 }
 
 type View =
+  | "home"
   | "chat"
   | "sessions"
   | "agents"
@@ -104,6 +107,7 @@ type View =
   | "settings";
 
 const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
+  { view: "home", icon: Home, labelKey: "navigation.home" },
   { view: "chat", icon: ChatBubble, labelKey: "navigation.chat" },
   { view: "sessions", icon: Clock, labelKey: "navigation.sessions" },
   { view: "agents", icon: Users, labelKey: "navigation.agents" },
@@ -132,10 +136,11 @@ function Layout({
   onDismissVerifyWarning,
 }: LayoutProps = {}): React.JSX.Element {
   const { t } = useI18n();
-  const [view, setView] = useState<View>("chat");
+  const [view, setView] = useState<View>("home");
   const [activeProfile, setActiveProfile] = useState("default");
   const [remoteMode, setRemoteMode] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const sessionManager = useSessionManager();
   const activeTabId = sessionManager.activeTabId;
   const activeTab = activeTabId
@@ -650,6 +655,15 @@ function Layout({
           />
         )}
 
+        {view === "home" && (
+          <div style={paneStyle}>
+            <ChatEmptyState onSelectSuggestion={(text) => {
+              setPendingPrompt(text);
+              handleNewChat();
+            }} />
+          </div>
+        )}
+
         {view === "chat" && (
           <div className="chat-pane">
             <SessionSidebar
@@ -696,6 +710,8 @@ function Layout({
                     todos={tab.todos}
                     profile={activeProfile}
                     visible={visible}
+                    pendingPrompt={pendingPrompt}
+                    onConsumePendingPrompt={() => setPendingPrompt(null)}
                     onNewChat={handleNewChat}
                     onSessionStateChange={(patch) => {
                       sessionManager.updateTab(tabId, {

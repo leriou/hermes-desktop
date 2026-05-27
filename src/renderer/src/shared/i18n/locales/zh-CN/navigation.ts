@@ -1,4 +1,5 @@
 export default {
+  home: "首页",
   chat: "聊天",
   sessions: "会话",
   agents: "档案",
@@ -6,6 +7,7 @@ export default {
   providers: "提供商",
   routing: "Routing",
   skills: "技能",
+  plugins: "插件",
   persona: "人格",
   tools: "工具",
   schedules: "计划任务",

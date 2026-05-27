@@ -1,4 +1,5 @@
 export default {
+  home: "Home",
   chat: "Chat",
   sessions: "Sessions",
   agents: "Profiles",

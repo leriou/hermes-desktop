@@ -1,4 +1,5 @@
 export default {
+  home: "ホーム",
   chat: "チャット",
   sessions: "セッション",
   agents: "プロファイル",
@@ -6,6 +7,7 @@ export default {
   providers: "プロバイダ",
   routing: "Routing",
   skills: "スキル",
+  plugins: "プラグイン",
   persona: "ペルソナ",
   tools: "ツール",
   schedules: "スケジュール",

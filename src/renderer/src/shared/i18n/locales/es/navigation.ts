@@ -1,4 +1,5 @@
 export default {
+  home: "Inicio",
   chat: "Chat",
   sessions: "Sesiones",
   agents: "Perfiles",
@@ -6,6 +7,7 @@ export default {
   providers: "Proveedores",
   routing: "Routing",
   skills: "Habilidades",
+  plugins: "Plugins",
   persona: "Persona",
   tools: "Herramientas",
   schedules: "Programaciones",

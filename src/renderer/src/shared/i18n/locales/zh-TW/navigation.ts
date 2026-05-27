@@ -1,4 +1,5 @@
 export default {
+  home: "首頁",
   chat: "聊天",
   sessions: "工作階段",
   agents: "檔案",
@@ -6,6 +7,7 @@ export default {
   providers: "供應商",
   routing: "Routing",
   skills: "技能",
+  plugins: "插件",
   persona: "人格",
   tools: "工具",
   schedules: "排程工作",

@@ -12,7 +12,7 @@ import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
-import { ChatEmptyState } from "./ChatEmptyState";
+
 import { MessageList } from "./MessageList";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
@@ -30,6 +30,7 @@ import { useDragDrop } from "./hooks/useDragDrop";
 import { useApproval } from "./hooks/useApproval";
 import { useGatewayCommands } from "./hooks/useGatewayCommands";
 import { useI18n } from "../../components/useI18n";
+import icon from "../../assets/icon.png";
 import { buildChatTranscript } from "./transcriptUtils";
 import { createSystemEvent, systemEventFromError } from "./systemEvents";
 import { createTauriChatGatewayClient } from "./tauriChatGatewayClient";
@@ -77,6 +78,8 @@ interface ChatProps {
   }) => void;
   pendingModelSwitchMessageId?: string | null;
   todos?: import("./types").TodoItem[];
+  pendingPrompt?: string | null;
+  onConsumePendingPrompt?: () => void;
 }
 
 function Chat({
@@ -101,6 +104,8 @@ function Chat({
   onNewChat,
   onSessionStateChange,
   todos = [],
+  pendingPrompt,
+  onConsumePendingPrompt,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [remoteMode, setRemoteMode] = useState(false);
@@ -415,6 +420,8 @@ function Chat({
     executeGatewayCommand,
   });
 
+  const DEFAULT_SUGGESTIONS = ["Summarize my projects", "Write a Python script", "Search the web for news", "Help me debug code"];
+
   const handleSuggestion = useCallback((text: string) => {
     chatInputRef.current?.setText(text);
   }, []);
@@ -501,6 +508,13 @@ function Chat({
     ],
   );
 
+  useEffect(() => {
+    if (pendingPrompt && messages.length === 0 && visible) {
+      actions.handleSend(pendingPrompt, []);
+      onConsumePendingPrompt?.();
+    }
+  }, [pendingPrompt, messages.length, visible]);
+
   return (
     <div
       className="chat-container"
@@ -528,7 +542,20 @@ function Chat({
 
       <div className="chat-messages" ref={setContainerRef}>
         {messages.length === 0 ? (
-          <ChatEmptyState onSelectSuggestion={handleSuggestion} />
+          <div className="chat-empty">
+            <div className="chat-empty-icon">
+              <img src={icon} width={56} height={56} alt="" />
+            </div>
+            <div className="chat-empty-text">{t("chat.emptyTitle") || "Start a conversation"}</div>
+            <div className="chat-empty-hint">{t("chat.emptyHint") || "Type a message below to begin"}</div>
+            <div className="chat-empty-suggestions">
+              {DEFAULT_SUGGESTIONS.map((s) => (
+                <button key={s} className="chat-suggestion" onClick={() => handleSuggestion(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : (
           <MessageList
             messages={messages}
