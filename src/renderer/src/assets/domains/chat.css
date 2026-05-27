@@ -2514,7 +2514,8 @@
 
 .tool-group-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 2px;
   font-size: 12px;
   line-height: 1.4;
   table-layout: auto;
@@ -3518,13 +3519,14 @@
   width: 340px;
   max-height: 380px;
   overflow: hidden;
-  background: var(--surface-card-strong);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-float-soft);
   z-index: 100;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(12px);
 }
 
 .chat-model-tabs {

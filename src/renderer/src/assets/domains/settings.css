@@ -748,3 +748,47 @@
   color: var(--accent-text);
 }
 
+.settings-config-editor {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.settings-config-preview {
+  padding: 12px;
+  font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.settings-config-textarea {
+  width: 100%;
+  padding: 12px;
+  font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: none;
+  resize: vertical;
+  min-height: 300px;
+  max-height: 500px;
+  outline: none;
+  tab-size: 2;
+}
+
+.settings-config-textarea:focus {
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+.text-error {
+  color: var(--error);
+}
+
