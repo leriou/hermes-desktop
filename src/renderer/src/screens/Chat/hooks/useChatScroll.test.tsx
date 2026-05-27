@@ -293,4 +293,94 @@ describe("useChatScroll", () => {
 
     unmount();
   });
+
+  it("follows streaming text growth while the user remains at the bottom", () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "hello" },
+      { id: "a1", role: "agent", content: "streaming" },
+    ];
+    let container: HTMLDivElement | null = null;
+
+    function TestComponent({ text }: { text: string }): React.JSX.Element {
+      const { setContainerRef } = useChatScroll(messages, true, undefined, text);
+      return (
+        <div
+          ref={(node) => {
+            setContainerRef(node);
+            container = node;
+            if (node) {
+              setScrollMetrics(node, {
+                scrollHeight: text.length > 1 ? 1050 : 1000,
+                clientHeight: 300,
+                scrollTop: metricsMap.has(node) ? undefined : 700,
+              });
+            }
+          }}
+        />
+      );
+    }
+
+    const { rerender, unmount } = render(<TestComponent text="a" />);
+
+    act(() => {
+      if (container) {
+        setScrollMetrics(container, {
+          scrollHeight: 1050,
+          clientHeight: 300,
+          scrollTop: 750,
+        });
+        rerender(<TestComponent text="ab" />);
+      }
+    });
+
+    expect(container!.scrollTop).toBe(750);
+    unmount();
+  });
+
+  it("does not follow streaming text growth after the user scrolls up", () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "hello" },
+      { id: "a1", role: "agent", content: "streaming" },
+    ];
+    let container: HTMLDivElement | null = null;
+
+    function TestComponent({ text }: { text: string }): React.JSX.Element {
+      const { setContainerRef } = useChatScroll(messages, true, undefined, text);
+      return (
+        <div
+          ref={(node) => {
+            setContainerRef(node);
+            container = node;
+            if (node) {
+              setScrollMetrics(node, {
+                scrollHeight: text.length > 1 ? 1050 : 1000,
+                clientHeight: 300,
+                scrollTop: metricsMap.has(node) ? undefined : 700,
+              });
+            }
+          }}
+        />
+      );
+    }
+
+    const { rerender, unmount } = render(<TestComponent text="a" />);
+
+    act(() => {
+      if (container) {
+        setScrollMetrics(container, {
+          scrollHeight: 1000,
+          clientHeight: 300,
+          scrollTop: 400,
+        });
+        container.dispatchEvent(new Event("scroll"));
+      }
+    });
+
+    act(() => {
+      rerender(<TestComponent text="ab" />);
+    });
+
+    expect(container!.scrollTop).toBe(400);
+    unmount();
+  });
 });

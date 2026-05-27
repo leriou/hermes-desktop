@@ -8,6 +8,8 @@ export function useChatScroll(
   messages: ChatMessage[],
   isLoading: boolean,
   onLoadEarlier?: () => void,
+  streamingText = "",
+  streamingReasoning = "",
 ): {
   containerRef: React.RefObject<HTMLDivElement | null>;
   setContainerRef: (node: HTMLDivElement | null) => void;
@@ -95,7 +97,7 @@ export function useChatScroll(
     } else {
       scrollToBottom();
     }
-  }, [messages, scrollToBottom]);
+  }, [messages, streamingText, streamingReasoning, scrollToBottom]);
 
   return { containerRef, setContainerRef, userScrolledUp, scrollToBottom };
 }

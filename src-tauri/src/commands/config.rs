@@ -177,14 +177,26 @@ pub async fn set_ssh_config(app: AppHandle, host: String, port: u16, username: S
 
 #[command]
 pub async fn test_remote_connection(url: String, api_key: String) -> Result<bool, String> {
+    if url.trim().is_empty() {
+        return Err("URL is empty".to_string());
+    }
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Only http:// and https:// URLs are allowed".to_string());
+    }
     let health_url = format!("{}/health", url.trim_end_matches('/'));
-    let output = tokio::process::Command::new("curl")
-        .args(["-sf", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "10",
-               "-H", &format!("Authorization: Bearer {}", api_key),
-               &health_url])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let output = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        tokio::process::Command::new("curl")
+            .args(["-sf", "-o", "/dev/null", "-w", "%{http_code}",
+                   "--max-time", "10",
+                   "--proto", "=https,=http",
+                   "-H", &format!("Authorization: Bearer {}", api_key),
+                   &health_url])
+            .output()
+    )
+    .await
+    .map_err(|_| "Connection timed out".to_string())?
+    .map_err(|e| format!("curl failed: {}", e))?;
     let code = String::from_utf8_lossy(&output.stdout).trim().to_string();
     Ok(code == "200")
 }

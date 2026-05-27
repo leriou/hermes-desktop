@@ -1,14 +1,14 @@
 import { memo, useState, useMemo, useEffect } from "react";
-import { 
-  Search, 
-  Clock, 
-  Mail, 
-  ChartLine, 
-  Bell, 
-  Sparkles, 
-  FileText, 
-  Terminal, 
-  Settings, 
+import {
+  Search,
+  Clock,
+  Mail,
+  ChartLine,
+  Bell,
+  Sparkles,
+  FileText,
+  Terminal,
+  Settings,
   ChevronRight,
   Pin,
   History,
@@ -34,15 +34,15 @@ const TASKS: WorkbenchTask[] = [
   // Recommended
   { id: "web-search", category: "recommended", icon: Search, label: "Search Web", prompt: "Search the web for today's top tech news" },
   { id: "daily-summary", category: "recommended", icon: Sparkles, label: "Daily Summary", prompt: "Summarize my active projects and notifications for today" },
-  
+
   // Office
   { id: "email-summary", category: "office", icon: Mail, label: "Summarize Emails", prompt: "Read my latest emails and summarize key action items" },
   { id: "document-draft", category: "office", icon: FileText, label: "Draft Document", prompt: "Help me draft a project proposal based on our previous discussion" },
-  
+
   // Code
   { id: "python-script", category: "code", icon: Terminal, label: "Python Script", prompt: "Write a Python script to automate file organization" },
   { id: "code-review", category: "code", icon: FileCode, label: "Code Review", prompt: "Review the code in the current folder for potential bugs" },
-  
+
   // Files
   { id: "find-docs", category: "files", icon: FolderOpen, label: "Find Documents", prompt: "Find all PDF and Word documents I modified in the last 7 days" },
   { id: "analyze-csv", category: "files", icon: ChartLine, label: "Analyze CSV", prompt: "Analyze the structure and contents of the CSV files in my Downloads folder" },
@@ -50,7 +50,7 @@ const TASKS: WorkbenchTask[] = [
   // Scheduling
   { id: "set-reminder", category: "scheduling", icon: Bell, label: "Set Reminder", prompt: "Set a reminder to check emails every day at 9 AM" },
   { id: "cron-backup", category: "scheduling", icon: Clock, label: "Schedule Backup", prompt: "Schedule a cron job to back up my workspace every night" },
-  
+
   // System
   { id: "check-system", category: "system", icon: Settings, label: "System Health", prompt: "Check my system resources and running processes" },
   { id: "update-agent", category: "system", icon: Sparkles, label: "Update Agent", prompt: "Check for Hermes Agent updates and show changelog" },
@@ -114,7 +114,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
     { id: "system", label: "System", icon: Settings },
   ];
 
-  const filteredTasks = useMemo(() => 
+  const filteredTasks = useMemo(() =>
     TASKS.filter(task => task.category === activeCategory),
     [activeCategory]
   );
@@ -166,7 +166,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
                     <span className="task-label">{task.label}</span>
                     <span className="task-preview">{task.prompt}</span>
                   </div>
-                  <button 
+                  <button
                     className={`task-pin-btn ${isPinned ? "active" : ""}`}
                     onClick={(e) => handlePinTask(task.prompt, e)}
                   >
@@ -184,14 +184,14 @@ export const ChatEmptyState = memo(function ChatEmptyState({
                   <div className="workbench-recent-list">
                     {pinnedPrompts.map(prompt => (
                       <div key={prompt} className="workbench-recent-item-wrapper">
-                        <button 
+                        <button
                           className="workbench-recent-item flex-1"
                           onClick={() => onSelectSuggestion(prompt)}
                         >
                           <Pin size={12} className="text-accent" />
                           <span>{prompt}</span>
                         </button>
-                        <button 
+                        <button
                           className="btn-ghost workbench-item-remove"
                           onClick={(e) => handlePinTask(prompt, e)}
                         >
@@ -209,8 +209,8 @@ export const ChatEmptyState = memo(function ChatEmptyState({
                 {recentSessions.length > 0 ? (
                   <div className="workbench-recent-list">
                     {recentSessions.map(s => (
-                      <button 
-                        key={s.id} 
+                      <button
+                        key={s.id}
                         className="workbench-recent-item"
                         onClick={() => onSelectSuggestion(s.title || "")}
                       >

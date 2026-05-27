@@ -140,17 +140,25 @@ pub async fn voice_download_model(app: tauri::AppHandle) -> Result<(), String> {
         }
     });
 
-    let status = tokio::process::Command::new("curl")
-        .args(["-L", "-s", "-S", "-o"])
-        .arg(&tmp_path)
-        .arg(url)
-        .status()
-        .await
-        .map_err(|e| {
-            progress.abort();
-            let _ = std::fs::remove_file(&tmp_path);
-            format!("Failed to start curl: {}", e)
-        })?;
+    let status = tokio::time::timeout(
+        std::time::Duration::from_secs(300),
+        tokio::process::Command::new("curl")
+            .args(["-L", "-s", "-S", "--proto", "=https", "--max-time", "240", "-o"])
+            .arg(&tmp_path)
+            .arg(url)
+            .status()
+    )
+    .await
+    .map_err(|e| {
+        progress.abort();
+        let _ = std::fs::remove_file(&tmp_path);
+        format!("Voice model download timed out: {}", e)
+    })?
+    .map_err(|e| {
+        progress.abort();
+        let _ = std::fs::remove_file(&tmp_path);
+        format!("Failed to start curl: {}", e)
+    })?;
 
     progress.abort();
 

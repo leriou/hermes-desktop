@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import { 
-  runtimeHealth, 
-  startGateway, 
-  stopGateway, 
+import {
+  runtimeHealth,
+  startGateway,
+  stopGateway,
   copyDiagnostics,
   copyToClipboard
 } from "@renderer/lib/hermes-tauri";
-import { 
-  Activity, 
-  RefreshCw, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  Activity,
+  RefreshCw,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
   Info,
   Terminal
 } from "lucide-react";
@@ -124,16 +124,16 @@ export function GatewayHealthPanel(): React.JSX.Element {
       </div>
 
       <div className="gateway-health-actions">
-        <button 
-          className="btn btn-secondary btn-sm flex-1" 
+        <button
+          className="btn btn-secondary btn-sm flex-1"
           onClick={handleRestart}
           disabled={loading}
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           <span>Restart Gateway</span>
         </button>
-        <button 
-          className="btn btn-ghost btn-sm" 
+        <button
+          className="btn btn-ghost btn-sm"
           onClick={handleCopyDiagnostics}
           title="Copy full diagnostics to clipboard"
         >

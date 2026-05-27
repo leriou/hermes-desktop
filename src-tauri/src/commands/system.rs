@@ -298,6 +298,11 @@ pub async fn set_credential_pool(app: AppHandle, provider: String, entries: Valu
 #[command]
 pub async fn open_external(app: AppHandle, url: String) -> Result<Value, String> {
     use tauri_plugin_shell::ShellExt;
+    let allowed = ["https", "http", "mailto", "tel"];
+    let scheme = url.split(':').next().unwrap_or("");
+    if !allowed.contains(&scheme) {
+        return Err(format!("URL scheme '{}' is not allowed", scheme));
+    }
     app.shell().open(url, None).map_err(|e| e.to_string())?;
     Ok(Value::Null)
 }

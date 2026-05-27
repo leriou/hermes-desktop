@@ -6,6 +6,7 @@ import type {
   ToolCallMessage,
   ToolGroupMessage,
   ToolResultMessage,
+  TodoItem,
 } from "./types";
 
 export type RenderTranscriptItem =
@@ -21,6 +22,7 @@ interface BuildRenderableTranscriptArgs {
   toolProgress: string | null;
   streamingText?: string;
   streamingReasoning?: string;
+  todos?: TodoItem[];
 }
 
 function kindOf(m: ChatMessage): string | undefined {
@@ -93,6 +95,7 @@ export function buildRenderableTranscript({
   toolProgress,
   streamingText = "",
   streamingReasoning = "",
+  todos = [],
 }: BuildRenderableTranscriptArgs): RenderTranscriptItem[] {
   const processed = groupToolCalls(mergeContinuationLabels(messages)).filter(
     (m) => {
@@ -109,6 +112,16 @@ export function buildRenderableTranscript({
       kind: "live_reasoning",
       role: "agent",
       text: streamingReasoning,
+    });
+  }
+
+  if (isLoading && todos.length > 0) {
+    items.push({
+      id: "live-todos",
+      kind: "todo",
+      role: "system",
+      todos,
+      timestamp: Date.now(),
     });
   }
 

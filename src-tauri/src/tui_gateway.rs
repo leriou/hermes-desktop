@@ -133,7 +133,7 @@ impl<R: Runtime> TuiGateway<R> {
             error,
             status_at_failure: status,
         });
-        
+
         // Quietly persist to a diagnostic file
         let home = python::get_hermes_home(Some(&self.app));
         let diag_file = home.join("logs").join("gateway_failures.json");
@@ -148,7 +148,7 @@ impl<R: Runtime> TuiGateway<R> {
         let python_path = python::get_python_path(Some(&self.app));
         let repo_path = python::get_hermes_repo(Some(&self.app));
         let hermes_home = python::get_hermes_home_with_profile(Some(&self.app), self.profile.clone());
-        
+
         let pending_count = self.pending_requests.lock().unwrap().len();
 
         serde_json::json!({
@@ -281,7 +281,7 @@ impl<R: Runtime> TuiGateway<R> {
 
         let (stdin_tx, mut stdin_rx) = mpsc::channel::<String>(32);
         let (stop_tx, mut stop_rx) = oneshot::channel::<()>();
-        
+
         {
             let mut inner = self.inner.lock().await;
             inner.stdin_tx = Some(stdin_tx);
@@ -324,7 +324,7 @@ impl<R: Runtime> TuiGateway<R> {
                             .get(sid)
                             .cloned()
                             .unwrap_or_else(|| sid.clone());
-                        
+
                         if evt_type == "message.complete" {
                             if let Some(text) = payload.get("text").and_then(|v| v.as_str()) {
                                 crate::session_utils::persist_message(Some(&app_handle), &persist_sid, "assistant", text, None, None, profile.clone());
@@ -512,7 +512,7 @@ impl<R: Runtime> TuiGateway<R> {
             let _ = stop_tx.send(());
         }
         inner.stdin_tx = None;
-        
+
         // Fail all pending requests
         let mut pending = self.pending_requests.lock().unwrap();
         for (_, tx) in pending.drain() {
@@ -614,19 +614,19 @@ mod tests {
     async fn test_pending_request_cleanup_on_stop() {
         let app = tauri::test::mock_app();
         let gateway = Arc::new(TuiGateway::new(app.handle().clone(), None));
-        
+
         // Mock a pending request
         let (tx, rx) = oneshot::channel();
         gateway.pending_requests.lock().unwrap().insert(123, tx);
-        
+
         // Stop the gateway
         gateway.stop().await;
-        
+
         // Verify request was failed
         let res = rx.await;
         assert!(res.is_ok()); // The oneshot itself succeeded
         assert!(res.unwrap().is_err()); // But it sent an error
-        
+
         assert_eq!(gateway.pending_requests.lock().unwrap().len(), 0);
     }
 
@@ -634,20 +634,20 @@ mod tests {
     async fn test_gateway_busy_states() {
         let app = tauri::test::mock_app();
         let gateway = TuiGateway::new(app.handle().clone(), None);
-        
+
         {
             let mut inner = gateway.inner.lock().await;
             inner.status = GatewayStatus::Starting;
         }
         assert!(gateway.is_busy().await);
-        
+
         {
             let mut inner = gateway.inner.lock().await;
             inner.status = GatewayStatus::Ready;
         }
         assert!(gateway.is_busy().await);
         assert!(gateway.is_running().await);
-        
+
         {
             let mut inner = gateway.inner.lock().await;
             inner.status = GatewayStatus::Stopped;

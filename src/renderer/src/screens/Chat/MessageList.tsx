@@ -1,5 +1,4 @@
-import { memo, useMemo, useRef, useEffect, useCallback, useState } from "react";
-import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { memo, useMemo } from "react";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ReasoningRow, ToolResultRow } from "./HistoryRow";
 import { SubagentRow } from "./SubagentRow";
@@ -8,8 +7,6 @@ import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { buildRenderableTranscript } from "./renderTranscript";
 import { TodoPanel } from "../../components/common/TodoPanel";
-import { runtimeHealth } from "@renderer/lib/hermes-tauri";
-import { RefreshCw } from "lucide-react";
 import type {
   ChatMessage,
   SystemEventMessage,
@@ -17,6 +14,7 @@ import type {
   ToolGroupMessage,
   TodoMessage,
   ToolCallMessage,
+  TodoItem,
 } from "./types";
 
 interface MessageListProps {
@@ -26,7 +24,7 @@ interface MessageListProps {
   streamingText?: string;
   streamingReasoning?: string;
   scrollerRef?: React.Ref<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
-  todos?: any[];
+  todos?: TodoItem[];
 }
 
 function getActiveToolCall(messages: ChatMessage[]): ToolCallMessage | null {
@@ -145,6 +143,7 @@ function getActiveCallDescription(call: ToolCallMessage) {
 function LiveReasoningRow({ text }: { text: string }): React.JSX.Element {
   const lineCount = text.split("\n").length;
 
+  // Extract last meaningful line for the snippet
   const lines = text.split("\n").filter((l) => l.trim());
   const lastLine = lines.length > 0 ? lines[lines.length - 1].trim() : "";
   const displayLine =
@@ -333,118 +332,31 @@ function SystemEventRow({
   );
 }
 
-function GatewayStatusBanner() {
-  const [status, setStatus] = useState<string>("Stopped");
-  
-  useEffect(() => {
-    const check = async () => {
-      try {
-        const h = await runtimeHealth();
-        setStatus(h.status);
-      } catch {
-        setStatus("Stopped");
-      }
-    };
-    check();
-    const id = setInterval(check, 3000);
-    return () => clearInterval(id);
-  }, []);
-
-  if (status === "Ready" || status === "Stopped") return null;
-
-  return (
-    <div className="gateway-status-banner">
-      <RefreshCw size={12} className="animate-spin" />
-      <span>Gateway is {status.toLowerCase()}...</span>
-    </div>
-  );
-}
-
 export const MessageList = memo(function MessageList({
   messages,
   isLoading,
   toolProgress,
   streamingText,
   streamingReasoning,
-  scrollerRef: externalScrollerRef,
+  scrollerRef,
   todos,
 }: MessageListProps): React.JSX.Element {
-  const visibleMessages = useMemo(() => {
-    const list = buildRenderableTranscript({
-      messages,
-      isLoading,
-      toolProgress,
-      streamingText,
-      streamingReasoning,
-    });
-    if (isLoading && todos && todos.length > 0) {
-      list.push({
-        id: "live-todo-panel-item",
-        kind: "todo_live",
+  const visibleMessages = useMemo(
+    () =>
+      buildRenderableTranscript({
+        messages,
+        isLoading,
+        toolProgress,
+        streamingText,
+        streamingReasoning,
         todos,
-      } as any);
-    }
-    return list;
-  }, [messages, isLoading, toolProgress, streamingText, streamingReasoning, todos]);
-
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
-  const prevIsLoadingRef = useRef(isLoading);
-  const isAtBottomRef = useRef(true);
-  const scrollerElementRef = useRef<HTMLElement | null>(null);
-
-  const isNearBottom = useCallback(() => {
-    const el = scrollerElementRef.current;
-    if (!el) return false;
-    const threshold = 60;
-    return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
-  }, []);
-
-  useEffect(() => {
-    const justStartedLoading = isLoading && !prevIsLoadingRef.current;
-    prevIsLoadingRef.current = isLoading;
-
-    if (virtuosoRef.current) {
-      if (justStartedLoading) {
-        virtuosoRef.current.scrollToIndex({
-          index: visibleMessages.length - 1,
-          behavior: "auto",
-        });
-      } else if (isLoading) {
-        if (isAtBottomRef.current || isNearBottom()) {
-          virtuosoRef.current.scrollToIndex({
-            index: visibleMessages.length - 1,
-            behavior: "auto",
-          });
-        }
-      }
-    }
-  }, [visibleMessages.length, isLoading, streamingText, streamingReasoning, isNearBottom]);
-
-  const handleVirtuosoScrollerRef = useCallback((el: HTMLElement | null | Window) => {
-    scrollerElementRef.current = el instanceof HTMLElement ? el : null;
-    if (!externalScrollerRef) return;
-    if (typeof externalScrollerRef === "function") {
-      externalScrollerRef(el as HTMLDivElement | null);
-    } else if (externalScrollerRef && 'current' in externalScrollerRef) {
-      (externalScrollerRef as any).current = el;
-    }
-  }, [externalScrollerRef]);
+      }),
+    [messages, isLoading, toolProgress, streamingText, streamingReasoning, todos],
+  );
 
   return (
-    <div className="chat-messages-container" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <GatewayStatusBanner />
-      <Virtuoso
-        ref={virtuosoRef}
-        scrollerRef={handleVirtuosoScrollerRef}
-        atBottomStateChange={(atBottom) => {
-          isAtBottomRef.current = atBottom;
-        }}
-        data={visibleMessages}
-        initialItemCount={visibleMessages.length}
-        style={{ flex: 1, width: "100%" }}
-        increaseViewportBy={300}
-        followOutput={(isAtBottom) => (isAtBottom ? "smooth" : false)}
-      itemContent={(i, msg) => {
+    <div className="chat-messages-inner" ref={scrollerRef}>
+      {visibleMessages.map((msg, i) => {
         const k = (msg as { kind?: string }).kind;
         if (k === "reasoning") {
           return (
@@ -509,16 +421,6 @@ export const MessageList = memo(function MessageList({
             />
           );
         }
-        if (k === "todo_live") {
-          const liveTodoMsg = msg as any;
-          return (
-            <TodoPanel
-              key={liveTodoMsg.id}
-              todos={liveTodoMsg.todos}
-              defaultCollapsed={false}
-            />
-          );
-        }
         if (k === "live_assistant") {
           const liveMsg = msg as Extract<
             import("./renderTranscript").RenderTranscriptItem,
@@ -566,8 +468,7 @@ export const MessageList = memo(function MessageList({
             isLoading={isLoading}
           />
         );
-      }}
-    />
+      })}
     </div>
   );
 });
