@@ -7,4 +7,7 @@ export default {
   noPluginsHint: "Instal skill dari halaman Skill untuk mengelolanya di sini sebagai plugin",
   toggleEnable: "Aktifkan",
   toggleDisable: "Nonaktifkan",
+  filterStatus: "Status",
+  filterSource: "Sumber",
+  filterAll: "Semua",
 } as const;

@@ -303,6 +303,78 @@
   justify-content: center;
 }
 
+/* ========================================================================
+   PLUGINS — FILTERS
+   ======================================================================== */
+.plugins-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.plugins-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plugins-filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.plugins-filter-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.plugins-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+
+.plugins-filter-pill:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+.plugins-filter-pill.active {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.plugins-filter-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 14px;
+  text-align: center;
+}
+
+.plugins-filter-pill.active .plugins-filter-count {
+  color: var(--accent-text);
+  opacity: 0.7;
+}
+
 .plugins-error {
   background: var(--bg-secondary);
   border: 1px solid var(--error);

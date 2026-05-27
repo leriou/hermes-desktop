@@ -7,4 +7,7 @@ export default {
   noPluginsHint: "Instale competências na página de Competências para geri-las aqui como plugins",
   toggleEnable: "Ativar",
   toggleDisable: "Desativar",
+  filterStatus: "Estado",
+  filterSource: "Origem",
+  filterAll: "Todos",
 } as const;

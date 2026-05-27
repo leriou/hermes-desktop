@@ -7,4 +7,7 @@ export default {
   noPluginsHint: "在技能頁面安裝技能後，可在此作為插件管理",
   toggleEnable: "啟用",
   toggleDisable: "停用",
+  filterStatus: "狀態",
+  filterSource: "來源",
+  filterAll: "全部",
 } as const;

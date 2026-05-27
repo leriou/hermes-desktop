@@ -5,7 +5,10 @@ export default {
   disabled: "Disabled",
   noPlugins: "No plugins installed",
   noPluginsHint:
-    "Install skills from the Skills page to manage them here as plugins",
+    "Install skills from the Skills Page to manage them here as plugins",
   toggleEnable: "Enable",
   toggleDisable: "Disable",
+  filterStatus: "Status",
+  filterSource: "Source",
+  filterAll: "All",
 } as const;

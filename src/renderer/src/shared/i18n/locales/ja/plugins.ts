@@ -7,4 +7,7 @@ export default {
   noPluginsHint: "スキルページからスキルをインストールすると、ここでプラグインとして管理できます",
   toggleEnable: "有効化",
   toggleDisable: "無効化",
+  filterStatus: "状態",
+  filterSource: "ソース",
+  filterAll: "すべて",
 } as const;

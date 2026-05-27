@@ -7,4 +7,7 @@ export default {
   noPluginsHint: "Instala habilidades desde la página de Habilidades para gestionarlas aquí como plugins",
   toggleEnable: "Activar",
   toggleDisable: "Desactivar",
+  filterStatus: "Estado",
+  filterSource: "Origen",
+  filterAll: "Todos",
 } as const;

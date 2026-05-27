@@ -1,5 +1,5 @@
 import { getPlugins, setPluginEnabled } from "@renderer/lib/hermes-tauri";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Refresh } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
 import { cache } from "../../utils/prefetchCache";
@@ -21,6 +21,25 @@ function Plugins({ profile }: PluginsProps): React.JSX.Element {
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+
+  const sources = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of plugins) {
+      if (p.source) set.add(p.source);
+    }
+    return Array.from(set).sort();
+  }, [plugins]);
+
+  const filtered = useMemo(() => {
+    return plugins.filter((p) => {
+      if (statusFilter === "enabled" && !p.enabled) return false;
+      if (statusFilter === "disabled" && p.enabled) return false;
+      if (sourceFilter !== "all" && p.source !== sourceFilter) return false;
+      return true;
+    });
+  }, [plugins, statusFilter, sourceFilter]);
 
   const loadPlugins = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -86,16 +105,63 @@ function Plugins({ profile }: PluginsProps): React.JSX.Element {
         </button>
       </div>
 
+      <div className="plugins-filters">
+        <div className="plugins-filter-group">
+          <span className="plugins-filter-label">{t("plugins.filterStatus")}</span>
+          <div className="plugins-filter-pills">
+            {(["all", "enabled", "disabled"] as const).map((v) => (
+              <button
+                key={v}
+                className={`plugins-filter-pill ${statusFilter === v ? "active" : ""}`}
+                onClick={() => setStatusFilter(v)}
+              >
+                {t(`plugins.${v === "all" ? "filterAll" : v === "enabled" ? "enabled" : "disabled"}`)}
+                {v !== "all" && (
+                  <span className="plugins-filter-count">
+                    {plugins.filter((p) => v === "enabled" ? p.enabled : !p.enabled).length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+        {sources.length > 1 && (
+          <div className="plugins-filter-group">
+            <span className="plugins-filter-label">{t("plugins.filterSource")}</span>
+            <div className="plugins-filter-pills">
+              <button
+                className={`plugins-filter-pill ${sourceFilter === "all" ? "active" : ""}`}
+                onClick={() => setSourceFilter("all")}
+              >
+                {t("plugins.filterAll")}
+              </button>
+              {sources.map((s) => (
+                <button
+                  key={s}
+                  className={`plugins-filter-pill ${sourceFilter === s ? "active" : ""}`}
+                  onClick={() => setSourceFilter(s)}
+                >
+                  {s}
+                  <span className="plugins-filter-count">
+                    {plugins.filter((p) => p.source === s).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {error && <div className="plugins-error">{error}</div>}
 
-      {plugins.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="plugins-empty">
           <p className="plugins-empty-text">{t("plugins.noPlugins")}</p>
           <p className="plugins-empty-hint">{t("plugins.noPluginsHint")}</p>
         </div>
       ) : (
         <div className="plugins-grid">
-          {plugins.map((p) => (
+          {filtered.map((p) => (
             <div
               key={p.name}
               className={`plugins-card ${p.enabled ? "plugins-card-enabled" : "plugins-card-disabled"}`}
