@@ -571,7 +571,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             rows={1}
             autoFocus
           />
-          {isLoading && !canSend ? (
+          {isLoading ? (
             <button
               className="chat-send-btn chat-stop-btn"
               onClick={onAbort}

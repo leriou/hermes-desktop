@@ -1971,12 +1971,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
   flex-shrink: 0;
 }
 
 .chat-send-btn:hover:not(:disabled) {
   background: var(--accent-hover);
+}
+
+.chat-send-btn:active:not(:disabled) {
+  transform: scale(0.88);
 }
 
 .chat-send-btn:disabled {
@@ -1990,6 +1994,11 @@
 
 .chat-stop-btn:hover {
   background: #dc2626;
+}
+
+.chat-stop-btn:active {
+  transform: scale(0.88);
+  background: #b91c1c;
 }
 
 .chat-btw-btn {
@@ -2008,6 +2017,11 @@
 }
 
 .chat-btw-btn:hover {
+  background: var(--surface-active);
+}
+
+.chat-btw-btn:active {
+  transform: scale(0.88);
   background: var(--surface-active);
 }
 
@@ -2033,6 +2047,11 @@
 .chat-attach-btn:hover:not(:disabled) {
   background: var(--surface-hover);
   color: var(--text-primary);
+}
+
+.chat-attach-btn:active:not(:disabled) {
+  transform: scale(0.88);
+  background: var(--surface-active);
 }
 
 .chat-attach-btn:disabled {
@@ -2061,6 +2080,10 @@
 .chat-voice-btn:hover:not(:disabled) {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.chat-voice-btn:active:not(:disabled) {
+  transform: scale(0.88);
 }
 
 .chat-voice-btn:disabled {
