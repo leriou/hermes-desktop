@@ -233,6 +233,7 @@ export function useChatInbox({
       const sessions: any[] = res?.sessions ?? res?.result?.sessions ?? [];
       const match = sessions.find((s: any) => s.id === sid || s.session_key === sid);
       const status: string = match?.status ?? "";
+      console.log("[probeAgentHealth]", { attempt, sid, status, matchCount: sessions.length });
       const running = status === "working" || status === "starting";
       if (running) {
         stuckTimerRef.current.set(tabId, setTimeout(() => {
@@ -242,7 +243,8 @@ export function useChatInbox({
       } else {
         finalizeStuckTurn(tabId, sid);
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.log("[probeAgentHealth] catch", err);
       finalizeStuckTurn(tabId, sid);
     });
   }
