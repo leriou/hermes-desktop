@@ -1,4 +1,4 @@
-import { onTuiEvent } from "@renderer/lib/hermes-tauri";
+import { onTuiEvent, tuiSessionStatus } from "@renderer/lib/hermes-tauri";
 import { useEffect, useRef } from "react";
 import type {
   ChatBubbleMessage,
@@ -175,6 +175,72 @@ export function useChatInbox({
       clearTimeout(timer);
       stuckTimerRef.current.delete(tabId);
     }
+  }
+
+  const PROBE_RETRY_MS = 10_000;
+  const PROBE_MAX_RETRIES = 3;
+
+  function finalizeStuckTurn(tabId: string, sid?: string): void {
+    const current = sessionsRef.current.get(tabId);
+    if (!current?.isLoading) return;
+    // Flush any pending streaming text
+    const pending = pendingChunksRef.current.get(tabId) ?? "";
+    const flushed = flushedTextRef.current.get(tabId) ?? "";
+    const text = `${flushed}${pending}`;
+    pendingChunksRef.current.delete(tabId);
+    flushedTextRef.current.delete(tabId);
+    turnCompletedRef.current.set(tabId, true);
+    updateTab(tabId, { isLoading: false, toolProgress: null, streamingText: "", streamingReasoning: "" });
+    if (text) {
+      updateTabMessages(tabId, (prev) => [
+        ...prev,
+        {
+          id: `agent-stuck-${Date.now()}`,
+          sessionId: sid,
+          role: "agent",
+          content: text,
+          timestamp: Date.now(),
+        },
+      ]);
+    }
+    updateTabMessages(tabId, (prev) => [
+      ...prev,
+      {
+        id: `stuck-warn-${Date.now()}`,
+        sessionId: sid,
+        role: "agent",
+        kind: "system_status" as const,
+        tone: "warning" as const,
+        title: "Response timed out",
+        content: "The agent did not finish responding. You can send a new message to continue.",
+        timestamp: Date.now(),
+      },
+    ]);
+  }
+
+  function probeAgentHealth(tabId: string, sid: string, attempt: number): void {
+    const session = sessionsRef.current.get(tabId);
+    if (!session?.isLoading) return;
+    if (attempt > PROBE_MAX_RETRIES) {
+      finalizeStuckTurn(tabId, sid);
+      return;
+    }
+    tuiSessionStatus(sid).then((res: any) => {
+      const current = sessionsRef.current.get(tabId);
+      if (!current?.isLoading) return;
+      const output: string = res?.output ?? res?.result?.output ?? "";
+      const running = output.includes("Agent Running: Yes");
+      if (running) {
+        stuckTimerRef.current.set(tabId, setTimeout(() => {
+          stuckTimerRef.current.delete(tabId);
+          probeAgentHealth(tabId, sid, attempt + 1);
+        }, PROBE_RETRY_MS));
+      } else {
+        finalizeStuckTurn(tabId, sid);
+      }
+    }).catch(() => {
+      finalizeStuckTurn(tabId, sid);
+    });
   }
 
   function clearPendingInteraction(tabId: string): void {
@@ -517,23 +583,10 @@ export function useChatInbox({
           clearStuckTimer(tabId);
           stuckTimerRef.current.set(tabId, setTimeout(() => {
             stuckTimerRef.current.delete(tabId);
-            const current = sessionsRef.current.get(tabId);
-            if (current?.isLoading) {
-              updateTab(tabId, { isLoading: false, toolProgress: null });
-              commitStreaming(tabId, runtimeSid);
-              updateTabMessages(tabId, (prev) => [
-                ...prev,
-                {
-                  id: `stuck-warn-${Date.now()}`,
-                  sessionId: runtimeSid,
-                  role: "agent",
-                  kind: "system_status" as const,
-                  tone: "warning" as const,
-                  title: "Response timed out",
-                  content: "The agent did not finish responding. You can send a new message to continue.",
-                  timestamp: Date.now(),
-                },
-              ]);
+            if (runtimeSid) {
+              probeAgentHealth(tabId, runtimeSid, 1);
+            } else {
+              finalizeStuckTurn(tabId);
             }
           }, 15_000));
           const completeToolId = stringField(payload, "tool_id");
