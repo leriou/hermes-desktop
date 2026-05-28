@@ -354,6 +354,7 @@ export function useChatInbox({
         case "message.delta": {
           const text = textFromPayload(payload);
           if (text) {
+            clearStuckTimer(tabId);
             updateTab(tabId, { isLoading: true });
             pendingChunksRef.current.set(
               tabId,
@@ -475,6 +476,7 @@ export function useChatInbox({
         }
 
         case "tool.start":
+          clearStuckTimer(tabId);
           commitStreaming(tabId, runtimeSid);
           const toolId = stringField(payload, "tool_id");
           const toolName = stringField(payload, "name", "Tool");
@@ -518,6 +520,7 @@ export function useChatInbox({
             const current = sessionsRef.current.get(tabId);
             if (current?.isLoading) {
               updateTab(tabId, { isLoading: false, toolProgress: null });
+              commitStreaming(tabId, runtimeSid);
               updateTabMessages(tabId, (prev) => [
                 ...prev,
                 {
@@ -532,7 +535,7 @@ export function useChatInbox({
                 },
               ]);
             }
-          }, 45_000));
+          }, 15_000));
           const completeToolId = stringField(payload, "tool_id");
           if (completeToolId) {
             const current = sessionsRef.current.get(tabId);
