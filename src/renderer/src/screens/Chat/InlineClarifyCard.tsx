@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { HelpCircle } from "lucide-react";
 import type { ClarifyRequest } from "./types";
 interface InlineClarifyCardProps { request: ClarifyRequest; onSubmit: (value: string) => void; }
 export function InlineClarifyCard({ request, onSubmit }: InlineClarifyCardProps): React.JSX.Element {
   const [value, setValue] = useState("");
   return (
     <div className="chat-interaction-card chat-clarify-inline-card">
-      <div className="chat-interaction-icon">❓</div>
+      <HelpCircle size={14} className="chat-interaction-icon" />
       <div className="chat-interaction-main">
         <div className="chat-interaction-title">{request.question}</div>
         {request.choices && request.choices.length > 0 ? (

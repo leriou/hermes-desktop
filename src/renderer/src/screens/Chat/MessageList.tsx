@@ -156,7 +156,7 @@ function LiveReasoningRow({ text }: { text: string }): React.JSX.Element {
         <div className="chat-live-reasoning-dot" />
       </div>
       <div className="chat-live-reasoning-body">
-        <span className="chat-live-reasoning-label">🧠 Thinking</span>
+        <span className="chat-live-reasoning-label">Thinking</span>
         <span className="chat-live-reasoning-meta">{lineCount} lines</span>
         {displayLine && (
           <span className="chat-live-reasoning-snippet">{displayLine}</span>

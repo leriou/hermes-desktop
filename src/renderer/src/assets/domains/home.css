@@ -1,33 +1,32 @@
-.home-container { display: flex; flex-direction: column; gap: 16px; padding: 20px; max-width: 800px; margin: 0 auto; }
+.home-container { display: flex; flex-direction: column; gap: 20px; padding: 32px 24px; max-width: 680px; margin: 0 auto; width: 100%; }
 .home-header { display: flex; align-items: center; justify-content: space-between; }
 .home-title-row { display: flex; align-items: center; gap: 8px; }
-.home-title { margin: 0; font-size: 18px; font-weight: 600; }
-.home-refresh-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-subtle, rgba(255,255,255,.08)); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
-.home-refresh-btn:hover { background: var(--surface-hover, rgba(255,255,255,.04)); }
-.home-error-banner { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; background: rgba(239,68,68,.1); color: var(--danger, #ef4444); font-size: 13px; }
-.home-health-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-.home-health-card { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-subtle, rgba(255,255,255,.08)); background: var(--surface-card, rgba(255,255,255,.02)); }
-.home-health-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.home-health-card-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
-.home-health-card-icon { color: var(--text-secondary); }
-.home-health-card-value { font-size: 15px; font-weight: 600; }
-.home-health-card-detail { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
-.home-section { padding: 12px; border-radius: 8px; border: 1px solid var(--border-subtle, rgba(255,255,255,.08)); background: var(--surface-card, rgba(255,255,255,.02)); }
-.home-section-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
-.home-mcp-warnings { display: flex; flex-direction: column; gap: 6px; }
+.home-title { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.home-refresh-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-softer); background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: all var(--transition); }
+.home-refresh-btn:hover { background: var(--surface-hover); color: var(--text-secondary); }
+.home-error-banner { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--error-bg); color: var(--error); font-size: 13px; }
+.home-health-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+.home-health-card { padding: 8px 12px; border-radius: var(--radius-sm); background: var(--surface-card); flex: 1; min-width: 100px; }
+.home-health-card-header { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+.home-health-card-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 550; }
+.home-health-card-icon { color: var(--text-muted); }
+.home-health-card-value { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.home-health-card-detail { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.home-section { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-card); }
+.home-section-title { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.home-mcp-warnings { display: flex; flex-direction: column; gap: 4px; }
 .home-mcp-warning-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
-.home-mcp-warn-icon { color: var(--warning, #f59e0b); flex-shrink: 0; }
-.home-mcp-server-name { font-weight: 600; }
-.home-mcp-server-detail { color: var(--text-secondary); }
+.home-mcp-warn-icon { color: var(--warning); flex-shrink: 0; }
+.home-mcp-server-name { font-weight: 550; }
+.home-mcp-server-detail { color: var(--text-muted); }
 .home-latest-error code { font-size: 11px; word-break: break-all; }
-.home-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.home-action-card { display: flex; align-items: center; justify-content: space-between; padding: 14px; border-radius: 8px; border: 1px solid var(--border-subtle, rgba(255,255,255,.08)); background: var(--surface-card, rgba(255,255,255,.02)); cursor: pointer; text-align: left; color: inherit; }
-.home-action-card:hover { background: var(--surface-hover, rgba(255,255,255,.06)); }
+.home-actions { display: flex; gap: 8px; }
+.home-action-card { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--surface-card); cursor: pointer; text-align: left; color: inherit; border: none; font-family: var(--font-sans); flex: 1; transition: background var(--transition); }
+.home-action-card:hover { background: var(--surface-hover); }
 .home-action-main { display: flex; align-items: center; gap: 10px; }
-.home-action-title { font-size: 14px; font-weight: 600; }
-.home-action-desc { font-size: 12px; color: var(--text-secondary); }
-.home-action-arrow { color: var(--text-tertiary); }
-.home-action-secondary { border-style: dashed; }
-.home-quick-links { display: flex; flex-wrap: wrap; gap: 8px; }
-.home-quick-link { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-subtle, rgba(255,255,255,.08)); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
-.home-quick-link:hover { background: var(--surface-hover, rgba(255,255,255,.04)); color: var(--text-primary); }
+.home-action-title { font-size: 13px; font-weight: 550; }
+.home-action-desc { font-size: 11px; color: var(--text-muted); }
+.home-action-arrow { color: var(--text-muted); }
+.home-quick-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.home-quick-link { display: flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-softer); background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: all var(--transition); font-family: var(--font-sans); }
+.home-quick-link:hover { background: var(--surface-hover); color: var(--text-secondary); }

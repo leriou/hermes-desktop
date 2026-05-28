@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ShieldAlert } from "lucide-react";
 import type { ApprovalRequest } from "./types";
 import type { ApprovalDecision, ApprovalDecisionSource } from "./approvalPolicy";
 interface InlineApprovalCardProps { request: ApprovalRequest; submitting: boolean; onDecision: (decision: ApprovalDecision, source: ApprovalDecisionSource) => void; }
@@ -6,7 +7,7 @@ export function InlineApprovalCard({ request, submitting, onDecision }: InlineAp
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="chat-interaction-card chat-approval-inline-card">
-      <div className="chat-interaction-icon">⚠️</div>
+      <ShieldAlert size={14} className="chat-interaction-icon" />
       <div className="chat-interaction-main">
         <div className="chat-interaction-title">Approval required</div>
         <div className="chat-approval-inline-command">
