@@ -10,6 +10,7 @@ import type {
   KanbanCreateTaskInput,
   KanbanResult,
   KanbanDataResult,
+  HomeHealthSummary,
 } from "@shared/api-types";
 import type { AppLocale } from "@shared/i18n/types";
 import type { Attachment } from "@shared/attachments";
@@ -142,17 +143,20 @@ export function getHermesHome(profile?: string): Promise<string> {
 // Model config
 export function getModelConfig(
   profile?: string,
-): Promise<{ provider: string; model: string; baseUrl: string }> {
+): Promise<{ provider: string; model: string; baseUrl: string; maxTokens?: number }> {
   return invoke("get_model_config", { profile });
 }
 export function getRoutingConfig(
   profile?: string,
 ): Promise<{
-  defaultModel: string | null;
-  provider: string | null;
-  baseUrl: string | null;
-  maxTokens: number | null;
-  fallbackProviders: Array<{ model: string; provider: string }>;
+  defaultModel?: string;
+  defaultProvider?: string;
+  defaultBaseUrl?: string;
+  provider?: string;
+  baseUrl?: string;
+  maxTokens?: number;
+  fallbacks?: Array<{ model: string; provider: string }>;
+  fallbackProviders?: Array<{ model: string; provider: string }>;
 }> {
   return invoke("get_routing_config", { profile });
 }
@@ -161,8 +165,15 @@ export function setModelConfig(
   model: string,
   baseUrl: string,
   profile?: string,
+  maxTokens?: number,
 ): Promise<boolean> {
-  return invoke("set_model_config", { provider, model, baseUrl, profile });
+  return invoke("set_model_config", {
+    provider,
+    model,
+    baseUrl,
+    profile,
+    maxTokens,
+  });
 }
 
 // Connection mode
@@ -348,6 +359,9 @@ export function stopGateway(profile?: string): Promise<boolean> {
 }
 export function gatewayStatus(): Promise<boolean> {
   return invoke("gateway_status");
+}
+export function homeHealthSummary(profile?: string): Promise<HomeHealthSummary> {
+  return invoke("home_health_summary", { profile });
 }
 export function copyDiagnostics(): Promise<string> {
   return invoke("copy_diagnostics");

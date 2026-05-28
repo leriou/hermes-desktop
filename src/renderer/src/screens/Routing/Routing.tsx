@@ -25,10 +25,10 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
   const load = useCallback(async (): Promise<void> => {
     try {
       const cfg = await getRoutingConfig(profile);
-      setDefaultModel(cfg.defaultModel);
-      setDefaultProvider(cfg.defaultProvider);
-      setDefaultBaseUrl(cfg.defaultBaseUrl);
-      setFallbacks(cfg.fallbacks || []);
+      setDefaultModel(cfg.defaultModel || "");
+      setDefaultProvider(cfg.provider || "");
+      setDefaultBaseUrl(cfg.baseUrl || "");
+      setFallbacks((cfg.fallbackProviders || []) as any);
       setError("");
     } catch {
       setError("Failed to load routing config");

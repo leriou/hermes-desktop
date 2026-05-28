@@ -118,6 +118,20 @@ export type KanbanDataResult<T> = {
 
 // ── Result helpers ────────────────────────────────────────────────────────
 
+export interface HomeHealthSummary {
+  runtimeStatus: "Ready" | "Starting" | "Reconnecting" | "Failed" | "Stopped";
+  gatewayRunning: boolean;
+  mcp: {
+    total: number;
+    warningServers: Array<{ name: string; summary?: string }>;
+  };
+  errors: {
+    lastHour: number;
+    lastDay: number;
+    latestSummary?: string;
+  };
+}
+
 export type Result = { success: boolean; error?: string };
 
 // ── HermesAPI interface ───────────────────────────────────────────────────
@@ -159,9 +173,10 @@ export interface HermesAPI {
   getConfig: (key: string, profile?: string) => Promise<string | null>;
   setConfig: (key: string, value: string, profile?: string) => Promise<boolean>;
   getHermesHome: (profile?: string) => Promise<string>;
+  homeHealthSummary: (profile?: string) => Promise<HomeHealthSummary>;
   getModelConfig: (
     profile?: string,
-  ) => Promise<{ provider: string; model: string; baseUrl: string }>;
+  ) => Promise<{ provider: string; model: string; baseUrl: string; maxTokens?: number }>;
   getModelAliases: (profile?: string) => Promise<
     {
       name: string;
@@ -176,6 +191,7 @@ export interface HermesAPI {
     model: string,
     baseUrl: string,
     profile?: string,
+    maxTokens?: number,
   ) => Promise<boolean>;
 
   // Connection mode (local / remote / ssh)
@@ -737,10 +753,14 @@ export interface HermesAPI {
 
   // Routing / Fallback config
   getRoutingConfig: (profile?: string) => Promise<{
-    defaultModel: string;
-    defaultProvider: string;
-    defaultBaseUrl: string;
-    fallbacks: Array<{ model: string; provider: string }>;
+    defaultModel?: string;
+    defaultProvider?: string;
+    defaultBaseUrl?: string;
+    provider?: string;
+    baseUrl?: string;
+    maxTokens?: number;
+    fallbacks?: Array<{ model: string; provider: string }>;
+    fallbackProviders?: Array<{ model: string; provider: string }>;
   }>;
   setRoutingConfig: (
     data: {

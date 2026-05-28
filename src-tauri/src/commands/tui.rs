@@ -1,8 +1,149 @@
 use serde_json::{json, Value};
-use tauri::{command, State, AppHandle, Manager};
+use tauri::{command, State, AppHandle};
 use crate::AppState;
 use crate::tui_gateway::{TuiGateway, GatewayStatus};
 use std::sync::Arc;
+use std::fs::{self, File};
+use std::io::{Read, Seek, SeekFrom};
+use crate::python;
+use crate::config_utils;
+use chrono::{DateTime, Utc, Duration};
+
+#[command]
+pub async fn home_health_summary(state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<Value, String> {
+    let gw = {
+        let gateway_guard = state.gateway.lock().await;
+        gateway_guard.as_ref().cloned()
+    };
+
+    let (status, running) = if let Some(ref gw) = gw {
+        let health = gw.get_health().await;
+        let status = health.get("status").and_then(|v| v.as_str()).unwrap_or("Stopped").to_string();
+        let running = gw.is_running().await;
+        (status, running)
+    } else {
+        ("Stopped".to_string(), false)
+    };
+
+    // MCP total from config
+    let config_path = python::get_hermes_home_with_profile(Some(&app), profile.clone()).join("config.yaml");
+    let mcp_total = if config_path.exists() {
+        if let Ok(content) = fs::read_to_string(&config_path) {
+            config_utils::list_mcp_servers(&content).len()
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    // Scan logs
+    let home = python::get_hermes_home(Some(&app));
+    let logs_dir = home.join("logs");
+    
+    let mut errors_1h = 0;
+    let mut errors_24h = 0;
+    let mut latest_summary = None;
+    let mut warning_servers = Vec::new();
+
+    if logs_dir.exists() {
+        let now = Utc::now();
+        let hour_ago = now - Duration::hours(1);
+        let day_ago = now - Duration::days(1);
+
+        // Scan errors.log (bounded tail read: last 512KB)
+        let err_log_path = logs_dir.join("errors.log");
+        if let Ok(content) = read_last_bytes(&err_log_path, 512 * 1024) {
+            for line in content.lines().rev().take(1000) {
+                if line.contains("[ERROR]") || line.contains(" ERROR ") || line.contains("ERROR:") {
+                    if let Some(ts) = parse_log_timestamp(line) {
+                        if ts >= day_ago {
+                            errors_24h += 1;
+                            if ts >= hour_ago {
+                                errors_1h += 1;
+                            }
+                            if latest_summary.is_none() {
+                                latest_summary = Some(line.trim().to_string());
+                            }
+                        } else {
+                            break; // assume chronological
+                        }
+                    }
+                }
+            }
+        }
+
+        // Scan mcp-stderr.log (bounded tail read: last 256KB)
+        let mcp_log_path = logs_dir.join("mcp-stderr.log");
+        if let Ok(content) = read_last_bytes(&mcp_log_path, 256 * 1024) {
+            let mut current_server = None;
+            for line in content.lines() {
+                if line.contains("starting MCP server '") {
+                    if let Some(pos) = line.find("MCP server '") {
+                        let start = pos + "MCP server '".len();
+                        if let Some(end) = line[start..].find('\'') {
+                            current_server = Some(line[start..start+end].to_string());
+                        }
+                    }
+                } else if line.contains("ERROR") || line.contains("Exception") || line.contains("Failed") {
+                    if let Some(ref name) = current_server {
+                        if !warning_servers.iter().any(|v: &Value| v["name"].as_str() == Some(name)) {
+                            warning_servers.push(json!({
+                                "name": name,
+                                "summary": line.trim().chars().take(200).collect::<String>()
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(json!({
+        "runtimeStatus": status,
+        "gatewayRunning": running,
+        "mcp": {
+            "total": mcp_total,
+            "warningServers": warning_servers,
+        },
+        "errors": {
+            "lastHour": errors_1h,
+            "lastDay": errors_24h,
+            "latestSummary": latest_summary,
+        }
+    }))
+}
+
+fn read_last_bytes(path: &std::path::Path, limit: u64) -> std::io::Result<String> {
+    let mut file = File::open(path)?;
+    let metadata = file.metadata()?;
+    let size = metadata.len();
+    let to_read = size.min(limit);
+    if to_read == 0 { return Ok(String::new()); }
+    
+    file.seek(SeekFrom::End(-(to_read as i64)))?;
+    let mut buffer = Vec::with_capacity(to_read as usize);
+    file.read_to_end(&mut buffer)?;
+    
+    Ok(String::from_utf8_lossy(&buffer).into_owned())
+}
+
+fn parse_log_timestamp(line: &str) -> Option<DateTime<Utc>> {
+    let bytes = line.as_bytes();
+    if bytes.len() < 19 { return None; }
+    
+    for i in 0..=bytes.len() - 19 {
+        if bytes[i+4] == b'-' && bytes[i+7] == b'-' && 
+           bytes[i+10] == b' ' && bytes[i+13] == b':' && bytes[i+16] == b':' {
+            if let Ok(sub) = std::str::from_utf8(&bytes[i..i+19]) {
+                if let Ok(dt) = DateTime::parse_from_str(&(sub.to_string() + " +0000"), "%Y-%m-%d %H:%M:%S %z") {
+                    return Some(dt.with_timezone(&Utc));
+                }
+            }
+        }
+    }
+    None
+}
 
 #[command]
 pub async fn copy_diagnostics(state: State<'_, AppState>, app: AppHandle) -> Result<String, String> {

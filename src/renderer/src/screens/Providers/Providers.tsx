@@ -8,7 +8,6 @@ import { KeyRound, Check } from "../../assets/icons";
 import {
   addModel,
   getCredentialPool,
-  getConfig,
   getEnv,
   getRoutingConfig,
   setConfig,
@@ -16,7 +15,7 @@ import {
   setEnv as setTauriEnv,
 } from "@renderer/lib/hermes-tauri";
 
-type ProviderTab = "model" | "apikeys" | "tools" | "credentials" | "oauth";
+type ProviderTab = "model" | "apikeys" | "tools" | "credentials" | "oauth" | "routing";
 
 const PROVIDER_ENV_KEY: Record<string, string> = {
   openrouter: "OPENROUTER_API_KEY",

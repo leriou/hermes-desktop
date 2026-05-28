@@ -34,10 +34,20 @@ pub async fn get_model_config(state: State<'_, AppState>, app: AppHandle, _profi
 }
 
 #[command]
-pub async fn set_model_config(state: State<'_, AppState>, provider: String, model: String, base_url: String, _profile: Option<String>) -> Result<Value, String> {
+pub async fn set_model_config(state: State<'_, AppState>, provider: String, model: String, base_url: String, max_tokens: Option<i64>, _profile: Option<String>) -> Result<Value, String> {
     let gateway = state.gateway.lock().await;
     let gw = gateway.as_ref().ok_or("Gateway not running")?;
-    gw.call("config.set", json!({ "model.provider": provider, "model.default": model, "model.base_url": base_url })).await.map_err(|e| e.to_string())?;
+    
+    let mut config = json!({ 
+        "model.provider": provider, 
+        "model.default": model, 
+        "model.base_url": base_url 
+    });
+    if let Some(mt) = max_tokens {
+        config["model.max_tokens"] = json!(mt);
+    }
+    
+    gw.call("config.set", config).await.map_err(|e| e.to_string())?;
 
     if let Ok(recent) = gw.call("session.most_recent", json!({})).await {
         if let Some(sid) = recent.get("session_id").and_then(|v| v.as_str()) {
@@ -333,8 +343,9 @@ pub async fn get_routing_config(app: AppHandle, profile: Option<String>) -> Resu
     let config_path = python::get_hermes_home_with_profile(Some(&app), profile).join("config.yaml");
     if !config_path.exists() {
         return Ok(json!({
-            "defaultModel": null, "provider": null, "baseUrl": null,
-            "maxTokens": null, "fallbackProviders": []
+            "defaultModel": null, "defaultProvider": null, "defaultBaseUrl": null,
+            "provider": null, "baseUrl": null,
+            "maxTokens": null, "fallbacks": [], "fallbackProviders": []
         }));
     }
     let content = fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
@@ -358,9 +369,12 @@ pub async fn get_routing_config(app: AppHandle, profile: Option<String>) -> Resu
 
     Ok(json!({
         "defaultModel": default_model,
+        "defaultProvider": provider,
+        "defaultBaseUrl": base_url,
         "provider": provider,
         "baseUrl": base_url,
         "maxTokens": max_tokens,
+        "fallbacks": fallbacks,
         "fallbackProviders": fallbacks,
     }))
 }

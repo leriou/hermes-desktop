@@ -118,7 +118,7 @@ pub fn run() {
         check_for_updates, check_install, clear_staged_attachments, copy_diagnostics, copy_to_clipboard,
         create_cron_job, create_profile, delete_profile, delete_session, delete_session_chain, 
         discover_memory_providers, discover_provider_models, download_update, 
-        gateway_status, get_build_info, runtime_health, get_app_version, get_config, get_connection_config,
+        gateway_status, get_build_info, runtime_health, home_health_summary, get_app_version, get_config, get_connection_config,
         get_credential_pool, get_env, get_hermes_home, get_hermes_version, get_locale, 
         get_model_aliases, get_model_config, get_platform_enabled, get_plugins,
         get_routing_config, 
