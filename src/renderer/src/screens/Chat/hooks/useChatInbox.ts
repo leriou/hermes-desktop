@@ -177,8 +177,9 @@ export function useChatInbox({
     }
   }
 
-  const PROBE_RETRY_MS = 10_000;
-  const PROBE_MAX_RETRIES = 3;
+  const PROBE_INITIAL_MS = 5_000;
+  const PROBE_INTERVAL_MS = 5_000;
+  const PROBE_MAX_ATTEMPTS = 6;
 
   function finalizeStuckTurn(tabId: string, sid?: string): void {
     const current = sessionsRef.current.get(tabId);
@@ -221,7 +222,7 @@ export function useChatInbox({
   function probeAgentHealth(tabId: string, sid: string, attempt: number): void {
     const session = sessionsRef.current.get(tabId);
     if (!session?.isLoading) return;
-    if (attempt > PROBE_MAX_RETRIES) {
+    if (attempt > PROBE_MAX_ATTEMPTS) {
       finalizeStuckTurn(tabId, sid);
       return;
     }
@@ -236,7 +237,7 @@ export function useChatInbox({
         stuckTimerRef.current.set(tabId, setTimeout(() => {
           stuckTimerRef.current.delete(tabId);
           probeAgentHealth(tabId, sid, attempt + 1);
-        }, PROBE_RETRY_MS));
+        }, PROBE_INTERVAL_MS));
       } else {
         finalizeStuckTurn(tabId, sid);
       }
@@ -590,7 +591,7 @@ export function useChatInbox({
             } else {
               finalizeStuckTurn(tabId);
             }
-          }, 15_000));
+          }, PROBE_INITIAL_MS));
           const completeToolId = stringField(payload, "tool_id");
           if (completeToolId) {
             const current = sessionsRef.current.get(tabId);
