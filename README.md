@@ -1,6 +1,6 @@
 # Hermes Caduceus
 
-
+> A customizable cross-platform **GUI client** for Hermes — AI agent orchestration with multi-provider chat, memory, skills, and task scheduling.
 
 <br/>
 <p align="center">
@@ -46,7 +46,7 @@ The app runs Hermes Agent as a managed Python subprocess, communicating via JSON
 
 | Decision | Why |
 |----------|-----|
-| **Tauri 2 over Electron** | ~5x smaller download, native macOS feel, no Chromium bundled |
+| **Tauri 2 over Electron** | ~40x smaller download (5 MB vs 200 MB+), native macOS feel, no Chromium bundled |
 | **JSON-RPC over stdio** | No HTTP port needed, no CORS, no network surface — the gateway is only reachable from the Rust process |
 | **Microtask streaming** | `Promise.resolve().then()` instead of `requestAnimationFrame` for sub-millisecond text flush, eliminating the 16ms rAF cadence bottleneck |
 | **Capabilities-based security** | Minimal Tauri permissions (`core:default` + drag + zoom only), CSP headers, URL scheme validation, no arbitrary shell access from renderer |
@@ -57,16 +57,16 @@ The app runs Hermes Agent as a managed Python subprocess, communicating via JSON
 
 | | Tauri 2 (this project) | Electron (upstream) |
 |--|--|--|
-| **Download size** | ~36 MB `.dmg` | ~200 MB+ `.dmg` |
-| **Native binary** | ~10 MB | ~150 MB+ (bundles Chromium + Node.js) |
+| **Download size** | ~5 MB `.dmg` | ~200 MB+ `.dmg` |
+| **Native binary** | ~5 MB | ~150 MB+ (bundles Chromium + Node.js) |
 | **Rendering engine** | System WebKit (`WKWebView`) | Bundled Chromium |
-| **Memory footprint** | ~60-80 MB RSS | ~300-500 MB RSS |
+| **Memory footprint** | ~50-80 MB RSS | ~300-500 MB RSS |
 | **Startup time** | < 1s | 3-5s |
 | **macOS integration** | Native: Metal, CoreML, CoreAudio, vibrancy | Chromium compatibility layer |
 | **Auto-update** | Rust-native Tauri updater | electron-updater |
 | **Security surface** | 6 curated plugins, capabilities-gated | Full Node.js + Chromium access |
 
-Tauri uses the system's built-in WebKit on macOS — no Chromium bundled. This means the app inherits Apple's security patches through macOS updates, not through bundled browser upgrades. The Rust backend compiles to a single native binary (~10 MB) with zero runtime garbage collection pauses.
+Tauri uses the system's built-in WebKit on macOS — no Chromium bundled. This means the app inherits Apple's security patches through macOS updates, not through bundled browser upgrades. The Rust backend compiles to a single native binary (~5 MB) with zero runtime garbage collection pauses.
 
 #### Plugin Surface
 
@@ -178,7 +178,7 @@ Hermes Caduceus is not just a cross-platform port; it is built to feel like a fi
 - **Streaming chat UI** — SSE streaming with microtask flush, tool progress indicators, markdown rendering, syntax highlighting
 - **Token usage tracking** — live prompt/completion token counts and cost display
 - **34 slash commands** — `/new`, `/clear`, `/fast`, `/web`, `/image`, `/browse`, `/code`, `/file`, `/shell`, `/usage`, `/help`, `/tools`, `/skills`, `/model`, `/memory`, `/persona`, `/version`, `/compact`, `/compress`, `/undo`, `/retry`, `/debug`, `/status`, `/btw`, `/approve`, `/deny`, `/reset`, `/goal`, `/steer`, `/queue`, `/update`, `/kanban`, `/curator`, `/reload-skills`
-- **Session management** — full-text search (SQLite FTS5), date-grouped history, segmented sessions with cross-segment loading
+- **Session management** — resume any historical conversation at any time, full-text search (SQLite FTS5), date-grouped history, segmented sessions with cross-segment loading
 - **Profile switching** — isolated Hermes environments with separate config, env, and state
 - **32 API key fields** across 5 tool categories — LLM, browser automation, voice, research, and more
 - **Memory & Persona** — view/edit memory entries and SOUL.md personality
@@ -249,7 +249,7 @@ bun run build:mac
 | Native Shell | **Tauri 2** (Rust) — ~5,800 LOC |
 | Frontend | **React 19** + **TypeScript 5** — ~38,000 LOC |
 | Styling | **Tailwind CSS** 4 |
-| Build | **Vite** 7 |
+| Build | **Vite** 8 |
 | i18n | **i18next** |
 | Tests | **Vitest** + Rust tests |
 | Voice | **whisper-rs** + **cpal** (CoreAudio) |

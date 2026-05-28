@@ -1,5 +1,6 @@
 # Hermes Caduceus
 
+> 一个可定制的跨平台 **Hermes GUI 客户端** — 支持多供应商 AI 聊天、记忆、技能和任务调度。
 
 <br/>
 <p align="center">
@@ -45,7 +46,7 @@ Hermes Caduceus 是一个原生 macOS 桌面客户端，用于安装、配置并
 
 | 决策 | 原因 |
 |------|------|
-| **Tauri 2 替代 Electron** | 下载体积约 5 倍差距，原生 macOS 体验，不打包 Chromium |
+| **Tauri 2 替代 Electron** | 下载体积约 40 倍差距（5 MB vs 200 MB+），原生 macOS 体验，不打包 Chromium |
 | **JSON-RPC over stdio** | 无需 HTTP 端口、无 CORS、无网络暴露面——网关仅可被 Rust 进程访问 |
 | **微任务流式渲染** | `Promise.resolve().then()` 替代 `requestAnimationFrame`，亚毫秒级文字刷新，消除 16ms rAF 瓶颈 |
 | **能力基安全模型** | 最小 Tauri 权限（仅 `core:default` + 拖拽 + 缩放），CSP 头、URL scheme 校验，渲染进程无任意 shell 访问 |
@@ -56,16 +57,16 @@ Hermes Caduceus 是一个原生 macOS 桌面客户端，用于安装、配置并
 
 |  | Tauri 2（本项目） | Electron（上游） |
 |--|--|--|
-| **下载体积** | ~11 MB `.dmg` | ~200 MB+ `.dmg` |
+| **下载体积** | ~5 MB `.dmg` | ~200 MB+ `.dmg` |
 | **原生二进制** | ~5 MB | ~150 MB+（打包 Chromium + Node.js） |
 | **渲染引擎** | 系统 WebKit（`WKWebView`） | 内置 Chromium |
-| **内存占用** | ~60-80 MB RSS | ~300-500 MB RSS |
+| **内存占用** | ~50-80 MB RSS | ~300-500 MB RSS |
 | **启动时间** | < 1 秒 | 3-5 秒 |
 | **macOS 集成** | 原生：Metal、CoreML、CoreAudio、毛玻璃 | Chromium 兼容层 |
 | **自动更新** | Rust 原生 Tauri updater | electron-updater |
 | **安全面** | 6 个精选插件，能力门控 | 完整 Node.js + Chromium 访问 |
 
-Tauri 在 macOS 上使用系统内置的 WebKit —— 不打包 Chromium。应用通过 macOS 系统更新获得 Apple 的安全补丁，而非依赖内置浏览器升级。Rust 后端编译为单一原生二进制（~10 MB），零运行时 GC 暂停。
+Tauri 在 macOS 上使用系统内置的 WebKit —— 不打包 Chromium。应用通过 macOS 系统更新获得 Apple 的安全补丁，而非依赖内置浏览器升级。Rust 后端编译为单一原生二进制（~5 MB），零运行时 GC 暂停。
 
 #### 插件攻击面
 
@@ -177,7 +178,7 @@ Hermes Caduceus 不仅仅是一个跨平台应用的移植版，它是为 macOS 
 - 流式聊天界面 —— SSE 流式 + 微任务刷新、工具进度指示、Markdown 渲染、语法高亮
 - Token 用量追踪 —— 实时 prompt/completion token 计数和费用显示
 - 34 个斜杠命令 —— `/new`、`/clear`、`/fast`、`/web`、`/image`、`/browse`、`/code`、`/file`、`/shell`、`/usage`、`/help`、`/tools`、`/skills`、`/model`、`/memory`、`/persona`、`/version`、`/compact`、`/compress`、`/undo`、`/retry`、`/debug`、`/status`、`/btw`、`/approve`、`/deny`、`/reset`、`/goal`、`/steer`、`/queue`、`/update`、`/kanban`、`/curator`、`/reload-skills`
-- 会话管理 —— 全文搜索（SQLite FTS5）、按日期分组、分段会话支持跨段加载
+- 会话管理 —— 随时继续任意历史会话聊天、全文搜索（SQLite FTS5）、按日期分组、分段会话支持跨段加载
 - 档案切换 —— 独立的 Hermes 环境，隔离配置、环境和状态
 - 32 个 API 密钥字段，覆盖 5 个工具类别 —— LLM、浏览器自动化、语音、研究等
 - 记忆与人格 —— 查看/编辑记忆条目和 SOUL.md 人格
@@ -248,7 +249,7 @@ bun run build:mac
 | 原生 Shell | **Tauri 2**（Rust）— ~5,800 行 |
 | 前端 | **React 19** + **TypeScript 5** — ~38,000 行 |
 | 样式 | **Tailwind CSS** 4 |
-| 构建 | **Vite** 7 |
+| 构建 | **Vite** 8 |
 | 国际化 | **i18next** |
 | 测试 | **Vitest** + Rust tests |
 | 语音 | **whisper-rs** + **cpal**（CoreAudio） |
