@@ -172,21 +172,20 @@ export function useChatInbox({
   function clearStuckTimer(tabId: string): void {
     const timer = stuckTimerRef.current.get(tabId);
     if (timer) {
-      console.log("[clearStuckTimer]", tabId.slice(0, 8));
       clearTimeout(timer);
       stuckTimerRef.current.delete(tabId);
     }
   }
 
-  const PROBE_INITIAL_MS = 5_000;
-  const PROBE_INTERVAL_MS = 5_000;
-  const PROBE_MAX_ATTEMPTS = 6;
-  const DELTA_STUCK_MS = 8_000;
+  const STUCK_INITIAL_MS = 3_000;
+  const STUCK_INTERVAL_MS = 3_000;
+  const STUCK_MAX_ATTEMPTS = 5;
+  const STUCK_ABSOLUTE_MS = 15_000;
+  const stuckStartRef = useRef<Map<string, number>>(new Map());
 
   function finalizeStuckTurn(tabId: string, sid?: string): void {
     const current = sessionsRef.current.get(tabId);
     if (!current?.isLoading) return;
-    // Flush any pending streaming text
     const pending = pendingChunksRef.current.get(tabId) ?? "";
     const flushed = flushedTextRef.current.get(tabId) ?? "";
     const text = `${flushed}${pending}`;
@@ -224,7 +223,13 @@ export function useChatInbox({
   function probeAgentHealth(tabId: string, sid: string, attempt: number): void {
     const session = sessionsRef.current.get(tabId);
     if (!session?.isLoading) return;
-    if (attempt > PROBE_MAX_ATTEMPTS) {
+    // Absolute timeout: no matter what the probe says, finalize after STUCK_ABSOLUTE_MS
+    const startedAt = stuckStartRef.current.get(tabId);
+    if (startedAt && Date.now() - startedAt > STUCK_ABSOLUTE_MS) {
+      finalizeStuckTurn(tabId, sid);
+      return;
+    }
+    if (attempt > STUCK_MAX_ATTEMPTS) {
       finalizeStuckTurn(tabId, sid);
       return;
     }
@@ -234,20 +239,31 @@ export function useChatInbox({
       const sessions: any[] = res?.sessions ?? res?.result?.sessions ?? [];
       const match = sessions.find((s: any) => s.id === sid || s.session_key === sid);
       const status: string = match?.status ?? "";
-      console.log("[probeAgentHealth]", { attempt, sid, status, matchCount: sessions.length });
       const running = status === "working" || status === "starting";
       if (running) {
         stuckTimerRef.current.set(tabId, setTimeout(() => {
           stuckTimerRef.current.delete(tabId);
           probeAgentHealth(tabId, sid, attempt + 1);
-        }, PROBE_INTERVAL_MS));
+        }, STUCK_INTERVAL_MS));
       } else {
         finalizeStuckTurn(tabId, sid);
       }
-    }).catch((err) => {
-      console.log("[probeAgentHealth] catch", err);
+    }).catch(() => {
       finalizeStuckTurn(tabId, sid);
     });
+  }
+
+  function scheduleStuckProbe(tabId: string, sid?: string): void {
+    clearStuckTimer(tabId);
+    stuckStartRef.current.set(tabId, Date.now());
+    stuckTimerRef.current.set(tabId, setTimeout(() => {
+      stuckTimerRef.current.delete(tabId);
+      if (sid) {
+        probeAgentHealth(tabId, sid, 1);
+      } else {
+        finalizeStuckTurn(tabId);
+      }
+    }, STUCK_INITIAL_MS));
   }
 
   function clearPendingInteraction(tabId: string): void {
@@ -427,29 +443,20 @@ export function useChatInbox({
         case "message.delta": {
           const text = textFromPayload(payload);
           if (text) {
-            clearStuckTimer(tabId);
             updateTab(tabId, { isLoading: true });
             pendingChunksRef.current.set(
               tabId,
               `${pendingChunksRef.current.get(tabId) ?? ""}${text}`,
             );
             scheduleFlush(tabId);
-            // Start a stuck timer so we detect when deltas stop without message.complete
-            stuckTimerRef.current.set(tabId, setTimeout(() => {
-              stuckTimerRef.current.delete(tabId);
-              if (runtimeSid) {
-                probeAgentHealth(tabId, runtimeSid, 1);
-              } else {
-                finalizeStuckTurn(tabId);
-              }
-            }, DELTA_STUCK_MS));
+            scheduleStuckProbe(tabId, runtimeSid);
           }
           break;
         }
 
         case "message.complete": {
-          console.log("[message.complete]", tabId.slice(0, 8));
           clearStuckTimer(tabId);
+          stuckStartRef.current.delete(tabId);
           if (turnCompletedRef.current.get(tabId)) {
             break; // Duplicate terminal event — skip
           }
@@ -569,6 +576,8 @@ export function useChatInbox({
             toolProgress: toolName || "Thinking...",
             ...(startTodos !== undefined ? { todos: parseTodos(startTodos) } : {}),
           });
+          // Tool execution can hang — set a safety probe
+          scheduleStuckProbe(tabId, runtimeSid);
           if (toolId) {
             const current = sessionsRef.current.get(tabId);
             updateTabMessages(tabId, (prev) => [
@@ -592,22 +601,12 @@ export function useChatInbox({
           break;
 
         case "tool.complete":
-          console.log("[tool.complete] stuck timer set", { tabId: tabId.slice(0, 8), runtimeSid, PROBE_INITIAL_MS });
           const completeTodos = payload.todos;
           updateTab(tabId, {
             toolProgress: "analyzing tool output…",
             ...(completeTodos !== undefined ? { todos: parseTodos(completeTodos) } : {}),
           });
-          clearStuckTimer(tabId);
-          stuckTimerRef.current.set(tabId, setTimeout(() => {
-            stuckTimerRef.current.delete(tabId);
-            console.log("[tool.complete timer] firing", { tabId: tabId.slice(0, 8), isLoading: sessionsRef.current.get(tabId)?.isLoading });
-            if (runtimeSid) {
-              probeAgentHealth(tabId, runtimeSid, 1);
-            } else {
-              finalizeStuckTurn(tabId);
-            }
-          }, PROBE_INITIAL_MS));
+          scheduleStuckProbe(tabId, runtimeSid);
           const completeToolId = stringField(payload, "tool_id");
           if (completeToolId) {
             const current = sessionsRef.current.get(tabId);
@@ -714,7 +713,6 @@ export function useChatInbox({
           break;
 
         case "error":
-          console.log("[error event]", stringField(payload, "message"), tabId.slice(0, 8));
           commitStreaming(tabId, runtimeSid);
           resetTurn(tabId);
           const errorMessage = stringField(payload, "message");
