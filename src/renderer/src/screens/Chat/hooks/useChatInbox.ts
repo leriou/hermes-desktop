@@ -180,6 +180,7 @@ export function useChatInbox({
   const PROBE_INITIAL_MS = 5_000;
   const PROBE_INTERVAL_MS = 5_000;
   const PROBE_MAX_ATTEMPTS = 6;
+  const DELTA_STUCK_MS = 8_000;
 
   function finalizeStuckTurn(tabId: string, sid?: string): void {
     const current = sessionsRef.current.get(tabId);
@@ -430,6 +431,15 @@ export function useChatInbox({
               `${pendingChunksRef.current.get(tabId) ?? ""}${text}`,
             );
             scheduleFlush(tabId);
+            // Start a stuck timer so we detect when deltas stop without message.complete
+            stuckTimerRef.current.set(tabId, setTimeout(() => {
+              stuckTimerRef.current.delete(tabId);
+              if (runtimeSid) {
+                probeAgentHealth(tabId, runtimeSid, 1);
+              } else {
+                finalizeStuckTurn(tabId);
+              }
+            }, DELTA_STUCK_MS));
           }
           break;
         }
