@@ -54,14 +54,12 @@ describe("MessageList system events", () => {
       />,
     );
 
-    expect(container.querySelectorAll(".chat-system-event")).toHaveLength(3);
+    expect(container.querySelectorAll(".chat-event-row")).toHaveLength(3);
     expect(container.querySelector(".chat-message-agent")).toBeNull();
-    expect(
-      container.querySelector(".chat-system-event-error")?.textContent,
-    ).toContain("Provider error 429");
+    expect(container.textContent).toContain("Provider error 429");
   });
 
-  it("renders system events as a compact event rail with expandable detail", () => {
+  it("renders system events with icon, title, content, and code badge", () => {
     const { container } = render(
       <MessageList
         {...baseProps}
@@ -81,13 +79,11 @@ describe("MessageList system events", () => {
       />,
     );
 
-    expect(container.querySelector(".chat-system-event-rail")).not.toBeNull();
-    const details = container.querySelector(
-      "details.chat-system-event",
-    ) as HTMLDetailsElement;
-    expect(details).not.toBeNull();
-    expect(details.open).toBe(false);
-    expect(container.textContent).toContain("Provider error 1305");
-    expect(container.textContent).toContain("1305");
+    const row = container.querySelector(".chat-event-row");
+    expect(row).not.toBeNull();
+    expect(row!.querySelector(".chat-event-icon")).not.toBeNull();
+    expect(row!.querySelector(".chat-event-title")?.textContent).toBe("Provider error 1305");
+    expect(row!.querySelector(".chat-event-content")?.textContent).toBe("Model overloaded");
+    expect(row!.querySelector(".chat-event-code")?.textContent).toBe("1305");
   });
 });

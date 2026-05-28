@@ -644,7 +644,7 @@ function Chat({
           hasSession={!!session.hermesSessionId}
           sessionId={session.hermesSessionId}
           remoteMode={remoteMode}
-          pendingClarify={pendingClarify}
+          pendingClarify={null}
           onSubmit={actions.handleSend}
           onQuickAsk={actions.handleQuickAsk}
           onAbort={actions.handleAbort}
@@ -674,14 +674,16 @@ function Chat({
           />
         </div>
       </div>
-      <ApprovalModal
-        request={visibleApproval}
-        policy={approvalPolicy}
-        submitting={approvalSubmitting}
-        judgmentAdvice={approvalJudgment}
-        onDecision={handleApprovalDecision}
-        onPolicyChange={setApprovalPolicy}
-      />
+      {!pendingApproval && (
+        <ApprovalModal
+          request={visibleApproval}
+          policy={approvalPolicy}
+          submitting={approvalSubmitting}
+          judgmentAdvice={approvalJudgment}
+          onDecision={handleApprovalDecision}
+          onPolicyChange={setApprovalPolicy}
+        />
+      )}
       {dragActive && (
         <div className="chat-drop-overlay" aria-hidden>
           <div className="chat-drop-overlay-inner">

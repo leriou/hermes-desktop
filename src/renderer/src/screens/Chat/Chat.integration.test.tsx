@@ -162,7 +162,7 @@ describe("Chat command wiring", () => {
       />,
     );
 
-    expect(view.container.querySelector(".chat-approval-modal")).not.toBeNull();
+    expect(view.container.querySelector(".chat-approval-inline-card")).not.toBeNull();
 
     const approveButton = view.container.querySelector(
       ".chat-approval-approve",
