@@ -297,6 +297,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
   }
 
   async function handleToggle(job: CronJob): Promise<void> {
+    if (actionInProgress === job.id) return;
     setActionInProgress(job.id);
     setError("");
     try {
@@ -318,6 +319,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
   }
 
   async function handleTrigger(jobId: string): Promise<void> {
+    if (actionInProgress === jobId) return;
     setActionInProgress(jobId);
     setError("");
     try {
@@ -791,7 +793,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
                           ? t("schedules.resume")
                           : t("schedules.pause")
                       }
-                      onClick={() => handleToggle(job)}
+                      onClick={(e) => { e.stopPropagation(); handleToggle(job); }}
                       disabled={actionInProgress === job.id}
                     >
                       {job.state === "paused" ? (
@@ -801,11 +803,11 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
                       )}
                     </button>
                   )}
-                  {job.state === "active" && (
+                  {job.state !== "completed" && (
                     <button
                       className="btn-ghost schedules-action-btn"
                       data-tooltip={t("schedules.triggerNow")}
-                      onClick={() => handleTrigger(job.id)}
+                      onClick={(e) => { e.stopPropagation(); handleTrigger(job.id); }}
                       disabled={actionInProgress === job.id}
                     >
                       <Zap size={14} />

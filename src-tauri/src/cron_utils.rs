@@ -8,14 +8,14 @@ use std::process::Command;
 pub fn list_cron_jobs(app: Option<&AppHandle>, include_disabled: bool, profile: Option<String>) -> Result<Value, String> {
     let home = python::get_hermes_home_with_profile(app, profile);
     let jobs_file = home.join("cron").join("jobs.json");
-    
+
     if !jobs_file.exists() {
         return Ok(json!([]));
     }
 
     let content = fs::read_to_string(jobs_file).map_err(|e| e.to_string())?;
     let parsed: Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-    
+
     let raw_jobs = if parsed.is_array() {
         parsed.as_array().cloned().unwrap_or_default()
     } else if let Some(jobs) = parsed.get("jobs").and_then(|v| v.as_array()) {
@@ -42,7 +42,7 @@ pub fn list_cron_jobs(app: Option<&AppHandle>, include_disabled: bool, profile: 
 
         job.as_object_mut().unwrap().insert("state".to_string(), json!(final_state));
         job.as_object_mut().unwrap().insert("enabled".to_string(), json!(enabled));
-        
+
         // Handle name fallback
         if job.get("name").is_none() || job.get("name").and_then(|v| v.as_str()).unwrap_or("").is_empty() {
             job.as_object_mut().unwrap().insert("name".to_string(), json!("(unnamed)"));
@@ -78,31 +78,20 @@ pub fn run_cron_command(app: Option<&AppHandle>, args: Vec<&str>, profile: Optio
     let python_path = python::get_python_path(app);
     let repo_path = python::get_hermes_repo(app);
     let hermes_home = python::get_hermes_home(app);
+    let profile_str = profile.unwrap_or_else(|| "default".to_string());
 
-    let mut cmd_args = vec!["-m", "hermes_cli.main"];
-    if let Some(p) = profile {
-        if p != "default" {
-            cmd_args.push("-p");
-            // Since we need string references, we have to leak it or handle lifetimes.
-            // For simplicity in this utility, we'll build the command directly
-        }
-    }
-    
-    let mut cmd = Command::new(&python_path);
-    cmd.current_dir(&repo_path)
-       .env("HERMES_HOME", &hermes_home)
-       .arg("-m")
-       .arg("hermes_cli.main");
-       
-    // It's tricky to pass profile dynamically with string lifetimes, so let's just use env var
-    cmd.env("HERMES_PROFILE", "default"); // Assuming profile is handled by env or ignored for now
-    
-    cmd.arg("cron");
-    for arg in args {
-        cmd.arg(arg);
-    }
-
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let output = Command::new(&python_path)
+        .current_dir(&repo_path)
+        .env("HERMES_HOME", &hermes_home)
+        .env("HERMES_PROFILE", &profile_str)
+        .arg("-m")
+        .arg("hermes_cli.main")
+        .arg("-p")
+        .arg(&profile_str)
+        .arg("cron")
+        .args(&args)
+        .output()
+        .map_err(|e| e.to_string())?;
 
     if output.status.success() {
         Ok(json!({ "success": true }))
