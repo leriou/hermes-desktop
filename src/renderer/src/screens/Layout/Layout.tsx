@@ -50,6 +50,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Code,
+  Kanban as KanbanIcon,
 } from "../../assets/icons";
 import { Home, Boxes, Cpu } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -79,24 +80,50 @@ function TabSpinner(): React.JSX.Element {
   );
 }
 
-type PrimaryView = "home" | "chat" | "agents" | "modelControl" | "extensions" | "system";
+function SubTabBar({ tabs, activeTab, onSelect, t }: { tabs: SubView[]; activeTab: SubView | null; onSelect: (id: SubView) => void; t: any }): React.JSX.Element {
+  return (
+    <div className="mc-tabs" style={{ padding: "0 16px", background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+      {tabs.map((tab) => (
+        <button
+          key={tab}
+          className={`mc-tab ${activeTab === tab ? "active" : ""}`}
+          onClick={() => onSelect(tab)}
+          style={{ fontSize: "12px", padding: "8px 16px" }}
+        >
+          {t(`navigation.${tab}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+type PrimaryView = "home" | "chat" | "agents" | "modelControl" | "extensions" | "kanban" | "system";
 type SubView =
-  | "sessions" | "models" | "providers" | "routing"
+  | "sessions" | "models" | "providers" | "routing" | "runtime" | "credentials"
   | "skills" | "plugins" | "persona" | "tools"
   | "schedules" | "gateway" | "config" | "settings" | "kanban";
 
 const SUB_TO_PRIMARY: Record<SubView, PrimaryView> = {
   sessions: "chat", models: "modelControl", providers: "modelControl", routing: "modelControl",
+  runtime: "modelControl", credentials: "modelControl",
   skills: "extensions", plugins: "extensions", persona: "agents", tools: "extensions",
-  schedules: "system", gateway: "system", config: "system", settings: "system", kanban: "system",
+  schedules: "system", gateway: "system", config: "system", settings: "system", kanban: "kanban",
 };
 
-const PRIMARY_NAV: { view: PrimaryView; icon: LucideIcon; labelKey: string }[] = [
+const SUB_VIEWS: Record<string, SubView[]> = {
+  extensions: ["skills", "plugins", "tools"],
+  system: ["settings", "schedules", "gateway", "config"],
+  modelControl: ["runtime", "models", "providers", "routing", "credentials"],
+  agents: ["agents", "persona"],
+};
+
+const PRIMARY_NAV: { view: PrimaryView; icon: LucideIcon | any; labelKey: string }[] = [
   { view: "home", icon: Home, labelKey: "navigation.home" },
   { view: "chat", icon: ChatBubble, labelKey: "navigation.chat" },
   { view: "agents", icon: Users, labelKey: "navigation.agents" },
   { view: "modelControl", icon: Cpu, labelKey: "navigation.modelControl" },
   { view: "extensions", icon: Boxes, labelKey: "navigation.extensions" },
+  { view: "kanban", icon: KanbanIcon, labelKey: "navigation.kanban" },
   { view: "system", icon: SettingsIcon, labelKey: "navigation.system" },
 ];
 
@@ -124,8 +151,18 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
   });
 
   const goTo = useCallback((v: string) => {
-    if (v in SUB_TO_PRIMARY) { setPrimaryView(SUB_TO_PRIMARY[v as SubView]); setActiveSubView(v as SubView); }
-    else { setPrimaryView(v as PrimaryView); setActiveSubView(null); }
+    if (v in SUB_TO_PRIMARY) {
+      setPrimaryView(SUB_TO_PRIMARY[v as SubView]);
+      setActiveSubView(v as SubView);
+    } else {
+      const pv = v as PrimaryView;
+      setPrimaryView(pv);
+      if (pv in SUB_VIEWS) {
+        setActiveSubView(SUB_VIEWS[pv][0]);
+      } else {
+        setActiveSubView(null);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -330,38 +367,45 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
           </div>
         )}
         {primaryView === "agents" && (<div style={paneStyle}>
-          {effectiveSub === "persona" ? (remoteMode ? <RemoteNotice feature="Persona" /> : <Suspense fallback={<TabSpinner />}><Persona profile={activeProfile} /></Suspense>)
-            : remoteMode ? <RemoteNotice feature="Profiles" /> : <Suspense fallback={<TabSpinner />}><Agents activeProfile={activeProfile} onSelectProfile={handleSelectProfile} onChatWith={(name: string) => { handleSelectProfile(name); goTo("chat"); }} /></Suspense>}
+          <SubTabBar tabs={SUB_VIEWS.agents} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {effectiveSub === "persona" ? (remoteMode ? <RemoteNotice feature="Persona" /> : <Suspense fallback={<TabSpinner />}><Persona profile={activeProfile} /></Suspense>)
+              : remoteMode ? <RemoteNotice feature="Profiles" /> : <Suspense fallback={<TabSpinner />}><Agents activeProfile={activeProfile} onSelectProfile={handleSelectProfile} onChatWith={(name: string) => { handleSelectProfile(name); goTo("chat"); }} /></Suspense>}
+          </div>
         </div>)}
         {primaryView === "modelControl" && (<div style={paneStyle}>
-          {effectiveSub === "models" ? <Suspense fallback={<TabSpinner />}><Models visible={true} profile={activeProfile} onNavigate={(v) => goTo(v)} /></Suspense>
-            : effectiveSub === "providers" ? (remoteMode ? <RemoteNotice feature="Providers" /> : <Suspense fallback={<TabSpinner />}><Providers profile={activeProfile} visible={true} /></Suspense>)
-            : effectiveSub === "routing" ? (remoteMode ? <RemoteNotice feature="Routing" /> : <Suspense fallback={<TabSpinner />}><Routing profile={activeProfile} /></Suspense>)
-            : <Suspense fallback={<TabSpinner />}><ModelControlScreen profile={activeProfile} /></Suspense>}
+          <SubTabBar tabs={SUB_VIEWS.modelControl} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {effectiveSub === "models" ? <Suspense fallback={<TabSpinner />}><Models visible={true} profile={activeProfile} onNavigate={(v) => goTo(v)} /></Suspense>
+              : effectiveSub === "providers" ? (remoteMode ? <RemoteNotice feature="Providers" /> : <Suspense fallback={<TabSpinner />}><Providers profile={activeProfile} visible={true} /></Suspense>)
+              : effectiveSub === "routing" ? (remoteMode ? <RemoteNotice feature="Routing" /> : <Suspense fallback={<TabSpinner />}><Routing profile={activeProfile} /></Suspense>)
+              : <Suspense fallback={<TabSpinner />}><ModelControlScreen profile={activeProfile} activeTab={effectiveSub || "runtime"} /></Suspense>}
+          </div>
         </div>)}
         {primaryView === "extensions" && (<div style={paneStyle}>
-          {effectiveSub === "skills" ? (remoteMode ? <RemoteNotice feature="Skills" /> : <Suspense fallback={<TabSpinner />}><Skills profile={activeProfile} /></Suspense>)
-            : effectiveSub === "plugins" ? (remoteMode ? <RemoteNotice feature="Plugins" /> : <Suspense fallback={<TabSpinner />}><Plugins profile={activeProfile} /></Suspense>)
-            : effectiveSub === "tools" ? (remoteMode ? <RemoteNotice feature="Tools" /> : <Suspense fallback={<TabSpinner />}><Tools profile={activeProfile} /></Suspense>)
-            : (<div className="extensions-hub"><div className="extensions-hub-grid">
-              <button className="home-action-card" onClick={() => goTo("skills")}><div className="home-action-main"><Puzzle size={20} /><div><div className="home-action-title">{t("navigation.skills")}</div><div className="home-action-desc">Installed skills</div></div></div></button>
-              <button className="home-action-card" onClick={() => goTo("plugins")}><div className="home-action-main"><Package size={20} /><div><div className="home-action-title">{t("navigation.plugins")}</div><div className="home-action-desc">Plugin manager</div></div></div></button>
-              <button className="home-action-card" onClick={() => goTo("tools")}><div className="home-action-main"><Wrench size={20} /><div><div className="home-action-title">{t("navigation.tools")}</div><div className="home-action-desc">Available tools</div></div></div></button>
-            </div></div>)}
+          <SubTabBar tabs={SUB_VIEWS.extensions} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {effectiveSub === "skills" ? (remoteMode ? <RemoteNotice feature="Skills" /> : <Suspense fallback={<TabSpinner />}><Skills profile={activeProfile} /></Suspense>)
+              : effectiveSub === "plugins" ? (remoteMode ? <RemoteNotice feature="Plugins" /> : <Suspense fallback={<TabSpinner />}><Plugins profile={activeProfile} /></Suspense>)
+              : effectiveSub === "tools" ? (remoteMode ? <RemoteNotice feature="Tools" /> : <Suspense fallback={<TabSpinner />}><Tools profile={activeProfile} /></Suspense>)
+              : <div className="mc-placeholder">Select a sub-view</div>}
+          </div>
         </div>)}
+        {primaryView === "kanban" && (
+          <div style={paneStyle}>
+            <Suspense fallback={<TabSpinner />}>
+              <Kanban profile={activeProfile} />
+            </Suspense>
+          </div>
+        )}
         {primaryView === "system" && (<div style={paneStyle}>
-          {effectiveSub === "schedules" ? <Suspense fallback={<TabSpinner />}><Schedules profile={activeProfile} /></Suspense>
-            : effectiveSub === "gateway" ? (remoteMode ? <RemoteNotice feature="Gateway" /> : <Suspense fallback={<TabSpinner />}><Gateway profile={activeProfile} /></Suspense>)
-            : effectiveSub === "config" ? (remoteMode ? <RemoteNotice feature="Config" /> : <Suspense fallback={<TabSpinner />}><ConfigEditor profile={activeProfile} /></Suspense>)
-            : effectiveSub === "settings" ? <Suspense fallback={<TabSpinner />}><Settings profile={activeProfile} /></Suspense>
-            : effectiveSub === "kanban" ? <Suspense fallback={<TabSpinner />}><Kanban profile={activeProfile} /></Suspense>
-            : (<div className="extensions-hub"><div className="extensions-hub-grid">
-              <button className="home-action-card" onClick={() => goTo("settings")}><div className="home-action-main"><SettingsIcon size={20} /><div><div className="home-action-title">{t("navigation.settings")}</div><div className="home-action-desc">App settings</div></div></div></button>
-              <button className="home-action-card" onClick={() => goTo("schedules")}><div className="home-action-main"><Timer size={20} /><div><div className="home-action-title">{t("navigation.schedules")}</div><div className="home-action-desc">Cron jobs</div></div></div></button>
-              <button className="home-action-card" onClick={() => goTo("gateway")}><div className="home-action-main"><Signal size={20} /><div><div className="home-action-title">{t("navigation.gateway")}</div><div className="home-action-desc">Gateway status</div></div></div></button>
-              <button className="home-action-card" onClick={() => goTo("config")}><div className="home-action-main"><Code size={20} /><div><div className="home-action-title">{t("navigation.config")}</div><div className="home-action-desc">YAML editor</div></div></div></button>
-              <button className="home-action-card" onClick={() => goTo("kanban")}><div className="home-action-main"><Clock size={20} /><div><div className="home-action-title">{t("navigation.kanban")}</div><div className="home-action-desc">Kanban board</div></div></div></button>
-            </div></div>)}
+          <SubTabBar tabs={SUB_VIEWS.system} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {effectiveSub === "schedules" ? <Suspense fallback={<TabSpinner />}><Schedules profile={activeProfile} /></Suspense>
+              : effectiveSub === "gateway" ? (remoteMode ? <RemoteNotice feature="Gateway" /> : <Suspense fallback={<TabSpinner />}><Gateway profile={activeProfile} /></Suspense>)
+              : effectiveSub === "config" ? (remoteMode ? <RemoteNotice feature="Config" /> : <Suspense fallback={<TabSpinner />}><ConfigEditor profile={activeProfile} /></Suspense>)
+              : <Suspense fallback={<TabSpinner />}><Settings profile={activeProfile} /></Suspense>}
+          </div>
         </div>)}
       </main>
     </div>

@@ -2,25 +2,21 @@ import { getModelConfig, setModelConfig, getRoutingConfig, setRoutingConfig, get
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "../../components/useI18n";
 
-type MCTab = "runtime" | "providers" | "fallback" | "credentials" | "yaml";
-interface MCProps { profile?: string }
+type MCTab = "runtime" | "fallback" | "credentials";
+interface MCProps { profile?: string; activeTab?: string }
 
-export default function ModelControl({ profile }: MCProps): React.JSX.Element {
+export default function ModelControl({ profile, activeTab }: MCProps): React.JSX.Element {
   const { t } = useI18n();
-  const [tab, setTab] = useState<MCTab>("runtime");
+  const [localTab, setLocalTab] = useState<MCTab>("runtime");
+  const tab = (activeTab as MCTab) || localTab;
+
   return (
     <div className="mc-container">
-      <div className="mc-tabs">
-        {(["runtime", "providers", "fallback", "credentials", "yaml"] as MCTab[]).map((tb) => (
-          <button key={tb} className={`mc-tab${tab === tb ? " active" : ""}`} onClick={() => setTab(tb)}>{t(`navigation.mc.tabs.${tb}`) || tb}</button>
-        ))}
-      </div>
+      {/* Internal tabs removed as they are now in Layout.tsx */}
       <div className="mc-content">
         {tab === "runtime" && <RuntimeTab profile={profile} />}
-        {tab === "providers" && <ProvidersSubTab />}
         {tab === "fallback" && <FallbackTab profile={profile} />}
         {tab === "credentials" && <CredentialsTab profile={profile} />}
-        {tab === "yaml" && <YamlSubTab />}
       </div>
     </div>
   );
