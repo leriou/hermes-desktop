@@ -354,7 +354,6 @@
 
 .office-status-dot.running {
   background: var(--success);
-  box-shadow: 0 0 4px color-mix(in srgb, var(--success) 40%, transparent);
 }
 
 .office-status-dot.stopped {
