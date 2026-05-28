@@ -1,4 +1,4 @@
-import { onTuiEvent, tuiSessionStatus } from "@renderer/lib/hermes-tauri";
+import { onTuiEvent, tuiSessionActiveList } from "@renderer/lib/hermes-tauri";
 import { useEffect, useRef } from "react";
 import type {
   ChatBubbleMessage,
@@ -225,11 +225,13 @@ export function useChatInbox({
       finalizeStuckTurn(tabId, sid);
       return;
     }
-    tuiSessionStatus(sid).then((res: any) => {
+    tuiSessionActiveList(sid).then((res: any) => {
       const current = sessionsRef.current.get(tabId);
       if (!current?.isLoading) return;
-      const output: string = res?.output ?? res?.result?.output ?? "";
-      const running = output.includes("Agent Running: Yes");
+      const sessions: any[] = res?.sessions ?? res?.result?.sessions ?? [];
+      const match = sessions.find((s: any) => s.id === sid || s.session_key === sid);
+      const status: string = match?.status ?? "";
+      const running = status === "working" || status === "starting";
       if (running) {
         stuckTimerRef.current.set(tabId, setTimeout(() => {
           stuckTimerRef.current.delete(tabId);

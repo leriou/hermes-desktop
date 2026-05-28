@@ -394,6 +394,12 @@ pub async fn tui_undo(state: State<'_, AppState>, session_id: String) -> Result<
     gw.call("session.status", json!({ "session_id": session_id })).await.map_err(|e| e.to_string())
 }
 
+#[command] pub async fn tui_session_active_list(state: State<'_, AppState>, current_session_id: String) -> Result<Value, String> {
+    let gateway = state.gateway.lock().await;
+    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    gw.call("session.active_list", json!({ "current_session_id": current_session_id })).await.map_err(|e| e.to_string())
+}
+
 #[command] pub async fn tui_session_usage(state: State<'_, AppState>, session_id: String) -> Result<Value, String> {
     let gateway = state.gateway.lock().await;
     let gw = gateway.as_ref().ok_or("Gateway not running")?;

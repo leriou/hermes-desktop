@@ -1274,6 +1274,9 @@ export function tuiSessionTitle(
 export function tuiSessionStatus(sessionId: string): Promise<any> {
   return invoke("tui_session_status", { sessionId });
 }
+export function tuiSessionActiveList(currentSessionId: string): Promise<any> {
+  return invoke("tui_session_active_list", { currentSessionId });
+}
 export function tuiSessionUsage(sessionId: string): Promise<any> {
   return invoke("tui_session_usage", { sessionId });
 }
