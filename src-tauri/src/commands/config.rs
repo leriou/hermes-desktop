@@ -37,16 +37,16 @@ pub async fn get_model_config(state: State<'_, AppState>, app: AppHandle, _profi
 pub async fn set_model_config(state: State<'_, AppState>, provider: String, model: String, base_url: String, max_tokens: Option<i64>, _profile: Option<String>) -> Result<Value, String> {
     let gateway = state.gateway.lock().await;
     let gw = gateway.as_ref().ok_or("Gateway not running")?;
-    
-    let mut config = json!({ 
-        "model.provider": provider, 
-        "model.default": model, 
-        "model.base_url": base_url 
+
+    let mut config = json!({
+        "model.provider": provider,
+        "model.default": model,
+        "model.base_url": base_url
     });
     if let Some(mt) = max_tokens {
         config["model.max_tokens"] = json!(mt);
     }
-    
+
     gw.call("config.set", config).await.map_err(|e| e.to_string())?;
 
     if let Ok(recent) = gw.call("session.most_recent", json!({})).await {
@@ -98,7 +98,7 @@ pub async fn set_config(app: AppHandle, key: String, value: String, profile: Opt
     } else {
         String::new()
     };
-    
+
     let new_content = config_utils::set_yaml_value(&content, &key, &value);
     fs::write(&config_path, new_content).map(|_| true).map_err(|e| e.to_string())
 }
@@ -155,7 +155,7 @@ pub async fn set_connection_config(app: AppHandle, mode: String, remote_url: Str
     data["connectionMode"] = json!(mode);
     data["remoteUrl"] = json!(remote_url);
     data["remoteApiKey"] = json!(api_key);
-    
+
     let home = python::get_hermes_home(Some(&app));
     if !home.exists() {
         fs::create_dir_all(&home).map_err(|e| format!("Failed to create hermes home: {}", e))?;
@@ -236,7 +236,7 @@ pub async fn test_ssh_connection(
         .stderr(Stdio::null())
         .spawn()
         .map_err(|e| e.to_string())?;
-        
+
     let status = child.wait().await.map_err(|e| e.to_string())?;
     Ok(status.success())
 }
@@ -323,7 +323,7 @@ pub async fn set_platform_enabled(app: AppHandle, platform: String, enabled: boo
         fs::create_dir_all(&home).map_err(|e| format!("Failed to create profile directory: {}", e))?;
     }
     let config_path = home.join("config.yaml");
-    
+
     let content = if config_path.exists() {
         fs::read_to_string(&config_path).map_err(|e| e.to_string())?
     } else {

@@ -40,7 +40,7 @@ pub async fn home_health_summary(state: State<'_, AppState>, app: AppHandle, pro
     // Scan logs
     let home = python::get_hermes_home(Some(&app));
     let logs_dir = home.join("logs");
-    
+
     let mut errors_1h = 0;
     let mut errors_24h = 0;
     let mut latest_summary = None;
@@ -120,20 +120,20 @@ fn read_last_bytes(path: &std::path::Path, limit: u64) -> std::io::Result<String
     let size = metadata.len();
     let to_read = size.min(limit);
     if to_read == 0 { return Ok(String::new()); }
-    
+
     file.seek(SeekFrom::End(-(to_read as i64)))?;
     let mut buffer = Vec::with_capacity(to_read as usize);
     file.read_to_end(&mut buffer)?;
-    
+
     Ok(String::from_utf8_lossy(&buffer).into_owned())
 }
 
 fn parse_log_timestamp(line: &str) -> Option<DateTime<Utc>> {
     let bytes = line.as_bytes();
     if bytes.len() < 19 { return None; }
-    
+
     for i in 0..=bytes.len() - 19 {
-        if bytes[i+4] == b'-' && bytes[i+7] == b'-' && 
+        if bytes[i+4] == b'-' && bytes[i+7] == b'-' &&
            bytes[i+10] == b' ' && bytes[i+13] == b':' && bytes[i+16] == b':' {
             if let Ok(sub) = std::str::from_utf8(&bytes[i..i+19]) {
                 if let Ok(dt) = DateTime::parse_from_str(&(sub.to_string() + " +0000"), "%Y-%m-%d %H:%M:%S %z") {
