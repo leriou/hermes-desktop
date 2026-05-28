@@ -172,6 +172,7 @@ export function useChatInbox({
   function clearStuckTimer(tabId: string): void {
     const timer = stuckTimerRef.current.get(tabId);
     if (timer) {
+      console.log("[clearStuckTimer]", tabId.slice(0, 8));
       clearTimeout(timer);
       stuckTimerRef.current.delete(tabId);
     }
@@ -447,6 +448,7 @@ export function useChatInbox({
         }
 
         case "message.complete": {
+          console.log("[message.complete]", tabId.slice(0, 8));
           clearStuckTimer(tabId);
           if (turnCompletedRef.current.get(tabId)) {
             break; // Duplicate terminal event — skip
@@ -590,6 +592,7 @@ export function useChatInbox({
           break;
 
         case "tool.complete":
+          console.log("[tool.complete] stuck timer set", { tabId: tabId.slice(0, 8), runtimeSid, PROBE_INITIAL_MS });
           const completeTodos = payload.todos;
           updateTab(tabId, {
             toolProgress: "analyzing tool output…",
@@ -598,6 +601,7 @@ export function useChatInbox({
           clearStuckTimer(tabId);
           stuckTimerRef.current.set(tabId, setTimeout(() => {
             stuckTimerRef.current.delete(tabId);
+            console.log("[tool.complete timer] firing", { tabId: tabId.slice(0, 8), isLoading: sessionsRef.current.get(tabId)?.isLoading });
             if (runtimeSid) {
               probeAgentHealth(tabId, runtimeSid, 1);
             } else {
@@ -710,6 +714,7 @@ export function useChatInbox({
           break;
 
         case "error":
+          console.log("[error event]", stringField(payload, "message"), tabId.slice(0, 8));
           commitStreaming(tabId, runtimeSid);
           resetTurn(tabId);
           const errorMessage = stringField(payload, "message");
