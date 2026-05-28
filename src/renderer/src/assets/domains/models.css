@@ -124,7 +124,7 @@
   padding: 8px 20px;
   font-size: 12px;
   color: var(--text-muted);
-  border-top: 1px dashed var(--border, rgba(255, 255, 255, 0.06));
+  border-top: 1px dashed var(--border-soft);
 }
 
 .models-error {
@@ -354,7 +354,7 @@
 
 .office-status-dot.running {
   background: var(--success);
-  box-shadow: 0 0 6px var(--success);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--success) 40%, transparent);
 }
 
 .office-status-dot.stopped {

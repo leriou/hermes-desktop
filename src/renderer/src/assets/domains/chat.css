@@ -3275,7 +3275,7 @@
 
 .chat-live-reasoning-meta {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-muted);
   font-family: var(--font-mono, monospace);
   flex-shrink: 0;
 }
@@ -3496,7 +3496,7 @@
 }
 
 .tool-detail-pre {
-  background: var(--code-bg, rgba(127, 127, 127, 0.04));
+  background: var(--code-bg);
   border-radius: 6px;
   padding: 10px 12px;
   font-size: 12px;
