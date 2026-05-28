@@ -15,4 +15,7 @@ export default {
   gateway: "Gateway",
   config: "Config",
   settings: "Pengaturan",
+  modelControl: "Kontrol Model",
+  extensions: "Ekstensi",
+  system: "Sistem",
 } as const;

@@ -9,6 +9,8 @@ const DEFAULT_TONE: Record<SystemEventKind, SystemEventTone> = {
   provider_error: "error",
   gateway_error: "error",
   status: "info",
+  goal: "info",
+  steer: "info",
 };
 
 export function createSystemEvent(

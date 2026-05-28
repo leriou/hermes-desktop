@@ -15,4 +15,7 @@ export default {
   gateway: "Gateway",
   config: "Configuración YAML",
   settings: "Configuración",
+  modelControl: "Control de Modelos",
+  extensions: "Extensiones",
+  system: "Sistema",
 } as const;

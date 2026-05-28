@@ -15,4 +15,7 @@ export default {
   gateway: "ゲートウェイ",
   config: "設定ファイル",
   settings: "設定",
+  modelControl: "モデル制御",
+  extensions: "拡張",
+  system: "システム",
 } as const;

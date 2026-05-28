@@ -15,4 +15,7 @@ export default {
   gateway: "網關",
   config: "配置",
   settings: "設定",
+  modelControl: "模型控制",
+  extensions: "擴展",
+  system: "系統",
 } as const;

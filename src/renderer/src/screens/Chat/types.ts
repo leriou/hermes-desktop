@@ -90,7 +90,9 @@ export interface SystemEventMessage {
     | "context_compress"
     | "provider_error"
     | "gateway_error"
-    | "status";
+    | "status"
+    | "goal"
+    | "steer";
   tone: "info" | "success" | "warning" | "error";
   title: string;
   content?: string;

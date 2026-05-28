@@ -12,6 +12,7 @@ import "./assets/domains/memory.css";
 import "./assets/domains/models.css";
 import "./assets/domains/config.css";
 import "./assets/domains/kanban.css";
+import "./assets/domains/home.css";
 import "./assets/domains/ui-styles.css";
 
 import { StrictMode } from "react";
