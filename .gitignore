@@ -27,6 +27,7 @@ pnpm-debug.log*
 
 # Electron packaging artifacts
 release/
+.worktrees/
 .claude/worktrees
 
 # Tauri

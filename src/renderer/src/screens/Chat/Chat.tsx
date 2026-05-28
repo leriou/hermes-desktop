@@ -4,6 +4,7 @@ import {
   copyToClipboard,
   deleteSessionChain,
   isRemoteMode,
+  tuiClarifyRespond,
   onContextMenuCopyChat,
   onContextMenuSelectBubble,
   selectFolder,
@@ -18,6 +19,9 @@ import { MessageTimelineNavigator } from "./MessageTimelineNavigator";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
 import { InteractionCenter } from "./InteractionCenter";
+import { InlineApprovalCard } from "./InlineApprovalCard";
+import { InlineClarifyCard } from "./InlineClarifyCard";
+import { GoalBar } from "./GoalBar";
 import { ModelPicker } from "./ModelPicker";
 import { ChatStatusBar } from "./ChatStatusBar";
 import { useChatScroll } from "./hooks/useChatScroll";
@@ -141,6 +145,16 @@ function Chat({
   useEffect(() => {
     messagesRef.current = messages;
   });
+
+  const goalSummary = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.kind === "system_event" && (m as any).event === "goal") {
+        return (m as any).title || (m as any).content || null;
+      }
+    }
+    return null;
+  }, [messages]);
 
   // --- Extracted hooks ---
 
@@ -509,6 +523,24 @@ function Chat({
     ],
   );
 
+  const handleClarifyRespond = useCallback(
+    async (value: string) => {
+      const sid = session.hermesSessionId ?? sessionId;
+      if (!sid) return;
+      try {
+        await tuiClarifyRespond(sid, value, pendingClarify?.requestId);
+        onSessionStateChange?.({ pendingClarify: null });
+      } catch (err) {
+        addStatusMessage(
+          "Clarify failed",
+          (err as Error).message || String(err),
+          "error",
+        );
+      }
+    },
+    [session.hermesSessionId, sessionId, pendingClarify, onSessionStateChange, addStatusMessage],
+  );
+
   useEffect(() => {
     if (pendingPrompt && messages.length === 0 && visible) {
       actions.handleSend(pendingPrompt, []);
@@ -559,6 +591,7 @@ function Chat({
           </div>
         ) : (
           <>
+            {goalSummary && <GoalBar summary={goalSummary} />}
             <MessageList
               messages={messages}
               isLoading={isLoading}
@@ -591,6 +624,19 @@ function Chat({
           onSudoRespond={handleSudoRespond}
           onSecretRespond={handleSecretRespond}
         />
+        {pendingApproval && (
+          <InlineApprovalCard
+            request={pendingApproval}
+            submitting={approvalSubmitting}
+            onDecision={handleApprovalDecision}
+          />
+        )}
+        {pendingClarify && (
+          <InlineClarifyCard
+            request={pendingClarify}
+            onSubmit={handleClarifyRespond}
+          />
+        )}
         <ApprovalHistoryPanel entries={approvalHistory} onDismiss={handleDismissApprovalHistory} />
         <ChatInput
           ref={chatInputRef}

@@ -7,6 +7,7 @@ import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { buildRenderableTranscript } from "./renderTranscript";
 import { TodoPanel } from "../../components/common/TodoPanel";
+import { ChatEventRow } from "./ChatEventRow";
 import type {
   ChatMessage,
   SystemEventMessage,
@@ -295,41 +296,8 @@ function SystemStatusRow({
   );
 }
 
-function SystemEventRow({
-  msg,
-}: {
-  msg: SystemEventMessage;
-}): React.JSX.Element {
-  const icon =
-    msg.tone === "success"
-      ? "✓"
-      : msg.tone === "warning"
-        ? "!"
-        : msg.tone === "error"
-          ? "×"
-          : "i";
-  return (
-    <div className="chat-system-event-rail">
-      <span
-        className={`chat-system-event-rail-dot chat-system-event-rail-dot-${msg.tone}`}
-      >
-        {icon}
-      </span>
-      <details
-        className={`chat-system-event chat-system-event-${msg.tone} chat-system-event-${msg.event}`}
-      >
-        <summary className="chat-system-event-summary">
-          <span className="chat-system-event-label">{msg.title}</span>
-          {msg.code && (
-            <span className="chat-system-event-code">{msg.code}</span>
-          )}
-        </summary>
-        {msg.content && (
-          <div className="chat-system-event-content">{msg.content}</div>
-        )}
-      </details>
-    </div>
-  );
+function SystemEventRow({ msg }: { msg: SystemEventMessage }): React.JSX.Element {
+  return <ChatEventRow msg={msg} />;
 }
 
 export const MessageList = memo(function MessageList({
