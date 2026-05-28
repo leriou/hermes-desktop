@@ -123,7 +123,7 @@
 }
 
 .sidebar-nav-item.active {
-  background: var(--accent-subtle);
+  background: var(--surface-active);
   color: var(--text-primary);
   font-weight: 550;
 }

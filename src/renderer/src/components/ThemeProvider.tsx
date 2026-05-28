@@ -44,7 +44,7 @@ export function ThemeProvider({
       stored === "google"
     )
       return stored as Theme;
-    return "system";
+    return "light";
   });
   const [resolved, setResolved] = useState<ResolvedTheme>(() => resolve(theme));
 
