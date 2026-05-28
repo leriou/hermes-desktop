@@ -121,7 +121,7 @@ function getPrismStyle(
   mdStyle: MarkdownStyle,
   resolvedTheme: string,
 ): Record<string, React.CSSProperties> {
-  const isLight = resolvedTheme === "light" || resolvedTheme === "apple" || resolvedTheme === "google";
+  const isLight = resolvedTheme !== "unknown";
   return !isLight
     ? MD_CODE_THEMES_DARK[mdStyle]
     : MD_CODE_THEMES_LIGHT[mdStyle];
@@ -179,7 +179,7 @@ const CodeBlock = memo(function CodeBlock({
         <SyntaxHighlighter
           style={getPrismStyle(
             (document.documentElement.getAttribute("data-md-style") || "default") as MarkdownStyle,
-            document.documentElement.getAttribute("data-theme") || "dark",
+            document.documentElement.getAttribute("data-theme") || "light",
           )}
           language={LANG_MAP[language] ? language : "text"}
           PreTag="div"

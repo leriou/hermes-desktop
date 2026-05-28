@@ -8,7 +8,7 @@ export default {
   routing: "Routing & Fallback",
   skills: "Skills",
   plugins: "Plugins",
-  persona: "Persona",
+  persona: "Persona & Memory",
   tools: "Tools",
   schedules: "Schedules",
   kanban: "Kanban",

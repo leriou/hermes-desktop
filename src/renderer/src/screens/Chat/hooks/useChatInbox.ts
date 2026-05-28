@@ -155,12 +155,26 @@ export function useChatInbox({
   const flushFramesRef = useRef(new Map<string, unknown>());
   const turnCompletedRef = useRef(new Map<string, boolean>());
   const flushedTextRef = useRef(new Map<string, string>());
+  const stuckTimerRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   function resetTurn(tabId: string): void {
     turnCompletedRef.current.delete(tabId);
     pendingChunksRef.current.delete(tabId);
     flushFramesRef.current.delete(tabId);
     flushedTextRef.current.delete(tabId);
+    const timer = stuckTimerRef.current.get(tabId);
+    if (timer) {
+      clearTimeout(timer);
+      stuckTimerRef.current.delete(tabId);
+    }
+  }
+
+  function clearStuckTimer(tabId: string): void {
+    const timer = stuckTimerRef.current.get(tabId);
+    if (timer) {
+      clearTimeout(timer);
+      stuckTimerRef.current.delete(tabId);
+    }
   }
 
   function clearPendingInteraction(tabId: string): void {
@@ -351,6 +365,7 @@ export function useChatInbox({
         }
 
         case "message.complete": {
+          clearStuckTimer(tabId);
           if (turnCompletedRef.current.get(tabId)) {
             break; // Duplicate terminal event — skip
           }
@@ -497,6 +512,27 @@ export function useChatInbox({
             toolProgress: "analyzing tool output…",
             ...(completeTodos !== undefined ? { todos: parseTodos(completeTodos) } : {}),
           });
+          clearStuckTimer(tabId);
+          stuckTimerRef.current.set(tabId, setTimeout(() => {
+            stuckTimerRef.current.delete(tabId);
+            const current = sessionsRef.current.get(tabId);
+            if (current?.isLoading) {
+              updateTab(tabId, { isLoading: false, toolProgress: null });
+              updateTabMessages(tabId, (prev) => [
+                ...prev,
+                {
+                  id: `stuck-warn-${Date.now()}`,
+                  sessionId: runtimeSid,
+                  role: "agent",
+                  kind: "system_status" as const,
+                  tone: "warning" as const,
+                  title: "Response timed out",
+                  content: "The agent did not finish responding. You can send a new message to continue.",
+                  timestamp: Date.now(),
+                },
+              ]);
+            }
+          }, 45_000));
           const completeToolId = stringField(payload, "tool_id");
           if (completeToolId) {
             const current = sessionsRef.current.get(tabId);
@@ -801,6 +837,8 @@ export function useChatInbox({
     return () => {
       flushFramesRef.current.clear();
       flushedTextRef.current.clear();
+      for (const timer of stuckTimerRef.current.values()) clearTimeout(timer);
+      stuckTimerRef.current.clear();
       if (typeof cleanup === "function") {
         cleanup();
       }

@@ -213,9 +213,7 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
   );
 
   return (
-    <div className="settings-container">
-      <h1 className="settings-header">{t("gateway.title")}</h1>
-
+    <div>
       <div className="settings-section">
         <div className="settings-section-title">
           {t("gateway.messagingGateway")}

@@ -418,7 +418,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 9999;
   animation: fadeIn 0.15s ease;
 }
 
@@ -542,8 +542,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow-y: auto;
-  padding: 24px 32px;
+  overflow: hidden;
+  padding: 0 32px;
 }
 
 .schedules-loading {
@@ -557,7 +557,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 20px;
+  flex-shrink: 0;
+  padding-top: 16px;
 }
 
 .schedules-title {
@@ -575,6 +576,13 @@
 .schedules-header-actions {
   display: flex;
   gap: 8px;
+}
+
+.schedules-scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  padding-bottom: 24px;
 }
 
 /* Job list */

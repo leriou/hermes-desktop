@@ -37,19 +37,12 @@ import hermesicon from "../../assets/hermes-icon.png";
 import { cache } from "../../utils/prefetchCache";
 import {
   ChatBubble,
-  Clock,
   Users,
   Settings as SettingsIcon,
-  Puzzle,
-  Package,
-  Wrench,
-  Signal,
   Layers,
-  Timer,
   Download,
   PanelLeftClose,
   PanelLeftOpen,
-  Code,
   Kanban as KanbanIcon,
 } from "../../assets/icons";
 import { Home, Boxes, Cpu } from "lucide-react";
@@ -71,6 +64,7 @@ const Schedules = lazy(() => import("../Schedules/Schedules"));
 const ConfigEditor = lazy(() => import("../ConfigEditor/ConfigEditor"));
 const Routing = lazy(() => import("../Routing/Routing"));
 const Kanban = lazy(() => import("../Kanban/Kanban"));
+const Sessions = lazy(() => import("../Sessions/Sessions"));
 
 function TabSpinner(): React.JSX.Element {
   return (
@@ -82,31 +76,32 @@ function TabSpinner(): React.JSX.Element {
 
 function SubTabBar({ tabs, activeTab, onSelect, t }: { tabs: SubView[]; activeTab: SubView | null; onSelect: (id: SubView) => void; t: any }): React.JSX.Element {
   return (
-    <div className="mc-tabs" style={{ padding: "0 16px", background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-      {tabs.map((tab) => (
-        <button
-          key={tab}
-          className={`mc-tab ${activeTab === tab ? "active" : ""}`}
-          onClick={() => onSelect(tab)}
-          style={{ fontSize: "12px", padding: "8px 16px" }}
-        >
-          {t(`navigation.${tab}`)}
-        </button>
-      ))}
+    <div className="sub-tab-bar">
+      <div className="sub-tab-pills">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            className={`sub-tab-pill ${activeTab === tab ? "active" : ""}`}
+            onClick={() => onSelect(tab)}
+          >
+            {t(`navigation.${tab}`)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
-type PrimaryView = "home" | "chat" | "agents" | "modelControl" | "extensions" | "kanban" | "system";
+type PrimaryView = "home" | "chat" | "sessions" | "agents" | "modelControl" | "extensions" | "kanban" | "system";
 type SubView =
-  | "sessions" | "models" | "providers" | "routing" | "runtime" | "credentials"
-  | "skills" | "plugins" | "persona" | "tools"
+  | "models" | "providers" | "routing" | "runtime" | "credentials"
+  | "skills" | "plugins" | "persona" | "tools" | "agents"
   | "schedules" | "gateway" | "config" | "settings" | "kanban";
 
 const SUB_TO_PRIMARY: Record<SubView, PrimaryView> = {
-  sessions: "chat", models: "modelControl", providers: "modelControl", routing: "modelControl",
+  models: "modelControl", providers: "modelControl", routing: "modelControl",
   runtime: "modelControl", credentials: "modelControl",
-  skills: "extensions", plugins: "extensions", persona: "agents", tools: "extensions",
+  skills: "extensions", plugins: "extensions", persona: "agents", tools: "extensions", agents: "agents",
   schedules: "system", gateway: "system", config: "system", settings: "system", kanban: "kanban",
 };
 
@@ -114,12 +109,13 @@ const SUB_VIEWS: Record<string, SubView[]> = {
   extensions: ["skills", "plugins", "tools"],
   system: ["settings", "schedules", "gateway", "config"],
   modelControl: ["runtime", "models", "providers", "routing", "credentials"],
-  agents: ["agents", "persona"],
+  agents: ["persona", "agents"],
 };
 
 const PRIMARY_NAV: { view: PrimaryView; icon: LucideIcon | any; labelKey: string }[] = [
   { view: "home", icon: Home, labelKey: "navigation.home" },
   { view: "chat", icon: ChatBubble, labelKey: "navigation.chat" },
+  { view: "sessions", icon: Layers, labelKey: "navigation.sessions" },
   { view: "agents", icon: Users, labelKey: "navigation.agents" },
   { view: "modelControl", icon: Cpu, labelKey: "navigation.modelControl" },
   { view: "extensions", icon: Boxes, labelKey: "navigation.extensions" },
@@ -151,7 +147,8 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
   });
 
   const goTo = useCallback((v: string) => {
-    if (v in SUB_TO_PRIMARY) {
+    // Sub-view navigation only if it's not also a primary view with sub-tabs
+    if (v in SUB_TO_PRIMARY && !(v in SUB_VIEWS)) {
       setPrimaryView(SUB_TO_PRIMARY[v as SubView]);
       setActiveSubView(v as SubView);
     } else {
@@ -366,16 +363,29 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
             </div>
           </div>
         )}
+        {primaryView === "sessions" && (
+          <div style={paneStyle}>
+            <Suspense fallback={<TabSpinner />}>
+              <Sessions
+                profile={activeProfile}
+                onResumeSession={handleResumeSession}
+                onNewChat={handleNewChat}
+                currentSessionId={sessionManager.activeTabId || null}
+                visible={primaryView === "sessions"}
+              />
+            </Suspense>
+          </div>
+        )}
         {primaryView === "agents" && (<div style={paneStyle}>
           <SubTabBar tabs={SUB_VIEWS.agents} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          <div className="sub-tab-content">
             {effectiveSub === "persona" ? (remoteMode ? <RemoteNotice feature="Persona" /> : <Suspense fallback={<TabSpinner />}><Persona profile={activeProfile} /></Suspense>)
               : remoteMode ? <RemoteNotice feature="Profiles" /> : <Suspense fallback={<TabSpinner />}><Agents activeProfile={activeProfile} onSelectProfile={handleSelectProfile} onChatWith={(name: string) => { handleSelectProfile(name); goTo("chat"); }} /></Suspense>}
           </div>
         </div>)}
         {primaryView === "modelControl" && (<div style={paneStyle}>
           <SubTabBar tabs={SUB_VIEWS.modelControl} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          <div className="sub-tab-content">
             {effectiveSub === "models" ? <Suspense fallback={<TabSpinner />}><Models visible={true} profile={activeProfile} onNavigate={(v) => goTo(v)} /></Suspense>
               : effectiveSub === "providers" ? (remoteMode ? <RemoteNotice feature="Providers" /> : <Suspense fallback={<TabSpinner />}><Providers profile={activeProfile} visible={true} /></Suspense>)
               : effectiveSub === "routing" ? (remoteMode ? <RemoteNotice feature="Routing" /> : <Suspense fallback={<TabSpinner />}><Routing profile={activeProfile} /></Suspense>)
@@ -384,7 +394,7 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
         </div>)}
         {primaryView === "extensions" && (<div style={paneStyle}>
           <SubTabBar tabs={SUB_VIEWS.extensions} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          <div className="sub-tab-content">
             {effectiveSub === "skills" ? (remoteMode ? <RemoteNotice feature="Skills" /> : <Suspense fallback={<TabSpinner />}><Skills profile={activeProfile} /></Suspense>)
               : effectiveSub === "plugins" ? (remoteMode ? <RemoteNotice feature="Plugins" /> : <Suspense fallback={<TabSpinner />}><Plugins profile={activeProfile} /></Suspense>)
               : effectiveSub === "tools" ? (remoteMode ? <RemoteNotice feature="Tools" /> : <Suspense fallback={<TabSpinner />}><Tools profile={activeProfile} /></Suspense>)
@@ -400,7 +410,7 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
         )}
         {primaryView === "system" && (<div style={paneStyle}>
           <SubTabBar tabs={SUB_VIEWS.system} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          <div className="sub-tab-content">
             {effectiveSub === "schedules" ? <Suspense fallback={<TabSpinner />}><Schedules profile={activeProfile} /></Suspense>
               : effectiveSub === "gateway" ? (remoteMode ? <RemoteNotice feature="Gateway" /> : <Suspense fallback={<TabSpinner />}><Gateway profile={activeProfile} /></Suspense>)
               : effectiveSub === "config" ? (remoteMode ? <RemoteNotice feature="Config" /> : <Suspense fallback={<TabSpinner />}><ConfigEditor profile={activeProfile} /></Suspense>)

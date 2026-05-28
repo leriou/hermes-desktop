@@ -378,9 +378,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   })();
 
   return (
-    <div className="settings-container">
-      <h1 className="settings-header">{t("settings.title")}</h1>
-
+    <div>
       <div className="settings-section">
         <div className="settings-section-title">
           {t("settings.sections.hermesAgent")}

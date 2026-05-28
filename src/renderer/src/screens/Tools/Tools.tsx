@@ -281,7 +281,7 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="tools-container">
+      <div>
         <div className="tools-loading">
           <div className="loading-spinner" />
         </div>
@@ -290,12 +290,8 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
   }
 
   return (
-    <div className="tools-container">
-      <div className="tools-header">
-        <div>
-          <h2 className="tools-title">{t("tools.title")}</h2>
-          <p className="tools-subtitle">{t("tools.subtitle")}</p>
-        </div>
+    <div>
+      <div className="tools-header" style={{ justifyContent: "flex-end", marginTop: 0, minHeight: 0, marginBottom: 16 }}>
         <button className="btn btn-secondary btn-sm" onClick={loadToolsets}>
           <Refresh size={14} />
         </button>

@@ -408,7 +408,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
 
   if (remoteUnsupported) {
     return (
-      <div className="kanban-container">
+      <div>
         <div className="kanban-empty">
           <p className="schedules-empty-text">
             Kanban requires a local Hermes install or SSH tunnel mode.
@@ -425,7 +425,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="kanban-container">
+      <div>
         <div className="schedules-loading">
           <div className="loading-spinner" />
         </div>
@@ -434,18 +434,12 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
   }
 
   return (
-    <div className="kanban-container">
-      <div className="kanban-header">
-        <div>
-          <h2 className="schedules-title">Kanban</h2>
-          <p className="schedules-subtitle">
-            Durable multi-agent board for tasks the agent can pick up and finish
-            on its own.
-          </p>
-        </div>
+    <div style={{ padding: "16px 32px", height: "100%", display: "flex", flexDirection: "column" }}>
+      <div className="kanban-header" style={{ marginTop: 24, marginBottom: 16, paddingRight: 16 }}>
+        <div />
         <div className="schedules-header-actions">
           <button
-            className="btn btn-secondary"
+            className="btn btn-secondary btn-sm"
             onClick={() => loadAll()}
             disabled={actionBusy !== null}
           >
@@ -455,7 +449,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
           {!isHqActive && (
             <>
               <button
-                className="btn btn-secondary"
+                className="btn btn-secondary btn-sm"
                 onClick={handleDispatch}
                 disabled={actionBusy !== null}
                 data-tooltip="Run one dispatcher pass — promote ready tasks and spawn workers"
@@ -464,7 +458,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
                 Dispatch
               </button>
               <button
-                className="btn btn-primary"
+                className="btn btn-primary btn-sm"
                 onClick={() => setShowCreate(true)}
               >
                 <Plus size={14} />

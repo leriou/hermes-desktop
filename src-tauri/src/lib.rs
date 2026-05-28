@@ -75,6 +75,25 @@ pub fn run() {
             .effect(Effect::UnderWindowBackground)
             .build(),
         )?;
+
+        // Disable WKWebView scrollView rubber-band / elastic bounce
+        let _ = window.eval(
+          "document.addEventListener('wheel',function(e){\
+             if(e.deltaY===0)return;\
+             var el=e.target;\
+             while(el&&el!==document.documentElement){\
+               var s=getComputedStyle(el);\
+               if((s.overflowY==='auto'||s.overflowY==='scroll')&&el.scrollHeight>el.clientHeight){\
+                 var atT=el.scrollTop<=0&&e.deltaY<0;\
+                 var atB=el.scrollTop+el.clientHeight>=el.scrollHeight-1&&e.deltaY>0;\
+                 if(atT||atB)e.preventDefault();\
+                 return;\
+               }\
+               el=el.parentElement;\
+             }\
+             e.preventDefault();\
+           },{passive:false});"
+        );
       }
 
       // Pre-warm the TUI Gateway in the background

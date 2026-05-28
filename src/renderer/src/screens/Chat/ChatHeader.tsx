@@ -91,7 +91,7 @@ export const ChatHeader = memo(function ChatHeader({
           {displayTitle ||
             (sessionId
               ? t("chat.sessionTitle", { id: sessionId.slice(-6) })
-              : t("chat.title"))}
+              : "")}
           {sessionId && (
             <button
               className="btn-ghost chat-copy-id-btn"

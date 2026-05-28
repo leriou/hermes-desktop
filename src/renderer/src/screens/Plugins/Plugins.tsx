@@ -85,7 +85,7 @@ function Plugins({ profile }: PluginsProps): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="plugins-container">
+      <div>
         <div className="plugins-loading">
           <div className="loading-spinner" />
         </div>
@@ -94,12 +94,8 @@ function Plugins({ profile }: PluginsProps): React.JSX.Element {
   }
 
   return (
-    <div className="plugins-container">
-      <div className="plugins-header">
-        <div>
-          <h2 className="plugins-title">{t("plugins.title")}</h2>
-          <p className="plugins-subtitle">{t("plugins.subtitle")}</p>
-        </div>
+    <div>
+      <div className="plugins-header" style={{ justifyContent: "flex-end", marginTop: 0, minHeight: 0, marginBottom: 16 }}>
         <button className="btn btn-secondary btn-sm" onClick={loadPlugins}>
           <Refresh size={14} />
         </button>

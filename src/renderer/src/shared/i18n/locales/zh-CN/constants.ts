@@ -35,9 +35,7 @@ export default {
   cerebras: "Cerebras",
   mistral: "Mistral",
   // Theme
-  themeSystem: "跟随系统",
   themeLight: "浅色",
-  themeDark: "深色",
   themeColorful: "多彩",
   themeApple: "苹果",
   themeGoogle: "Google",

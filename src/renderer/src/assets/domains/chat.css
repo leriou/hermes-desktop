@@ -11,20 +11,17 @@
 
 /* Session sidebar */
 .session-sidebar {
-  width: 260px;
-  min-width: 260px;
-  border-right: 1px solid var(--border-softer);
+  width: 100%;
+  height: 100%;
+  border-right: none;
   display: flex;
   flex-direction: column;
-  background: var(--surface-sidebar);
-  backdrop-filter: blur(20px) saturate(1.2);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  background: transparent;
 }
 
 .session-sidebar-header {
-  padding: 12px;
-  border-bottom: 1px solid var(--border-softer);
-  min-height: 56px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
 }
@@ -52,6 +49,7 @@
 .session-sidebar-list {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: none;
   padding: 6px;
 }
 
@@ -203,14 +201,21 @@
 }
 
 .chat-header {
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--border-softer);
+  padding: 0 24px;
+  margin: 12px 16px 12px 10%; /* Pushed further to 10% from left */
+  width: auto; 
+  max-width: 85%; /* Reduced max-width to keep it compact */
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-panel); /* Large border radius */
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  min-height: 56px;
-  background: var(--surface-panel);
+  height: 52px; /* Lock height */
+  min-height: 52px; /* Prevent shrinking or stretching */
+  background: var(--surface-card); /* Lighter card background */
+  box-shadow: var(--shadow-card-soft);
+  z-index: 10;
 }
 
 .chat-header-title {
@@ -424,6 +429,7 @@
 .chat-messages {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: none;
   padding: 20px 0 12px;
   display: flex;
   flex-direction: column;
@@ -936,14 +942,6 @@
   line-height: 1.4;
 }
 
-@media (prefers-color-scheme: dark) {
-  .chat-fallback-warning {
-    color: #fbbf24;
-    background: #451a03;
-    border-color: #92400e;
-  }
-}
-
 .chat-bubble-wrapper {
   display: flex;
   flex-direction: column;
@@ -1072,12 +1070,6 @@
   color: var(--agent-bubble-text);
   border-bottom-left-radius: 4px;
   white-space: normal;
-}
-
-@media (prefers-color-scheme: dark) {
-  .chat-bubble-agent {
-    background: var(--agent-bubble);
-  }
 }
 
 .chat-bubble-agent pre,
@@ -3884,12 +3876,62 @@
 
 
 .chat-pane--immersive { position: relative; }
-.session-drawer-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.35); z-index: 20; }
-.session-drawer { position: absolute; left: 0; top: 0; bottom: 0; width: 260px; background: var(--surface-sidebar); border-right: 1px solid var(--border-soft); z-index: 21; overflow-y: auto; animation: drawer-slide .15s ease-out; }
-@keyframes drawer-slide { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-.chat-session-drawer-toggle { position: absolute; top: 8px; left: 8px; z-index: 10; }
-.chat-session-drawer-toggle button { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); cursor: pointer; }
-.chat-session-drawer-toggle button:hover { background: var(--surface-hover); }
+/* Session Drawer Redesign */
+.session-drawer-backdrop { position: absolute; inset: 0; background: transparent; z-index: 20; }
+.session-drawer { 
+  position: absolute; 
+  left: 24px; 
+  top: 110px; /* Moved down below the new toggle position */
+  bottom: auto; /* Remove bottom stretching */
+  height: 65vh; /* Narrower height */
+  width: 360px; /* Wider card */
+  background: var(--surface-sidebar); 
+  backdrop-filter: blur(24px) saturate(1.5); /* Glass blur for readability */
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--border-soft); 
+  border-radius: 16px; /* Rounder corners */
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  z-index: 21; 
+  overflow: hidden; 
+  display: flex;
+  flex-direction: column;
+  animation: drawer-fade-scale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top left;
+}
+
+@keyframes drawer-fade-scale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.chat-session-drawer-toggle { 
+  position: absolute; 
+  top: 64px; /* Moved down ~50px from 14px */
+  left: 16px; 
+  z-index: 10; 
+}
+.chat-session-drawer-toggle button { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  width: 40px; /* Larger button */
+  height: 40px; 
+  border-radius: 10px; 
+  border: 1px solid var(--border-soft); /* Added slight border to ground it */
+  background: var(--surface-card); /* Give it a background so it's not totally transparent */
+  color: var(--text-secondary); 
+  cursor: pointer; 
+  transition: all 0.2s;
+  box-shadow: var(--shadow-float-soft);
+}
+.chat-session-drawer-toggle button svg {
+  width: 20px;
+  height: 20px;
+}
+.chat-session-drawer-toggle button:hover { 
+  background: var(--surface-hover); 
+  color: var(--text-primary);
+}
 .chat-interaction-card { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; margin: 4px 0; border-radius: var(--radius-sm); background: var(--surface-card); }
 .chat-interaction-icon { font-size: 14px; flex-shrink: 0; color: var(--text-muted); }
 .chat-interaction-main { flex: 1; min-width: 0; }

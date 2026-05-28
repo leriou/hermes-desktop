@@ -7,15 +7,13 @@ import OAuthLoginModal from "../../components/OAuthLoginModal";
 import { KeyRound, Check } from "../../assets/icons";
 import {
   addModel,
-  getCredentialPool,
   getEnv,
   getRoutingConfig,
   setConfig,
-  setCredentialPool,
   setEnv as setTauriEnv,
 } from "@renderer/lib/hermes-tauri";
 
-type ProviderTab = "model" | "apikeys" | "tools" | "credentials" | "oauth" | "routing";
+type ProviderTab = "model" | "apikeys" | "tools" | "oauth" | "routing";
 
 const PROVIDER_ENV_KEY: Record<string, string> = {
   openrouter: "OPENROUTER_API_KEY",
@@ -42,7 +40,6 @@ const TABS: { key: ProviderTab; labelKey: string }[] = [
   { key: "model", labelKey: "providers.tabs.model" },
   { key: "apikeys", labelKey: "providers.tabs.apikeys" },
   { key: "tools", labelKey: "providers.tabs.tools" },
-  { key: "credentials", labelKey: "providers.tabs.credentials" },
   { key: "oauth", labelKey: "providers.tabs.oauth" },
 ];
 
@@ -73,14 +70,6 @@ function Providers({
   const [addingModels, setAddingModels] = useState(false);
   const [addedModels, setAddedModels] = useState<Set<string>>(new Set());
 
-  // Credential pool
-  const [credPool, setCredPool] = useState<
-    Record<string, Array<{ key: string; label: string }>>
-  >({});
-  const [poolProvider, setPoolProvider] = useState("");
-  const [poolNewKey, setPoolNewKey] = useState("");
-  const [poolNewLabel, setPoolNewLabel] = useState("");
-
   // OAuth sign-in modal
   const [oauthModal, setOauthModal] = useState<
     (typeof OAUTH_PROVIDERS)[number] | null
@@ -100,12 +89,8 @@ function Providers({
   const [routingLoaded, setRoutingLoaded] = useState(false);
 
   const loadConfig = useCallback(async (): Promise<void> => {
-    const [envData, pool] = await Promise.all([
-      getEnv(profile),
-      getCredentialPool(),
-    ]);
+    const envData = await getEnv(profile);
     setEnv(envData);
-    setCredPool(pool);
 
     // Load routing config
     const routing = await getRoutingConfig(profile);
@@ -166,32 +151,6 @@ function Providers({
       timers.clear();
     };
   }, [profile]);
-
-  async function handleAddPoolKey(): Promise<void> {
-    if (!poolProvider || !poolNewKey.trim()) return;
-    const existing = credPool[poolProvider] || [];
-    const entries = [
-      ...existing,
-      {
-        key: poolNewKey.trim(),
-        label: poolNewLabel.trim() || `Key ${existing.length + 1}`,
-      },
-    ];
-    await setCredentialPool(poolProvider, entries);
-    setCredPool((prev) => ({ ...prev, [poolProvider]: entries }));
-    setPoolNewKey("");
-    setPoolNewLabel("");
-  }
-
-  async function handleRemovePoolKey(
-    provider: string,
-    index: number,
-  ): Promise<void> {
-    const entries = [...(credPool[provider] || [])];
-    entries.splice(index, 1);
-    await setCredentialPool(provider, entries);
-    setCredPool((prev) => ({ ...prev, [provider]: entries }));
-  }
 
   function toggleVisibility(key: string): void {
     setVisibleKeys((prev) => {
@@ -319,14 +278,12 @@ function Providers({
   }
 
   return (
-    <div className="settings-container">
-      <h1 className="settings-header">{t("providers.title")}</h1>
-
-      <div className="persona-tabs">
+    <div>
+      <div className="pill-tabs">
         {TABS.map(({ key, labelKey }) => (
           <button
             key={key}
-            className={`persona-tab ${tab === key ? "active" : ""}`}
+            className={`pill-tab ${tab === key ? "active" : ""}`}
             onClick={() => setTab(key)}
           >
             {t(labelKey)}
@@ -709,98 +666,6 @@ function Providers({
             </div>
           ))}
         </>
-      )}
-
-      {/* ── Credentials Tab ── */}
-      {tab === "credentials" && (
-        <div className="settings-section">
-          <div className="settings-section-title">
-            {t("settings.sections.credentialPool")}
-          </div>
-          <div className="settings-field">
-            <div className="settings-field-hint" style={{ marginBottom: 10 }}>
-              {t("settings.poolHint")}
-            </div>
-            <div className="settings-pool-add">
-              <select
-                className="input"
-                value={poolProvider}
-                onChange={(e) => setPoolProvider(e.target.value)}
-                style={{ width: 140 }}
-              >
-                <option value="">{t("common.provider")}</option>
-                {PROVIDERS.options
-                  .filter((p) => p.value !== "auto")
-                  .map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {t(p.label)}
-                    </option>
-                  ))}
-              </select>
-              <input
-                className="input"
-                type="password"
-                value={poolNewKey}
-                onChange={(e) => setPoolNewKey(e.target.value)}
-                placeholder={t("settings.apiKeyPlaceholder")}
-                style={{ flex: 1 }}
-              />
-              <input
-                className="input"
-                type="text"
-                value={poolNewLabel}
-                onChange={(e) => setPoolNewLabel(e.target.value)}
-                placeholder={t("settings.labelPlaceholder", {
-                  optional: t("common.optional"),
-                })}
-                style={{ width: 120 }}
-              />
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={handleAddPoolKey}
-                disabled={!poolProvider || !poolNewKey.trim()}
-              >
-                {t("settings.add")}
-              </button>
-            </div>
-            {Object.entries(credPool).map(
-              ([provider, entries]) =>
-                entries.length > 0 && (
-                  <div key={provider} className="settings-pool-group">
-                    <div className="settings-pool-provider">
-                      <BrandLogo provider={provider} size={16} />
-                      {PROVIDERS.options.find((p) => p.value === provider)
-                        ? t(
-                            PROVIDERS.options.find((p) => p.value === provider)!
-                              .label,
-                          )
-                        : provider}
-                    </div>
-                    {entries.map((entry, idx) => (
-                      <div key={idx} className="settings-pool-entry">
-                        <span className="settings-pool-label">
-                          {entry.label ||
-                            `${t("settings.keyLabel")} ${idx + 1}`}
-                        </span>
-                        <span className="settings-pool-key">
-                          {entry.key
-                            ? `${entry.key.slice(0, 8)}...${entry.key.slice(-4)}`
-                            : t("settings.empty")}
-                        </span>
-                        <button
-                          className="btn-ghost"
-                          style={{ color: "var(--error)", fontSize: 11 }}
-                          onClick={() => handleRemovePoolKey(provider, idx)}
-                        >
-                          {t("settings.remove")}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ),
-            )}
-          </div>
-        </div>
       )}
 
       {/* ── OAuth Tab ── */}

@@ -35,9 +35,7 @@ export default {
   cerebras: "Cerebras",
   mistral: "Mistral",
   // Theme
-  themeSystem: "Sistema",
   themeLight: "Claro",
-  themeDark: "Oscuro",
 
   // Markdown styles
   mdStyleDefault: "Default",

@@ -45,6 +45,10 @@ release/
 .ccb-requests/
 .codegraph/
 .codex/
+.agents/
+.claude/
+.superpowers/
+.husky/
 
 # Local build config
 electron-builder.local.yml

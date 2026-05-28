@@ -314,11 +314,7 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
         </div>
       )}
 
-      <div className="skills-header">
-        <div>
-          <h2 className="skills-title">{t("skills.title")}</h2>
-          <p className="skills-subtitle">{t("skills.subtitle")}</p>
-        </div>
+      <div className="skills-header" style={{ justifyContent: "flex-end", marginTop: 0, minHeight: 0, marginBottom: 16 }}>
         <button className="btn btn-secondary btn-sm" onClick={loadAll}>
           <Refresh size={14} />
           {t("skills.refresh")}
@@ -335,21 +331,21 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
       )}
 
       {/* Tabs */}
-      <div className="skills-tabs">
+      <div className="pill-tabs">
         <button
-          className={`skills-tab ${tab === "stats" ? "active" : ""}`}
+          className={`pill-tab ${tab === "stats" ? "active" : ""}`}
           onClick={() => setTab("stats")}
         >
           {t("skills.statsTab") || "使用分析"}
         </button>
         <button
-          className={`skills-tab ${tab === "installed" ? "active" : ""}`}
+          className={`pill-tab ${tab === "installed" ? "active" : ""}`}
           onClick={() => setTab("installed")}
         >
           {t("skills.installedTab")} ({installedSkills.length})
         </button>
         <button
-          className={`skills-tab ${tab === "browse" ? "active" : ""}`}
+          className={`pill-tab ${tab === "browse" ? "active" : ""}`}
           onClick={() => setTab("browse")}
         >
           {t("skills.browseTab")} ({bundledSkills.length})

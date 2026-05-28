@@ -7,7 +7,6 @@ import {
   ChevronUp,
   ChevronDown,
   Plus,
-  Settings,
   Refresh,
   Trash,
   Save,
@@ -46,7 +45,6 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
   const { t } = useI18n();
   const [content, setContent] = useState("");
   const [original, setOriginal] = useState("");
-  const [path, setPath] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -68,7 +66,6 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
       const result = await readConfigYaml(profile);
       setContent(result.content);
       setOriginal(result.content);
-      setPath(result.path);
     } catch (err) {
       setError(String(err));
     } finally {
@@ -287,7 +284,7 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="config-editor-container">
+      <div>
         <div className="config-editor-loading">
           <div className="loading-spinner" />
         </div>
@@ -296,37 +293,25 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
   }
 
   return (
-    <div className="config-editor-container">
-      <div className="config-editor-header">
-        <div className="config-editor-header-left">
-          <h2 className="config-editor-title">
-            <Settings
-              size={18}
-              style={{ marginRight: 8, verticalAlign: "middle" }}
-            />
-            {t("config.title")}
-          </h2>
-          <span className="config-editor-path" title={path}>
-            {path}
-          </span>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div className="config-editor-header" style={{ justifyContent: "space-between", marginTop: 0, minHeight: 0, marginBottom: 16 }}>
+        <div className="pill-tabs" style={{ margin: 0 }}>
+          <button
+            className={`pill-tab ${viewMode === "structured" ? "active" : ""}`}
+            onClick={() => setViewMode("structured")}
+          >
+            <Eye size={13} style={{ marginRight: 4, display: "inline" }} />
+            {t("config.structured")}
+          </button>
+          <button
+            className={`pill-tab ${viewMode === "yaml" ? "active" : ""}`}
+            onClick={() => setViewMode("yaml")}
+          >
+            <Code size={13} style={{ marginRight: 4, display: "inline" }} />
+            {t("config.yaml")}
+          </button>
         </div>
-        <div className="config-editor-header-actions">
-          <div className="config-view-toggle">
-            <button
-              className={`config-view-btn ${viewMode === "structured" ? "active" : ""}`}
-              onClick={() => setViewMode("structured")}
-            >
-              <Eye size={13} style={{ marginRight: 4 }} />
-              {t("config.structured")}
-            </button>
-            <button
-              className={`config-view-btn ${viewMode === "yaml" ? "active" : ""}`}
-              onClick={() => setViewMode("yaml")}
-            >
-              <Code size={13} style={{ marginRight: 4 }} />
-              {t("config.yaml")}
-            </button>
-          </div>
+        <div className="config-editor-header-actions" style={{ minWidth: 200, justifyContent: "flex-end" }}>
           {viewMode === "yaml" && (
             <button
               className="config-editor-search-btn"

@@ -5,11 +5,7 @@
 [data-gpu="available"] .messages-container,
 [data-gpu="available"] .kanban-column-list,
 [data-gpu="available"] .chat-pane {
-  will-change: transform, scroll-position;
-  transform: translate3d(0, 0, 0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  perspective: 1000px;
+  /* Removed transforms to fix jitter */
 }
 
 /* Skills Detail dialog drag width adjustment */
@@ -34,94 +30,163 @@
   background-color: var(--accent, #3b82f6);
 }
 
-/* ----- Colorful Theme ----- */
+/* ----- Colorful Theme — 青春极简 + 彩色点缀 ----- */
 [data-theme="colorful"] {
-  --bg-primary: #fdfbf7;
-  --bg-secondary: #f6f3eb;
-  --bg-tertiary: #efebe0;
+  --bg-primary: #fefcf8;
+  --bg-secondary: #faf6f0;
+  --bg-tertiary: #f3ede4;
   --bg-elevated: #ffffff;
-  --bg-hover: rgba(132, 182, 244, 0.1);
-  --bg-active: rgba(132, 182, 244, 0.2);
-  --accent: #84b6f4;
-  --accent-hover: #6ea6f0;
-  --accent-subtle: #e6f0fa;
-  --accent-text: #4a82cd;
-  --text-primary: #5c544d;
-  --text-secondary: #8c837a;
-  --text-muted: #b5ac9f;
-  --border: #e6e0d4;
-  --border-bright: #d4ccbd;
-  --border-focus: #84b6f4;
-  --success: #a8e6cf;
-  --success-bg: rgba(168, 230, 207, 0.2);
-  --error: #ffb7b2;
-  --error-bg: rgba(255, 183, 178, 0.2);
-  --warning: #ffdac1;
-  --warning-bg: rgba(255, 218, 193, 0.2);
-  --user-bubble: #84b6f4;
+  --bg-hover: rgba(255, 154, 162, 0.08);
+  --bg-active: rgba(255, 154, 162, 0.14);
+  --accent: #f28b82;
+  --accent-hover: #e8716a;
+  --accent-primary: #f28b82;
+  --accent-subtle: rgba(242, 139, 130, 0.10);
+  --accent-text: #d4564e;
+  --text-primary: #3d3530;
+  --text-secondary: #7a716a;
+  --text-muted: #b0a89f;
+  --border: #ebe4da;
+  --border-bright: #ddd4c7;
+  --border-focus: #f28b82;
+  --success: #81c995;
+  --success-bg: rgba(129, 201, 149, 0.12);
+  --error: #f28b82;
+  --error-bg: rgba(242, 139, 130, 0.10);
+  --warning: #fdd663;
+  --warning-bg: rgba(253, 214, 99, 0.12);
+  --user-bubble: #f28b82;
   --user-bubble-text: #ffffff;
   --agent-bubble: #ffffff;
-  --agent-bubble-text: #5c544d;
-  --code-bg: rgba(255, 255, 255, 0.6);
-  --code-border: #e6e0d4;
-  --md-heading: #4a423b;
-  --md-strong: #4a423b;
-  --md-blockquote-bg: rgba(132, 182, 244, 0.08);
-  --md-blockquote-border: #84b6f4;
-  --md-blockquote-text: #8c837a;
-  --md-table-header-bg: rgba(132, 182, 244, 0.1);
-  --md-table-stripe: rgba(132, 182, 244, 0.03);
-  --md-inline-code-text: #d98880;
-  --scrollbar-thumb: #d4ccbd;
-  --scrollbar-hover: #b5ac9f;
-  --selection: rgba(132, 182, 244, 0.3);
+  --agent-bubble-text: #3d3530;
+  --code-bg: rgba(242, 139, 130, 0.06);
+  --code-border: #ebe4da;
+  --md-heading: #3d3530;
+  --md-strong: #3d3530;
+  --md-blockquote-bg: rgba(130, 177, 255, 0.06);
+  --md-blockquote-border: #82b1ff;
+  --md-blockquote-text: #7a716a;
+  --md-table-header-bg: rgba(242, 139, 130, 0.08);
+  --md-table-stripe: rgba(242, 139, 130, 0.03);
+  --md-inline-code-text: #d4564e;
+  --selection: rgba(242, 139, 130, 0.22);
+  /* Surface system — warm cream */
+  --surface-canvas: #fefcf8;
+  --surface-sidebar: rgba(250, 246, 240, 0.96);
+  --surface-panel: rgba(254, 252, 248, 0.92);
+  --surface-card: #ffffff;
+  --surface-card-strong: #ffffff;
+  --surface-composer: #ffffff;
+  --surface-hover: rgba(255, 154, 162, 0.08);
+  --surface-active: rgba(255, 154, 162, 0.14);
+  --border-soft: rgba(180, 160, 140, 0.12);
+  --border-softer: rgba(180, 160, 140, 0.07);
+  /* Shadows — 极淡北欧风 */
+  --shadow-card-soft: 0 1px 3px rgba(80, 60, 40, 0.04);
+  --shadow-float-soft: 0 6px 24px rgba(80, 60, 40, 0.06), 0 1px 3px rgba(80, 60, 40, 0.03);
+  --shadow-composer: 0 1px 6px rgba(80, 60, 40, 0.05);
+  --shadow-button-press: 0 1px 2px rgba(80, 60, 40, 0.06);
+  /* Radius — 饱满有机曲线 */
+  --radius-soft: 18px;
+  --radius-panel: 28px;
+  --radius-composer: 22px;
+  --scrollbar-width: 6px;
+  --scrollbar-thumb: #ddd4c7;
+  --scrollbar-hover: #c8bfaf;
+  --chat-column-width: 880px;
   --glass-blur: none;
 }
 
-/* ----- Apple Theme ----- */
+/* ----- Apple Theme — macOS 毛玻璃 / Vibrancy ----- */
 [data-theme="apple"] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f7;
-  --bg-tertiary: #ebebeb;
-  --bg-elevated: #ffffff;
-  --bg-hover: #e8e8ed;
-  --bg-active: #dfdfdf;
+  --bg-primary: rgba(255, 255, 255, 0.72);
+  --bg-secondary: rgba(245, 245, 247, 0.78);
+  --bg-tertiary: rgba(235, 235, 235, 0.85);
+  --bg-elevated: rgba(255, 255, 255, 0.88);
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-active: rgba(0, 0, 0, 0.07);
   --accent: #0071e3;
   --accent-hover: #0058b0;
-  --accent-subtle: rgba(0, 113, 227, 0.1);
+  --accent-primary: #0071e3;
+  --accent-subtle: rgba(0, 113, 227, 0.08);
   --accent-text: #0071e3;
   --text-primary: #1d1d1f;
-  --text-secondary: #515154;
+  --text-secondary: #424245;
   --text-muted: #86868b;
-  --border: rgba(0, 0, 0, 0.1);
-  --border-bright: rgba(0, 0, 0, 0.15);
+  --border: rgba(0, 0, 0, 0.10);
+  --border-bright: rgba(0, 0, 0, 0.16);
   --border-focus: #0071e3;
   --success: #34c759;
-  --success-bg: rgba(52, 199, 89, 0.1);
+  --success-bg: rgba(52, 199, 89, 0.08);
   --error: #ff3b30;
-  --error-bg: rgba(255, 59, 48, 0.1);
+  --error-bg: rgba(255, 59, 48, 0.08);
   --warning: #ff9500;
-  --warning-bg: rgba(255, 149, 0, 0.1);
-  --user-bubble: #0071e3;
-  --user-bubble-text: #ffffff;
-  --agent-bubble: #f5f5f7;
+  --warning-bg: rgba(255, 149, 0, 0.08);
+  --user-bubble: rgba(0, 113, 227, 0.10);
+  --user-bubble-text: #0071e3;
+  --agent-bubble: rgba(255, 255, 255, 0.55);
   --agent-bubble-text: #1d1d1f;
   --code-bg: rgba(0, 0, 0, 0.04);
   --code-border: rgba(0, 0, 0, 0.08);
   --md-heading: #1d1d1f;
   --md-strong: #1d1d1f;
-  --md-blockquote-bg: rgba(0, 0, 0, 0.03);
+  --md-blockquote-bg: rgba(0, 113, 227, 0.04);
   --md-blockquote-border: #0071e3;
-  --md-blockquote-text: #515154;
-  --md-table-header-bg: rgba(0, 0, 0, 0.05);
-  --md-table-stripe: rgba(0, 0, 0, 0.02);
-  --md-inline-code-text: #ff3b30;
-  --scrollbar-thumb: #c1c1c1;
-  --scrollbar-hover: #a1a1a1;
-  --selection: rgba(0, 113, 227, 0.2);
+  --md-blockquote-text: #424245;
+  --md-table-header-bg: rgba(0, 0, 0, 0.04);
+  --md-table-stripe: rgba(0, 0, 0, 0.015);
+  --md-inline-code-text: #c41e3a;
+  --selection: rgba(0, 113, 227, 0.15);
+  /* Surface system — 半透明毛玻璃 */
+  --surface-canvas: rgba(246, 246, 246, 0.65);
+  --surface-sidebar: rgba(245, 245, 247, 0.55);
+  --surface-panel: rgba(252, 252, 253, 0.70);
+  --surface-card: rgba(255, 255, 255, 0.65);
+  --surface-card-strong: rgba(255, 255, 255, 0.82);
+  --surface-composer: rgba(255, 255, 255, 0.75);
+  --surface-hover: rgba(0, 0, 0, 0.04);
+  --surface-active: rgba(0, 0, 0, 0.07);
+  --border-soft: rgba(0, 0, 0, 0.06);
+  --border-softer: rgba(0, 0, 0, 0.03);
+  /* Shadows — 苹果风格超柔 */
+  --shadow-card-soft: 0 1px 4px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-float-soft: 0 8px 40px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-composer: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-button-press: 0 1px 2px rgba(0, 0, 0, 0.08);
+  /* Radius — macOS 原生风格 */
+  --radius-soft: 14px;
+  --radius-panel: 20px;
+  --radius-composer: 18px;
+  --scrollbar-width: 6px;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-hover: rgba(0, 0, 0, 0.25);
+  --chat-column-width: 880px;
+  --glass-blur: none;
 }
 
-/* ----- Google Theme ----- */
+/* Apple theme — 毛玻璃覆盖层 */
+[data-theme="apple"] .sidebar {
+  backdrop-filter: blur(40px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) !important;
+}
+[data-theme="apple"] .chat-header {
+  backdrop-filter: blur(30px) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.5) !important;
+}
+[data-theme="apple"] .chat-input-wrapper {
+  backdrop-filter: blur(24px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.4) !important;
+}
+[data-theme="apple"] .chat-bubble-agent {
+  backdrop-filter: blur(16px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.2) !important;
+}
+[data-theme="apple"] .session-drawer {
+  backdrop-filter: blur(50px) saturate(2) !important;
+  -webkit-backdrop-filter: blur(50px) saturate(2) !important;
+}
+
+/* ----- Google Theme — Material 纸张卡片 ----- */
 [data-theme="google"] {
   --bg-primary: #ffffff;
   --bg-secondary: #f8f9fa;
@@ -131,10 +196,11 @@
   --bg-active: rgba(60, 64, 67, 0.08);
   --accent: #1a73e8;
   --accent-hover: #1558d6;
+  --accent-primary: #1a73e8;
   --accent-subtle: #e8f0fe;
   --accent-text: #1967d2;
   --text-primary: #202124;
-  --text-secondary: #5f6368;
+  --text-secondary: #3c4043;
   --text-muted: #80868b;
   --border: #dadce0;
   --border-bright: #bdc1c6;
@@ -145,23 +211,45 @@
   --error-bg: #fce8e6;
   --warning: #f9ab00;
   --warning-bg: #fef7e0;
-  --user-bubble: #1a73e8;
-  --user-bubble-text: #ffffff;
-  --agent-bubble: #f1f3f4;
+  --user-bubble: #e8f0fe;
+  --user-bubble-text: #1a73e8;
+  --agent-bubble: #f8f9fa;
   --agent-bubble-text: #202124;
-  --code-bg: #f8f9fa;
+  --code-bg: #f1f3f4;
   --code-border: #dadce0;
   --md-heading: #202124;
   --md-strong: #202124;
   --md-blockquote-bg: #f8f9fa;
   --md-blockquote-border: #1a73e8;
-  --md-blockquote-text: #5f6368;
+  --md-blockquote-text: #3c4043;
   --md-table-header-bg: #f1f3f4;
   --md-table-stripe: rgba(0, 0, 0, 0.02);
   --md-inline-code-text: #d93025;
+  --selection: rgba(26, 115, 232, 0.12);
+  /* Surface system — Material elevation */
+  --surface-canvas: #ffffff;
+  --surface-sidebar: #f8f9fa;
+  --surface-panel: #ffffff;
+  --surface-card: #ffffff;
+  --surface-card-strong: #ffffff;
+  --surface-composer: #ffffff;
+  --surface-hover: rgba(60, 64, 67, 0.04);
+  --surface-active: rgba(60, 64, 67, 0.08);
+  --border-soft: rgba(218, 220, 224, 0.6);
+  --border-softer: rgba(218, 220, 224, 0.35);
+  /* Shadows — Material elevation 1/2/3 */
+  --shadow-card-soft: 0 1px 2px rgba(60, 64, 67, 0.15), 0 1px 3px rgba(60, 64, 67, 0.08);
+  --shadow-float-soft: 0 4px 8px rgba(60, 64, 67, 0.15), 0 2px 6px rgba(60, 64, 67, 0.10);
+  --shadow-composer: 0 2px 6px rgba(60, 64, 67, 0.12);
+  --shadow-button-press: 0 1px 2px rgba(60, 64, 67, 0.16);
+  /* Radius — Material standard */
+  --radius-soft: 12px;
+  --radius-panel: 24px;
+  --radius-composer: 28px;
+  --scrollbar-width: 6px;
   --scrollbar-thumb: #dadce0;
   --scrollbar-hover: #bdc1c6;
-  --selection: rgba(26, 115, 232, 0.2);
+  --chat-column-width: 880px;
   --glass-blur: none;
 }
 
@@ -525,6 +613,7 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overscroll-behavior: none;
   min-width: 0;
 }
 

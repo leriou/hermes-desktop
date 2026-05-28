@@ -8,7 +8,7 @@ export default {
   routing: "路由与容错",
   skills: "技能",
   plugins: "插件",
-  persona: "人格",
+  persona: "人格与记忆",
   tools: "工具",
   schedules: "计划任务",
   kanban: "看板",

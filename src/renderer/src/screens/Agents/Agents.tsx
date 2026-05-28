@@ -112,7 +112,7 @@ function Agents({
 
   if (loading) {
     return (
-      <div className="agents-container">
+      <div>
         <div className="agents-loading">
           <div className="loading-spinner" />
         </div>
@@ -121,12 +121,8 @@ function Agents({
   }
 
   return (
-    <div className="agents-container">
-      <div className="agents-header">
-        <div>
-          <h2 className="agents-title">{t("agents.title")}</h2>
-          <p className="agents-subtitle">{t("agents.subtitle")}</p>
-        </div>
+    <div>
+      <div className="agents-header" style={{ justifyContent: "flex-end", marginTop: 0, minHeight: 0, marginBottom: 16 }}>
         <button
           className="btn btn-primary btn-sm"
           onClick={() => setShowCreate(true)}

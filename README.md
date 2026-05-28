@@ -1,14 +1,11 @@
 # Hermes Caduceus
 
-<img width="100%" alt="HERMES CADUCEUS" src="https://github.com/user-attachments/assets/80585955-3bae-4aee-af90-a1e61757ccb8" />
+
 
 <br/>
 <p align="center">
   <a href="https://github.com/fathah/hermes-caduceus/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://github.com/fathah/hermes-caduceus/releases/"><img src="https://img.shields.io/badge/macOS-Download-FF6600?style=for-the-badge" alt="Releases"></a>
-  <a href="https://github.com/fathah/hermes-caduceus/stargazers">
-    <img src="https://img.shields.io/github/stars/fathah/hermes-caduceus?style=for-the-badge&color=FFD700&label=Stars" alt="Stars">
-  </a>
 </p>
 
 > **Fork of [hermes-desktop](https://github.com/NousResearch/hermes-desktop)** — deeply customized and optimized for macOS. Rewritten from Electron to Tauri 2 + React 19 with a focus on native performance, architecture cleanliness, and macOS-specific optimizations.
@@ -180,13 +177,13 @@ Hermes Caduceus is not just a cross-platform port; it is built to feel like a fi
 - **Direct model discovery** — detect available models from provider `/models` endpoints without starting the gateway
 - **Streaming chat UI** — SSE streaming with microtask flush, tool progress indicators, markdown rendering, syntax highlighting
 - **Token usage tracking** — live prompt/completion token counts and cost display
-- **22 slash commands** — `/new`, `/clear`, `/fast`, `/web`, `/image`, `/browse`, `/code`, `/shell`, `/usage`, `/help`, `/tools`, `/skills`, `/model`, `/memory`, `/persona`, `/version`, `/compact`, `/compress`, `/undo`, `/retry`, `/debug`, `/status`
+- **34 slash commands** — `/new`, `/clear`, `/fast`, `/web`, `/image`, `/browse`, `/code`, `/file`, `/shell`, `/usage`, `/help`, `/tools`, `/skills`, `/model`, `/memory`, `/persona`, `/version`, `/compact`, `/compress`, `/undo`, `/retry`, `/debug`, `/status`, `/btw`, `/approve`, `/deny`, `/reset`, `/goal`, `/steer`, `/queue`, `/update`, `/kanban`, `/curator`, `/reload-skills`
 - **Session management** — full-text search (SQLite FTS5), date-grouped history, segmented sessions with cross-segment loading
 - **Profile switching** — isolated Hermes environments with separate config, env, and state
-- **14 toolsets** — web, browser, terminal, file, code execution, vision, image gen, TTS, skills, memory, and more
+- **32 API key fields** across 5 tool categories — LLM, browser automation, voice, research, and more
 - **Memory & Persona** — view/edit memory entries and SOUL.md personality
 - **Routing & Fallback** — GUI for default model, provider, and fallback chain configuration
-- **Scheduled tasks** — cron job builder with 15 delivery targets
+- **Scheduled tasks** — cron job builder with 16 delivery targets
 - **16 messaging gateways** — Telegram, Discord, Slack, WhatsApp, Signal, Matrix, iMessage, DingTalk, Feishu, WeCom, WeChat, and more
 - **Plugin management** — enable/disable plugins with status and source filtering
 - **Voice input** — on-device speech recognition with VAD auto-stop
@@ -197,16 +194,20 @@ Hermes Caduceus is not just a cross-platform port; it is built to feel like a fi
 
 <table>
 <tr>
-<td width="50%" align="center"><b>Chat</b><br/><img width="100%" alt="Chat" src="previews/chat.png" /></td>
-<td width="50%" align="center"><b>Profiles</b><br/><img width="100%" alt="Profiles" src="previews/profiles.png" /></td>
+<td width="50%" align="center"><b>Home</b><br/><img width="100%" alt="Home" src="previews/homepage.png" /></td>
+<td width="50%" align="center"><b>Chat</b><br/><img width="100%" alt="Chat" src="previews/latestchat.png" /></td>
 </tr>
 <tr>
-<td width="50%" align="center"><b>Models</b><br/><img width="100%" alt="Models" src="previews/models.png" /></td>
-<td width="50%" align="center"><b>Providers</b><br/><img width="100%" alt="Providers" src="previews/providers.png" /></td>
+<td width="50%" align="center"><b>Sessions</b><br/><img width="100%" alt="Sessions" src="previews/sessions.png" /></td>
+<td width="50%" align="center"><b>Memory &amp; Persona</b><br/><img width="100%" alt="Memory" src="previews/memory.png" /></td>
 </tr>
 <tr>
-<td width="50%" align="center"><b>Tools</b><br/><img width="100%" alt="Tools" src="previews/tools.png" /></td>
+<td width="50%" align="center"><b>Provider</b><br/><img width="100%" alt="Provider" src="previews/provider.png" /></td>
 <td width="50%" align="center"><b>Skills</b><br/><img width="100%" alt="Skills" src="previews/skills.png" /></td>
+</tr>
+<tr>
+<td width="50%" align="center"><b>Config</b><br/><img width="100%" alt="Config" src="previews/config.png" /></td>
+<td width="50%" align="center"><b>Chat Detail</b><br/><img width="100%" alt="Chat Detail" src="previews/chat.png" /></td>
 </tr>
 </table>
 

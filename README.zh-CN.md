@@ -1,14 +1,11 @@
 # Hermes Caduceus
 
-<img width="100%" alt="HERMES CADUCEUS" src="https://github.com/user-attachments/assets/80585955-3bae-4aee-af90-a1e61757ccb8" />
 
 <br/>
 <p align="center">
   <a href="https://github.com/fathah/hermes-caduceus/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://github.com/fathah/hermes-caduceus/releases/"><img src="https://img.shields.io/badge/macOS-下载-FF6600?style=for-the-badge" alt="Releases"></a>
-  <a href="https://github.com/fathah/hermes-caduceus/stargazers">
-    <img src="https://img.shields.io/github/stars/fathah/hermes-caduceus?style=for-the-badge&color=FFD700&label=Stars" alt="Stars">
-  </a>
+ 
 </p>
 
 > **Fork 自 [hermes-desktop](https://github.com/NousResearch/hermes-desktop)** — 深度定制优化，专为 macOS 用户打造。从 Electron 重写为 Tauri 2 + React 19，聚焦原生性能、架构整洁和 macOS 专项优化。
@@ -59,8 +56,8 @@ Hermes Caduceus 是一个原生 macOS 桌面客户端，用于安装、配置并
 
 |  | Tauri 2（本项目） | Electron（上游） |
 |--|--|--|
-| **下载体积** | ~36 MB `.dmg` | ~200 MB+ `.dmg` |
-| **原生二进制** | ~10 MB | ~150 MB+（打包 Chromium + Node.js） |
+| **下载体积** | ~11 MB `.dmg` | ~200 MB+ `.dmg` |
+| **原生二进制** | ~5 MB | ~150 MB+（打包 Chromium + Node.js） |
 | **渲染引擎** | 系统 WebKit（`WKWebView`） | 内置 Chromium |
 | **内存占用** | ~60-80 MB RSS | ~300-500 MB RSS |
 | **启动时间** | < 1 秒 | 3-5 秒 |
@@ -179,13 +176,13 @@ Hermes Caduceus 不仅仅是一个跨平台应用的移植版，它是为 macOS 
 - 直连模型探测 —— 无需启动网关即可检测可用模型
 - 流式聊天界面 —— SSE 流式 + 微任务刷新、工具进度指示、Markdown 渲染、语法高亮
 - Token 用量追踪 —— 实时 prompt/completion token 计数和费用显示
-- 22 个斜杠命令 —— `/new`、`/clear`、`/fast`、`/web`、`/image`、`/browse`、`/code`、`/shell` 等
+- 34 个斜杠命令 —— `/new`、`/clear`、`/fast`、`/web`、`/image`、`/browse`、`/code`、`/file`、`/shell`、`/usage`、`/help`、`/tools`、`/skills`、`/model`、`/memory`、`/persona`、`/version`、`/compact`、`/compress`、`/undo`、`/retry`、`/debug`、`/status`、`/btw`、`/approve`、`/deny`、`/reset`、`/goal`、`/steer`、`/queue`、`/update`、`/kanban`、`/curator`、`/reload-skills`
 - 会话管理 —— 全文搜索（SQLite FTS5）、按日期分组、分段会话支持跨段加载
 - 档案切换 —— 独立的 Hermes 环境，隔离配置、环境和状态
-- 14 个工具集 —— web、浏览器、终端、文件、代码执行、视觉、图像生成、TTS 等
+- 32 个 API 密钥字段，覆盖 5 个工具类别 —— LLM、浏览器自动化、语音、研究等
 - 记忆与人格 —— 查看/编辑记忆条目和 SOUL.md 人格
 - 路由与 Fallback —— 默认模型、提供商和 fallback 链的 GUI 配置
-- 定时任务 —— cron 任务构建器，支持 15 个投递目标
+- 定时任务 —— cron 任务构建器，支持 16 个投递目标
 - 16 个消息网关 —— Telegram、Discord、Slack、WhatsApp、Signal、Matrix、iMessage、钉钉、飞书、企业微信、微信等
 - 插件管理 —— 启用/禁用插件，支持按状态和来源过滤
 - 语音输入 —— 本地语音识别 + VAD 自动停止
@@ -196,16 +193,20 @@ Hermes Caduceus 不仅仅是一个跨平台应用的移植版，它是为 macOS 
 
 <table>
 <tr>
-<td width="50%" align="center"><b>Chat</b><br/><img width="100%" alt="Chat" src="previews/chat.png" /></td>
-<td width="50%" align="center"><b>Profiles</b><br/><img width="100%" alt="Profiles" src="previews/profiles.png" /></td>
+<td width="50%" align="center"><b>首页</b><br/><img width="100%" alt="Home" src="previews/homepage.png" /></td>
+<td width="50%" align="center"><b>聊天</b><br/><img width="100%" alt="Chat" src="previews/latestchat.png" /></td>
 </tr>
 <tr>
-<td width="50%" align="center"><b>Models</b><br/><img width="100%" alt="Models" src="previews/models.png" /></td>
-<td width="50%" align="center"><b>Providers</b><br/><img width="100%" alt="Providers" src="previews/providers.png" /></td>
+<td width="50%" align="center"><b>会话</b><br/><img width="100%" alt="Sessions" src="previews/sessions.png" /></td>
+<td width="50%" align="center"><b>记忆与人格</b><br/><img width="100%" alt="Memory" src="previews/memory.png" /></td>
 </tr>
 <tr>
-<td width="50%" align="center"><b>Tools</b><br/><img width="100%" alt="Tools" src="previews/tools.png" /></td>
-<td width="50%" align="center"><b>Skills</b><br/><img width="100%" alt="Skills" src="previews/skills.png" /></td>
+<td width="50%" align="center"><b>提供商</b><br/><img width="100%" alt="Provider" src="previews/provider.png" /></td>
+<td width="50%" align="center"><b>技能</b><br/><img width="100%" alt="Skills" src="previews/skills.png" /></td>
+</tr>
+<tr>
+<td width="50%" align="center"><b>配置</b><br/><img width="100%" alt="Config" src="previews/config.png" /></td>
+<td width="50%" align="center"><b>聊天详情</b><br/><img width="100%" alt="Chat Detail" src="previews/chat.png" /></td>
 </tr>
 </table>
 

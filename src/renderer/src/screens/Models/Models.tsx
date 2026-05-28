@@ -218,8 +218,7 @@ function Models({
 
   if (loading) {
     return (
-      <div className="settings-container">
-        <h1 className="settings-header">{t("models.title")}</h1>
+      <div>
         <div className="models-loading">
           <div className="loading-spinner" />
         </div>
@@ -228,47 +227,16 @@ function Models({
   }
 
   return (
-    <div className="settings-container">
-      <div className="models-header">
-        <div>
-          <h1 className="settings-header models-title-tight">
-            {t("models.title")}
-          </h1>
-          <p className="models-subtitle">{t("models.subtitle")}</p>
-        </div>
-        {tab === "myModels" && (
-          <div className="models-header-actions">
-            {onNavigate && (
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => onNavigate("providers")}
-                title={t("models.addFromProviderHint", {
-                  defaultValue: "Go to Providers to discover and add models",
-                })}
-              >
-                <ArrowRight size={14} />
-                {t("models.addFromProvider", {
-                  defaultValue: "Add from Provider",
-                })}
-              </button>
-            )}
-            <button className="btn btn-primary btn-sm" onClick={openAddModal}>
-              <Plus size={14} />
-              {t("models.addModel")}
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="settings-theme-options" style={{ marginBottom: 24 }}>
+    <>
+      <div className="pill-tabs" style={{ marginBottom: 24 }}>
         <button
-          className={`settings-theme-option ${tab === "myModels" ? "active" : ""}`}
+          className={`pill-tab ${tab === "myModels" ? "active" : ""}`}
           onClick={() => setTab("myModels")}
         >
           {t("models.tabs.myModels")}
         </button>
         <button
-          className={`settings-theme-option ${tab === "templates" ? "active" : ""}`}
+          className={`pill-tab ${tab === "templates" ? "active" : ""}`}
           onClick={() => setTab("templates")}
         >
           {t("models.tabs.templates")}
@@ -278,6 +246,29 @@ function Models({
       {/* ── My Models Tab ── */}
       {tab === "myModels" && (
         <>
+          <div className="models-header" style={{ justifyContent: "flex-end", marginTop: 0, minHeight: 0, marginBottom: 16 }}>
+            <div className="models-header-actions" style={{ display: "flex", gap: 12 }}>
+              {onNavigate && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => onNavigate("providers")}
+                  title={t("models.addFromProviderHint", {
+                    defaultValue: "Go to Providers to discover and add models",
+                  })}
+                >
+                  <ArrowRight size={14} />
+                  {t("models.addFromProvider", {
+                    defaultValue: "Add from Provider",
+                  })}
+                </button>
+              )}
+              <button className="btn btn-primary btn-sm" onClick={openAddModal}>
+                <Plus size={14} />
+                {t("models.addModel")}
+              </button>
+            </div>
+          </div>
+
           {models.length > 0 && (
             <div className="models-search">
               <Search size={14} />
@@ -581,7 +572,7 @@ function Models({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

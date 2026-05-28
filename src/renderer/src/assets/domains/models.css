@@ -295,17 +295,6 @@
   color: var(--text-muted);
 }
 
-[data-theme="dark"] .brand-logo--match-theme,
-[data-theme="colorful"] .brand-logo--match-theme {
-  filter: brightness(0) invert(1);
-}
-
-[data-theme="light"] .brand-logo--match-theme,
-[data-theme="apple"] .brand-logo--match-theme,
-[data-theme="google"] .brand-logo--match-theme {
-  filter: brightness(0);
-}
-
 /* ========================================================================
    OFFICE (Claw3D)
    ======================================================================== */
@@ -314,6 +303,7 @@
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .office-toolbar {
@@ -491,6 +481,7 @@
 .office-logs-content {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: none;
   padding: 12px 20px;
   font-size: 11px;
   font-family: var(--font-mono);

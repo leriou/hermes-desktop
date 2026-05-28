@@ -76,17 +76,7 @@ function Routing({ profile }: RoutingProps): React.JSX.Element {
   }
 
   return (
-    <div className="settings-container">
-      <h1 className="settings-header">
-        {t("providers.routing.title", { defaultValue: "Routing & Fallback" })}
-      </h1>
-      <p className="models-subtitle" style={{ marginBottom: 16 }}>
-        {t("providers.routing.hint", {
-          defaultValue:
-            "Configure default model, provider, and fallback chain.",
-        })}
-      </p>
-
+    <div>
       <div className="settings-section">
         <div className="settings-section-title">
           {t("providers.routing.defaults", { defaultValue: "Default Model" })}

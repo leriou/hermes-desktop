@@ -1,32 +1,23 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark" | "system" | "colorful" | "apple" | "google";
-type ResolvedTheme = "light" | "dark" | "colorful" | "apple" | "google";
+type Theme = "light" | "colorful" | "apple" | "google";
 
 interface ThemeContextValue {
   theme: Theme;
-  resolved: ResolvedTheme;
+  resolved: Theme;
   setTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "system",
-  resolved: "dark",
+  theme: "light",
+  resolved: "light",
   setTheme: () => {},
 });
 
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { THEME_STORAGE_KEY as STORAGE_KEY } from "../constants";
 
-function getSystemTheme(): ResolvedTheme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
-function resolve(theme: Theme): ResolvedTheme {
-  return theme === "system" ? getSystemTheme() : theme;
-}
+const VALID_THEMES = new Set<string>(["light", "colorful", "apple", "google"]);
 
 export function ThemeProvider({
   children,
@@ -35,48 +26,22 @@ export function ThemeProvider({
 }): React.JSX.Element {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = getStoreItem(STORAGE_KEY);
-    if (
-      stored === "light" ||
-      stored === "dark" ||
-      stored === "system" ||
-      stored === "colorful" ||
-      stored === "apple" ||
-      stored === "google"
-    )
-      return stored as Theme;
+    if (stored && VALID_THEMES.has(stored as string)) return stored as Theme;
     return "light";
   });
-  const [resolved, setResolved] = useState<ResolvedTheme>(() => resolve(theme));
 
   function setTheme(next: Theme): void {
     setThemeState(next);
     setStoreItem(STORAGE_KEY, next);
   }
 
-  // Listen for system preference changes
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    function onChange(): void {
-      if (theme === "system") {
-        setResolved(getSystemTheme());
-      }
-    }
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [theme]);
-
-  // Update resolved whenever theme changes
-  useEffect(() => {
-    setResolved(resolve(theme));
-  }, [theme]);
-
   // Apply data-theme attribute to <html>
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", resolved);
-  }, [resolved]);
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, resolved, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolved: theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

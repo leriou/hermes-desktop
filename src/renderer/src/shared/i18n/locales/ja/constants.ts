@@ -32,9 +32,7 @@ export default {
   cerebras: "Cerebras",
   mistral: "Mistral",
   // Theme
-  themeSystem: "システム",
   themeLight: "ライト",
-  themeDark: "ダーク",
 
   // Markdown styles
   mdStyleDefault: "Default",

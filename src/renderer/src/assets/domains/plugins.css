@@ -19,6 +19,7 @@
   outline: none;
   transition: border-color var(--transition);
   overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .soul-editor:focus {
@@ -106,6 +107,7 @@
   height: 100%;
   padding: 24px;
   overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .plugins-header {

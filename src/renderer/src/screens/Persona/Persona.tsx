@@ -97,7 +97,7 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="soul-container">
+      <div>
         <div className="soul-loading">
           <div className="loading-spinner" />
         </div>
@@ -118,16 +118,10 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
   ];
 
   return (
-    <div className="soul-container">
-      <div className="soul-header">
-        <div>
-          <h2 className="soul-title">
-            {t("persona.title")}
-            {saved && <span className="soul-saved">{t("common.saved")}</span>}
-          </h2>
-          <p className="soul-subtitle">{t("persona.subtitle")}</p>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div className="soul-header" style={{ justifyContent: "flex-end", marginTop: 0, minHeight: 0, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8, flex: 1, justifyContent: "flex-end" }}>
+          {saved && <span className="soul-saved">{t("common.saved")}</span>}
           {!isEditing && tab === "soul" && (
             <button
               className="btn btn-secondary btn-sm"
@@ -144,21 +138,24 @@ function Persona({ profile }: PersonaProps): React.JSX.Element {
         </div>
       </div>
 
-      <div className="persona-tabs">
+      <div className="pill-tabs" style={{ width: "100%", maxWidth: 600, display: "flex" }}>
         {tabs.map(({ key, label, file }) => (
           <button
             key={key}
-            className={`persona-tab ${tab === key ? "active" : ""}`}
+            className={`pill-tab ${tab === key ? "active" : ""}`}
+            style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}
             onClick={() => {
               if (isEditing) return;
               setTab(key);
             }}
             disabled={isEditing}
           >
-            {label}
-            <span className="persona-tab-file">{file}</span>
-            <span className="persona-tab-chars">
-              {charCounts[key].toLocaleString()}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span>{label}</span>
+              <span className="persona-tab-file" style={{ marginLeft: 8, opacity: 0.6, fontSize: 11 }}>{file}</span>
+            </div>
+            <span style={{ opacity: 0.4, fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
+              ~{charCounts[key] * 3} tk
             </span>
           </button>
         ))}

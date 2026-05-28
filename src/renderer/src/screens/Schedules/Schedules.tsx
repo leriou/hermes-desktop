@@ -10,6 +10,7 @@ import {
   updateCronJob,
 } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Plus,
   Trash,
@@ -363,7 +364,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
   return (
     <div className="schedules-container">
       {/* Create Modal */}
-      {showCreate && (
+      {showCreate && createPortal(
         <div className="skills-detail-overlay" onClick={closeCreateModal}>
           <div
             className="schedules-modal schedules-modal-split"
@@ -579,11 +580,12 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Edit Modal */}
-      {editingJob && (
+      {editingJob && createPortal(
         <div className="skills-detail-overlay" onClick={closeEditModal}>
           <div
             className="schedules-modal schedules-modal-split"
@@ -673,11 +675,12 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Delete confirmation */}
-      {confirmDelete && (
+      {confirmDelete && createPortal(
         <div
           className="skills-detail-overlay"
           onClick={() => setConfirmDelete(null)}
@@ -718,14 +721,11 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      <div className="schedules-header">
-        <div>
-          <h2 className="schedules-title">{t("schedules.title")}</h2>
-          <p className="schedules-subtitle">{t("schedules.subtitle")}</p>
-        </div>
+      <div className="schedules-header" style={{ justifyContent: "flex-end", marginTop: 0, minHeight: 0, marginBottom: 16 }}>
         <div className="schedules-header-actions">
           <button className="btn btn-secondary" onClick={loadJobs}>
             <Refresh size={14} />
@@ -741,6 +741,7 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
         </div>
       </div>
 
+      <div className="schedules-scroll-body">
       {error && (
         <div className="skills-error">
           {error}
@@ -972,9 +973,10 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
           </table>
         )}
       </div>
+      </div>
 
       {/* Output Viewer Modal */}
-      {viewingOutput && (
+      {viewingOutput && createPortal(
         <div
           className="skills-detail-overlay"
           onClick={() => setViewingOutput(null)}
@@ -1003,7 +1005,8 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

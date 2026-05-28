@@ -786,16 +786,16 @@
 
 .settings-config-textarea {
   width: 100%;
-  padding: 12px;
+  flex: 1;
+  padding: 16px;
   font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.6;
   color: var(--text-primary);
-  background: var(--bg-elevated);
-  border: none;
-  resize: vertical;
-  min-height: 300px;
-  max-height: 500px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  resize: none;
   outline: none;
   tab-size: 2;
 }

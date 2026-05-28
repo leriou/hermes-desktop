@@ -2,28 +2,41 @@
    LAYOUT (Sidebar + Content)
    ======================================================================== */
 .layout {
-  display: flex;
-  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  padding: 6px;
-  gap: 6px;
+  background: transparent;
 }
 
 .sidebar {
-  width: 200px;
+  position: fixed; /* Fix in place so it doesn't scroll */
+  top: 46px;
+  left: 16px;
+  width: 240px; /* Make sidebar slightly wider for bigger fonts */
   background: var(--surface-sidebar);
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  border-right: none;
+  border: 1px solid var(--border-soft); /* Full border for floating tray */
+  border-radius: var(--radius-panel); /* Rounded corners for floating tray */
+  height: calc(100% - 62px); /* Use 100% of parent height minus margins */
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-radius: var(--radius-panel);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.05) inset; /* Weakened tray shadow */
   overflow: hidden;
+  z-index: 100;
+  padding-top: 8px; /* Push content down away from traffic lights (they are absolute) */
+  isolation: isolate; /* Ensure border-radius clips children correctly */
 }
 
 .sidebar.collapsed {
-  width: 52px;
+  width: 68px;
+}
+
+.sidebar.collapsed + .content {
+  left: 84px; /* 68px width + 16px padding */
 }
 
 .sidebar.collapsed .sidebar-brand {
@@ -40,6 +53,10 @@
 
 .sidebar.collapsed .sidebar-logo-icon {
   display: block;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  object-fit: cover;
 }
 
 .sidebar.collapsed .sidebar-nav-label {
@@ -48,7 +65,7 @@
 
 .sidebar.collapsed .sidebar-nav-item {
   justify-content: center;
-  padding: 10px 0;
+  padding: 12px 0;
 }
 
 .sidebar.collapsed .sidebar-footer-row {
@@ -67,48 +84,50 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 16px 10px 8px;
-  margin-top: 24px;
+  gap: 12px;
+  padding: 24px 10px 12px; /* Extra padding so traffic lights don't overlap */
+  background: transparent; /* Ensure it doesn't cover sidebar rounding */
 }
 
 .sidebar-brand-icon {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   background: var(--accent);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
 }
 
 .sidebar-brand-name {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 8px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 4px;
+  background: transparent;
 }
 
 .sidebar-nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 10px 14px;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition);
-  font-size: 13px;
-  font-weight: 450;
+  font-size: 15px; /* Bigger font size */
+  font-weight: 500;
   color: var(--text-muted);
   border: none;
   background: none;
@@ -125,7 +144,7 @@
 .sidebar-nav-item.active {
   background: var(--surface-active);
   color: var(--text-primary);
-  font-weight: 550;
+  font-weight: 600;
 }
 
 .sidebar-nav-item svg {
@@ -134,10 +153,11 @@
 
 /* Sidebar footer */
 .sidebar-footer {
-  padding: 8px;
+  padding: 16px 16px 24px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+  background: transparent;
 }
 
 .sidebar-footer-row {
@@ -247,9 +267,114 @@
 }
 
 .content {
-  flex: 1;
+  position: absolute;
+  top: 0;
+  left: 256px; /* Sidebar width 240px + 16px left padding */
+  right: 0;
+  bottom: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-panel);
+  background: var(--surface-canvas); /* Set background for the "canvas" */
+  transition: left var(--transition);
+  z-index: 10;
+  overscroll-behavior: none;
+}
+
+/* Sub Tab Bar - Modern Pill Design */
+.sub-tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center the tabs for a more balanced look */
+  gap: 8px;
+  padding: 32px 32px 24px; /* More top space */
+  background: transparent; /* Let the content background show through */
+  flex-shrink: 0;
+}
+
+.sub-tab-pills {
+  display: flex;
+  background: var(--surface-card-strong);
+  padding: 6px;
+  border-radius: 100px;
+  border: 1px solid var(--border-soft);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  gap: 6px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.sub-tab-pill {
+  padding: 10px 28px;
+  border-radius: 100px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.sub-tab-pill:hover {
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+}
+
+.sub-tab-pill.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: 
+    0 4px 14px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-bright);
+}
+
+/* Content area below sub-tabs */
+.sub-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  padding: 0 32px 32px; /* Side padding to match tab bar */
+}
+
+/* Generic Pill Tabs (used for sub-sub navigation) */
+.pill-tabs {
+  display: flex;
+  background: var(--bg-tertiary);
+  padding: 3px;
+  border-radius: 100px;
+  border: 1px solid var(--border-soft);
+  gap: 2px;
+  width: fit-content;
+  margin-bottom: 20px;
+}
+
+.pill-tab {
+  padding: 6px 16px;
+  border-radius: 100px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pill-tab:hover {
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+}
+
+.pill-tab.active {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-soft);
 }

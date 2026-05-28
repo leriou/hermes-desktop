@@ -1,75 +1,9 @@
 /* ========================================================================
    Hermes Agent Desktop — Clean Design System
-   Dark + Light mode, no gradients, flat design
+   Light mode, no gradients, flat design
    ======================================================================== */
 
-/* ----- Dark Theme (default) ----- */
-[data-theme="dark"] {
-  --bg-primary: #1c1b20;
-  --bg-secondary: rgba(30, 29, 34, 0.94);
-  --bg-tertiary: #2b2a30;
-  --bg-elevated: #33323a;
-  --bg-hover: rgba(255, 255, 255, 0.045);
-  --bg-active: rgba(255, 255, 255, 0.07);
-  --accent: #8a96ae;
-  --accent-hover: #9aa6ba;
-  --accent-primary: #8a96ae;
-  --accent-subtle: rgba(138, 150, 174, 0.13);
-  --accent-text: #9aa6ba;
-  --text-primary: #ededf0;
-  --text-secondary: #a8a8b4;
-  --text-muted: #6e6e7a;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-bright: rgba(255, 255, 255, 0.10);
-  --border-focus: rgba(138, 150, 174, 0.45);
-  --success: #3cba6a;
-  --success-bg: rgba(60, 186, 106, 0.10);
-  --error: #e05252;
-  --error-bg: rgba(224, 82, 82, 0.10);
-  --warning: #e8a838;
-  --warning-bg: rgba(232, 168, 56, 0.10);
-  --user-bubble: rgba(138, 150, 174, 0.16);
-  --user-bubble-text: #c8d0de;
-  --agent-bubble: rgba(255, 255, 255, 0.03);
-  --agent-bubble-text: #ededf0;
-  --code-bg: rgba(255, 255, 255, 0.055);
-  --code-border: rgba(255, 255, 255, 0.07);
-  --md-heading: #f0f0f4;
-  --md-strong: #f0f0f4;
-  --md-blockquote-bg: rgba(255, 255, 255, 0.025);
-  --md-blockquote-border: #8a96ae;
-  --md-blockquote-text: #9898a4;
-  --md-table-header-bg: rgba(255, 255, 255, 0.04);
-  --md-table-stripe: rgba(255, 255, 255, 0.018);
-  --md-inline-code-text: #d4a846;
-  --selection: rgba(138, 150, 174, 0.28);
-  /* 5-layer surface system */
-  --surface-canvas: #1c1b20;
-  --surface-sidebar: rgba(26, 25, 30, 0.96);
-  --surface-panel: rgba(36, 35, 42, 0.88);
-  --surface-card: rgba(38, 37, 44, 0.78);
-  --surface-card-strong: rgba(46, 45, 54, 0.94);
-  --surface-composer: rgba(46, 45, 54, 0.96);
-  --surface-hover: rgba(255, 255, 255, 0.045);
-  --surface-active: rgba(138, 150, 174, 0.12);
-  --border-soft: rgba(255, 255, 255, 0.05);
-  --border-softer: rgba(255, 255, 255, 0.035);
-  /* Shadows */
-  --shadow-card-soft: 0 1px 4px rgba(0, 0, 0, 0.10);
-  --shadow-float-soft: 0 10px 36px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.16);
-  --shadow-composer: 0 2px 16px rgba(0, 0, 0, 0.18);
-  --shadow-button-press: 0 1px 2px rgba(0, 0, 0, 0.12);
-  --radius-soft: 12px;
-  --radius-panel: 16px;
-  --radius-composer: 20px;
-  --scrollbar-width: 6px;
-  --scrollbar-thumb: rgba(255, 255, 255, 0.07);
-  --scrollbar-hover: rgba(255, 255, 255, 0.14);
-  /* Chat column */
-  --chat-column-width: 880px;
-}
-
-/* ----- Light Theme (Marvis-like default) ----- */
+/* ----- Light Theme (default) ----- */
 [data-theme="light"] {
   --bg-primary: #f5f4f1;
   --bg-secondary: #f8f7f5;
@@ -124,8 +58,8 @@
   --shadow-float-soft: 0 8px 30px rgba(20, 18, 15, 0.08), 0 1px 4px rgba(20, 18, 15, 0.04);
   --shadow-composer: 0 1px 8px rgba(20, 18, 15, 0.06);
   --shadow-button-press: 0 1px 2px rgba(20, 18, 15, 0.06);
-  --radius-soft: 12px;
-  --radius-panel: 14px;
+  --radius-soft: 16px;
+  --radius-panel: 32px;
   --radius-composer: 18px;
   --scrollbar-width: 6px;
   --scrollbar-thumb: #cdcac5;
@@ -137,19 +71,8 @@
 /* ── Markdown Style Overrides ─────────────────────────── */
 
 /* Notion — clean, maximum readability, warm neutrals */
-[data-theme="dark"][data-md-style="notion"] {
-  --md-heading: #ffffff;
-  --md-strong: #ffffff;
-  --md-blockquote-bg: rgba(255, 255, 255, 0.04);
-  --md-blockquote-border: #545d69;
-  --md-blockquote-text: #b0b5bc;
-  --md-table-header-bg: rgba(255, 255, 255, 0.05);
-  --md-table-stripe: rgba(255, 255, 255, 0.02);
-  --md-inline-code-text: #e8854a;
-  --code-bg: rgba(0, 0, 0, 0.28);
-  --code-border: rgba(255, 255, 255, 0.08);
-}
 [data-theme="light"][data-md-style="notion"],
+[data-theme="colorful"][data-md-style="notion"],
 [data-theme="apple"][data-md-style="notion"],
 [data-theme="google"][data-md-style="notion"] {
   --md-heading: #1a1a1a;
@@ -165,19 +88,8 @@
 }
 
 /* Material — bold structure, high contrast, warm accents */
-[data-theme="dark"][data-md-style="material"] {
-  --md-heading: #ffffff;
-  --md-strong: #ffffff;
-  --md-blockquote-bg: rgba(139, 92, 246, 0.06);
-  --md-blockquote-border: #8b5cf6;
-  --md-blockquote-text: #c4c5ce;
-  --md-table-header-bg: rgba(0, 0, 0, 0.12);
-  --md-table-stripe: rgba(0, 0, 0, 0.04);
-  --md-inline-code-text: #fbbf24;
-  --code-bg: rgba(0, 0, 0, 0.35);
-  --code-border: rgba(139, 92, 246, 0.1);
-}
 [data-theme="light"][data-md-style="material"],
+[data-theme="colorful"][data-md-style="material"],
 [data-theme="apple"][data-md-style="material"],
 [data-theme="google"][data-md-style="material"] {
   --md-heading: #1a1a2e;
@@ -193,19 +105,8 @@
 }
 
 /* Night Owl — warm inviting, designed for readability */
-[data-theme="dark"][data-md-style="nightowl"] {
-  --md-heading: #f0e7d5;
-  --md-strong: #f0e7d5;
-  --md-blockquote-bg: rgba(116, 113, 234, 0.06);
-  --md-blockquote-border: #7471ea;
-  --md-blockquote-text: #c5b7d4;
-  --md-table-header-bg: rgba(116, 113, 234, 0.06);
-  --md-table-stripe: rgba(116, 113, 234, 0.02);
-  --md-inline-code-text: #ff9970;
-  --code-bg: rgba(0, 0, 0, 0.25);
-  --code-border: rgba(116, 113, 234, 0.12);
-}
 [data-theme="light"][data-md-style="nightowl"],
+[data-theme="colorful"][data-md-style="nightowl"],
 [data-theme="apple"][data-md-style="nightowl"],
 [data-theme="google"][data-md-style="nightowl"] {
   --md-heading: #2d3142;
@@ -274,19 +175,10 @@
 /* Default: keep as-is */
 
 /* Solarized — warm earth tones */
-[data-theme="dark"][data-md-style="solarized"] {
-  --md-heading: #fdf6e3;
-  --md-strong: #fdf6e3;
-  --md-blockquote-bg: rgba(181, 137, 0, 0.08);
-  --md-blockquote-border: #b58900;
-  --md-blockquote-text: #93a1a1;
-  --md-table-header-bg: rgba(181, 137, 0, 0.1);
-  --md-table-stripe: rgba(181, 137, 0, 0.04);
-  --md-inline-code-text: #b58900;
-  --code-bg: #073642;
-  --code-border: rgba(181, 137, 0, 0.2);
-}
-[data-theme="light"][data-md-style="solarized"] {
+[data-theme="light"][data-md-style="solarized"],
+[data-theme="colorful"][data-md-style="solarized"],
+[data-theme="apple"][data-md-style="solarized"],
+[data-theme="google"][data-md-style="solarized"] {
   --md-heading: #073642;
   --md-strong: #073642;
   --md-blockquote-bg: rgba(181, 137, 0, 0.06);
@@ -376,7 +268,7 @@
 /* ----- Body ----- */
 body {
   font-family: var(--font-sans);
-  background: var(--surface-canvas);
+  background: transparent !important;
   color: var(--text-primary);
   transition:
     background-color 0.3s ease,
@@ -394,10 +286,16 @@ body {
 
 /* ----- App Shell ----- */
 .app {
-  height: 97vh;
+  height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  padding: 2px; /* Increased buffer padding to prevent edge leak */
+  box-sizing: border-box;
+  overscroll-behavior: none;
 }
 
 .drag-surface {
@@ -429,6 +327,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 0; /* Remove padding to let children control margins */
 }
 
 /* ----- Shared Components ----- */
