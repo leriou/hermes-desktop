@@ -9,7 +9,7 @@ import {
   triggerCronJob,
   updateCronJob,
 } from "@renderer/lib/hermes-tauri";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Plus,
@@ -92,6 +92,8 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
   const [outputContent, setOutputContent] = useState("");
   const [outputLoading, setOutputLoading] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<string>("all");
+  const [pendingToggle, setPendingToggle] = useState<string | null>(null);
+  const pendingToggleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Create form state
   const [newName, setNewName] = useState("");
@@ -156,6 +158,20 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showCreate, confirmDelete, editingJob]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingToggleTimer.current) clearTimeout(pendingToggleTimer.current);
+    };
+  }, []);
+
+  function clearPendingToggle(): void {
+    if (pendingToggleTimer.current) {
+      clearTimeout(pendingToggleTimer.current);
+      pendingToggleTimer.current = null;
+    }
+    setPendingToggle(null);
+  }
 
   function resetForm(): void {
     setNewName("");
@@ -296,8 +312,19 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
     }
   }
 
-  async function handleToggle(job: CronJob): Promise<void> {
+  function requestToggle(job: CronJob): void {
     if (actionInProgress === job.id) return;
+    if (pendingToggle === job.id) {
+      clearPendingToggle();
+      executeToggle(job);
+    } else {
+      clearPendingToggle();
+      setPendingToggle(job.id);
+      pendingToggleTimer.current = setTimeout(() => setPendingToggle(null), 3000);
+    }
+  }
+
+  async function executeToggle(job: CronJob): Promise<void> {
     setActionInProgress(job.id);
     setError("");
     try {
@@ -787,16 +814,20 @@ function Schedules({ profile }: SchedulesProps): React.JSX.Element {
                   </span>
                   {job.state !== "completed" && (
                     <button
-                      className="btn-ghost schedules-action-btn"
+                      className={`btn-ghost schedules-action-btn ${pendingToggle === job.id ? "schedules-action-confirm" : ""}`}
                       data-tooltip={
-                        job.state === "paused"
-                          ? t("schedules.resume")
-                          : t("schedules.pause")
+                        pendingToggle === job.id
+                          ? t("schedules.clickToConfirm")
+                          : job.state === "paused"
+                            ? t("schedules.resume")
+                            : t("schedules.pause")
                       }
-                      onClick={(e) => { e.stopPropagation(); handleToggle(job); }}
+                      onClick={(e) => { e.stopPropagation(); requestToggle(job); }}
                       disabled={actionInProgress === job.id}
                     >
-                      {job.state === "paused" ? (
+                      {pendingToggle === job.id ? (
+                        <Alert size={14} />
+                      ) : job.state === "paused" ? (
                         <Play size={14} />
                       ) : (
                         <Pause size={14} />

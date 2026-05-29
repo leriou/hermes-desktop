@@ -1286,8 +1286,8 @@ export function tuiSessionBranch(
 ): Promise<any> {
   return invoke("tui_session_branch", { sessionId, name });
 }
-export function tuiCompleteSlash(prefix: string): Promise<any> {
-  return invoke("tui_complete_slash", { text: prefix });
+export function tuiCompleteSlash(sessionId: string, prefix: string): Promise<any> {
+  return invoke("tui_complete_slash", { sessionId, text: prefix });
 }
 export function tuiCommandsCatalog(): Promise<any> {
   return invoke("tui_commands_catalog");

@@ -335,45 +335,38 @@ pub async fn tui_submit_prompt(state: State<'_, AppState>, _app: AppHandle, sess
 
 #[command]
 pub async fn tui_interrupt(state: State<'_, AppState>, session_id: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.interrupt", json!({ "session_id": session_id })).await.map_err(|e| e.to_string())
 }
 
 #[command]
 pub async fn tui_undo(state: State<'_, AppState>, session_id: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.undo", json!({ "session_id": session_id })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_compress(state: State<'_, AppState>, session_id: String, focus_topic: Option<String>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.compress", json!({ "session_id": session_id, "focus_topic": focus_topic })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_set_goal(state: State<'_, AppState>, session_id: String, goal: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("slash.exec", json!({ "session_id": session_id, "command": format!("/goal {}", goal) })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_set_model(state: State<'_, AppState>, session_id: String, model: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("config.set", json!({ "session_id": session_id, "key": "model", "value": model })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_tools_list(state: State<'_, AppState>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("tools.list", json!({})).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_tools_show(state: State<'_, AppState>, name: Option<String>, session_id: Option<String>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     let mut args = json!({});
     if let Some(n) = name { args["name"] = json!(n); }
     if let Some(s) = session_id { args["session_id"] = json!(s); }
@@ -381,81 +374,73 @@ pub async fn tui_undo(state: State<'_, AppState>, session_id: String) -> Result<
 }
 
 #[command] pub async fn tui_tools_configure(state: State<'_, AppState>, name: String, enabled: bool, session_id: Option<String>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     let mut args = json!({ "name": name, "enabled": enabled });
     if let Some(s) = session_id { args["session_id"] = json!(s); }
     gw.call("tools.configure", args).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_session_status(state: State<'_, AppState>, session_id: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.status", json!({ "session_id": session_id })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_session_active_list(state: State<'_, AppState>, current_session_id: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.active_list", json!({ "current_session_id": current_session_id })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_session_usage(state: State<'_, AppState>, session_id: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.usage", json!({ "session_id": session_id })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_session_branch(state: State<'_, AppState>, session_id: String, name: Option<String>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.branch", json!({ "session_id": session_id, "name": name })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_slash_exec(state: State<'_, AppState>, session_id: String, command: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("slash.exec", json!({ "session_id": session_id, "command": command })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_complete_slash(state: State<'_, AppState>, session_id: String, text: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("complete.slash", json!({ "session_id": session_id, "text": text })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_commands_catalog(state: State<'_, AppState>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("commands.catalog", json!({})).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_approval_respond(state: State<'_, AppState>, session_id: String, response: String, all: Option<bool>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("approval.respond", json!({ "session_id": session_id, "choice": response, "all": all.unwrap_or(false) })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_clarify_respond(state: State<'_, AppState>, session_id: String, answer: String, request_id: Option<String>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("clarify.respond", json!({ "session_id": session_id, "answer": answer, "request_id": request_id })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_steer(state: State<'_, AppState>, session_id: String, text: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.steer", json!({ "session_id": session_id, "text": text })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn tui_session_title(state: State<'_, AppState>, session_id: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.title", json!({ "session_id": session_id })).await.map_err(|e| e.to_string())
 }
 
 #[command] pub async fn voice_tts(state: State<'_, AppState>, text: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("voice.tts", json!({ "text": text })).await.map_err(|e| e.to_string())
+}
+
+#[command] pub async fn tui_command_dispatch(state: State<'_, AppState>, session_id: String, name: String, arg: Option<String>) -> Result<Value, String> {
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
+    gw.call("command.dispatch", json!({ "session_id": session_id, "name": name, "arg": arg })).await.map_err(|e| e.to_string())
 }

@@ -48,6 +48,7 @@ export default {
   completed: "Selesai",
   resume: "Lanjutkan",
   pause: "Jeda",
+  clickToConfirm: "Click again to confirm",
   triggerNow: "Jalankan Sekarang",
   nextRun: "Berikutnya",
   lastRun: "Terakhir",

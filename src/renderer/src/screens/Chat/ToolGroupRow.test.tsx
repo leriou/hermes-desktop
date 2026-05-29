@@ -103,4 +103,37 @@ describe("ToolGroupRow", () => {
     expect(screen.getByText("bundling assets")).toBeInTheDocument();
     expect(screen.getByText("Raw")).toBeInTheDocument();
   });
+
+  it("uses gateway context as the visible fallback when verbose args are omitted", () => {
+    const singleGroup: ToolGroupMessage = {
+      id: "group-context",
+      kind: "tool_group",
+      role: "agent",
+      toolName: "shell",
+      calls: [
+        {
+          id: "call-context",
+          kind: "tool_call",
+          role: "agent",
+          callId: "call-context",
+          name: "shell",
+          args: "",
+          context: "npm run typecheck",
+          result: "{}",
+          success: true,
+        },
+      ],
+    };
+
+    render(<ToolGroupRow msg={singleGroup} />);
+
+    expect(screen.getByText("npm run typecheck")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "查看第 1 次 shell 调用详情" }),
+    );
+
+    expect(screen.getByText("Args")).toBeInTheDocument();
+    expect(screen.getAllByText("npm run typecheck").length).toBeGreaterThan(1);
+  });
 });

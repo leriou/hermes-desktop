@@ -53,6 +53,7 @@ export default {
   completed: "Completed",
   resume: "Resume",
   pause: "Pause",
+  clickToConfirm: "Click again to confirm",
   triggerNow: "Trigger Now",
   nextRun: "Next",
   lastRun: "Last",

@@ -49,6 +49,7 @@ export default {
   completed: "Completada",
   resume: "Reanudar",
   pause: "Pausar",
+  clickToConfirm: "Click again to confirm",
   triggerNow: "Ejecutar ahora",
   nextRun: "Siguiente",
   lastRun: "Última",

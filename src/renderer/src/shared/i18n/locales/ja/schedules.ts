@@ -48,6 +48,7 @@ export default {
   completed: "完了",
   resume: "再開",
   pause: "一時停止",
+  clickToConfirm: "Click again to confirm",
   triggerNow: "今すぐ実行",
   nextRun: "次回",
   lastRun: "前回",

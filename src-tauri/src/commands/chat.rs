@@ -13,8 +13,7 @@ pub async fn send_message(
     _attachments: Option<Value>,
     _context_folder: Option<String>
 ) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     
     let session_id = if let Some(sid) = resume_session_id {
         sid
@@ -30,8 +29,7 @@ pub async fn send_message(
 
 #[command]
 pub async fn abort_chat(state: State<'_, AppState>) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    let gw = gateway.as_ref().ok_or("Gateway not running")?;
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     if let Ok(recent) = gw.call("session.most_recent", json!({})).await {
         if let Some(sid) = recent.get("session_id").and_then(|v| v.as_str()) {
             let _ = gw.call("session.interrupt", json!({ "session_id": sid })).await;

@@ -58,7 +58,7 @@ describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
     });
 
     // Default tab is "stats"; switch to Browse so the bundled card renders.
-    const tabs = view.container.querySelectorAll(".skills-tab");
+    const tabs = view.container.querySelectorAll(".pill-tab");
     const browseTab = tabs[2] as HTMLButtonElement;
     expect(browseTab).toBeTruthy();
     await act(async () => {
@@ -120,7 +120,7 @@ describe("Skills.tsx — Install button (issue #310 diagnosis)", () => {
       expect(view.container.querySelector(".loading-spinner")).toBeNull();
     });
 
-    const tabs = view.container.querySelectorAll(".skills-tab");
+    const tabs = view.container.querySelectorAll(".pill-tab");
     const browseTab = tabs[2] as HTMLButtonElement;
     await act(async () => {
       fireEvent.click(browseTab);

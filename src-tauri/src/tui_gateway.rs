@@ -51,6 +51,7 @@ pub struct EventParams {
     pub event_type: String,
     #[serde(rename = "sid", alias = "session_id")]
     pub session_id: Option<String>,
+    #[serde(default)]
     pub payload: serde_json::Value,
 }
 
@@ -388,7 +389,7 @@ impl<R: Runtime> TuiGateway<R> {
         // Proactive watchdog for startup timeout
         let watchdog_gw = self.clone();
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(65)).await;
+            tokio::time::sleep(Duration::from_secs(15)).await;
             let status = { watchdog_gw.inner.lock().await.status };
             if status == GatewayStatus::Starting || status == GatewayStatus::Reconnecting {
                 log_error("gateway", "watchdog", "STALE state detected after 15s, forcing failure");

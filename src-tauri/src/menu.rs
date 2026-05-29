@@ -2,8 +2,8 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager};
 
 fn open_url(app: &AppHandle, url: &str) -> Result<(), String> {
-    use tauri_plugin_shell::ShellExt;
-    app.shell().open(url, None).map_err(|e| e.to_string())
+    use tauri_plugin_opener::OpenerExt;
+    app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
 }
 
 pub fn setup_menu(app: &AppHandle) -> tauri::Result<()> {

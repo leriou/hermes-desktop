@@ -680,6 +680,22 @@
   color: var(--error);
 }
 
+.schedules-action-confirm {
+  color: var(--warning, #e5a813) !important;
+  background: rgba(229, 168, 19, 0.12) !important;
+  animation: schedules-pulse 1s ease infinite;
+}
+
+@keyframes schedules-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.schedules-action-btn:active {
+  transform: scale(0.88);
+  transition: transform 0.1s ease;
+}
+
 .schedules-badge {
   font-size: 11px;
   font-weight: 600;

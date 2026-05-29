@@ -51,6 +51,7 @@ export default {
   completed: "已完成",
   resume: "继续",
   pause: "暂停",
+  clickToConfirm: "再次点击确认",
   triggerNow: "立即执行",
   nextRun: "下次",
   lastRun: "上次",

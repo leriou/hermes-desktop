@@ -27,6 +27,7 @@ function buildRawInspect(call: ToolCallMessage): string {
       callId: call.callId,
       name: call.name,
       args: call.args || "",
+      context: call.context,
       progress: call.progress,
       result: call.result,
       success: call.success,
@@ -131,7 +132,7 @@ function DetailModal({
           {call.fallbackWarning && (
             <DetailSection label="Warning" value={call.fallbackWarning} />
           )}
-          <DetailSection label="Args" value={call.args || ""} />
+          <DetailSection label="Args" value={call.args || call.context || ""} />
           {call.result !== undefined && (
             <DetailSection label="Result" value={call.result || ""} />
           )}
@@ -169,7 +170,13 @@ export function getFriendlyToolDescription(toolName: string, argsStr: string): {
     nameLower === "shell" ||
     nameLower.includes("shell")
   ) {
-    const cmd = argsObj.CommandLine || argsObj.command || argsObj.code || argsObj.cmd || "";
+    const cmd =
+      argsObj.CommandLine ||
+      argsObj.command ||
+      argsObj.code ||
+      argsObj.cmd ||
+      argsStr ||
+      "";
     return {
       icon: "💻",
       action: "Run command",
@@ -292,7 +299,7 @@ function SingleToolFootprint({
   const [showDetail, setShowDetail] = useState(false);
   const pending = call.result === undefined;
   
-  const desc = getFriendlyToolDescription(toolName, call.args || "");
+  const desc = getFriendlyToolDescription(toolName, call.args || call.context || "");
   const summary = desc.detail;
   const truncatedSummary =
     summary.length > 80 ? summary.slice(0, 80) + "…" : summary;
@@ -420,9 +427,11 @@ function ToolTable({
                 <td className="tool-group-td tool-group-td--num">{i + 1}</td>
                 {columns.map((col) => (
                   <td key={col.key} className="tool-group-td">
-                    {col.render
-                      ? col.render(args[col.key] ?? "")
-                      : String(args[col.key] ?? "")}
+                    {Object.keys(args).length === 0 && col.key === "context"
+                      ? call.context || ""
+                      : col.render
+                        ? col.render(args[col.key] ?? "")
+                        : String(args[col.key] ?? "")}
                   </td>
                 ))}
                 <td className="tool-group-td tool-group-td--status">
@@ -480,7 +489,9 @@ export const ToolGroupRow = memo(function ToolGroupRow({
   const columns = useMemo(() => {
     const custom = getColumnsForTool(msg.toolName);
     if (custom) return custom;
-    const firstArgs = msg.calls.find((c) => c.args)?.args || "";
+    const firstArgs =
+      msg.calls.find((c) => c.args)?.args ||
+      (msg.calls.some((c) => c.context) ? JSON.stringify({ context: "" }) : "");
     return fallbackColumns(firstArgs);
   }, [msg.toolName, msg.calls]);
 

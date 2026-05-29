@@ -42,6 +42,7 @@ pub fn run() {
     .plugin(tauri_plugin_log::Builder::default().build())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
+    .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_clipboard_manager::init())
     .plugin(tauri_plugin_window_state::Builder::default().build())
     .plugin(tauri_plugin_store::Builder::default().build())
@@ -162,7 +163,8 @@ pub fn run() {
         set_toolset_enabled, stage_attachment, start_gateway, start_install, 
         start_ssh_tunnel, stop_gateway, stop_ssh_tunnel, sync_session_cache, 
         test_remote_connection, test_ssh_connection, trigger_cron_job, 
-        tui_approval_respond, tui_clarify_respond, tui_commands_catalog, 
+        tui_approval_respond, tui_clarify_respond, tui_commands_catalog,
+        tui_command_dispatch,
         tui_complete_slash, tui_compress, tui_create_session, tui_interrupt, 
         tui_resume_session, tui_session_active_list, tui_session_branch, tui_session_history,
         tui_session_status, tui_session_title, tui_session_usage, tui_set_goal,

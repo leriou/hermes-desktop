@@ -46,6 +46,7 @@ export default {
   completed: "已完成",
   resume: "繼續",
   pause: "暫停",
+  clickToConfirm: "Click again to confirm",
   triggerNow: "立即執行",
   nextRun: "下次",
   lastRun: "上次",

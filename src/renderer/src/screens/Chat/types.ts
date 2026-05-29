@@ -38,6 +38,7 @@ export interface ToolCallMessage {
   callId: string;
   name: string;
   args: string;
+  context?: string;
   /** Filled by tool.complete — merges result into the same row */
   result?: string;
   success?: boolean;
