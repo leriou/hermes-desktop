@@ -57,7 +57,7 @@ function renderCompletedTables(text: string): string {
       i += 1;
     }
 
-    const isClosed = i < lines.length && lines[i].trim() === "";
+    const isClosed = i >= lines.length || lines[i].trim() === "";
     if (!isClosed || rows.length === 0) {
       out.push(...lines.slice(start, i));
       continue;
@@ -73,8 +73,10 @@ function renderCompletedTables(text: string): string {
         )
         .join("")}</tbody></table></div>`,
     );
-    out.push(lines[i]);
-    i += 1;
+    if (i < lines.length) {
+      out.push(lines[i]);
+      i += 1;
+    }
   }
 
   return out.join("\n");

@@ -89,6 +89,44 @@ export function groupToolCalls(messages: ChatMessage[]): ChatMessage[] {
   return result;
 }
 
+function mergeAgentTextsWithinTurns(messages: ChatMessage[]): ChatMessage[] {
+  const turns: ChatMessage[][] = [];
+  let currentTurn: ChatMessage[] = [];
+
+  for (const msg of messages) {
+    if (isBubble(msg) && msg.role === "user" && currentTurn.length > 0) {
+      turns.push(currentTurn);
+      currentTurn = [msg];
+    } else {
+      currentTurn.push(msg);
+    }
+  }
+  if (currentTurn.length > 0) turns.push(currentTurn);
+
+  return turns.flatMap((turn) => {
+    const agentTexts: ChatBubbleMessage[] = [];
+    for (const msg of turn) {
+      if (isBubble(msg) && msg.role === "agent") {
+        agentTexts.push(msg as ChatBubbleMessage);
+      }
+    }
+    if (agentTexts.length <= 1) return turn;
+
+    const merged: ChatBubbleMessage = {
+      ...agentTexts[agentTexts.length - 1],
+      content: agentTexts.map((t) => t.content).join("\n"),
+    };
+
+    const result: ChatMessage[] = [];
+    for (const msg of turn) {
+      if (isBubble(msg) && msg.role === "agent") continue;
+      result.push(msg);
+    }
+    result.push(merged);
+    return result;
+  });
+}
+
 export function buildRenderableTranscript({
   messages,
   isLoading,
@@ -97,11 +135,11 @@ export function buildRenderableTranscript({
   streamingReasoning = "",
   todos = [],
 }: BuildRenderableTranscriptArgs): RenderTranscriptItem[] {
-  const processed = groupToolCalls(mergeContinuationLabels(messages)).filter(
-    (m) => {
+  const processed = mergeAgentTextsWithinTurns(
+    groupToolCalls(mergeContinuationLabels(messages)).filter((m) => {
       if (!isBubble(m)) return true;
       return ((m.content as string) || "").trim().length > 0;
-    },
+    }),
   );
 
   const items: RenderTranscriptItem[] = [...processed];
@@ -218,7 +256,17 @@ function rewriteTurn(turn: ChatMessage[]): ChatMessage[] {
 
   if (tools.length === 0 && texts.length <= 1) return turn;
 
-  return [first, ...system, ...tools, ...reasoning, ...texts, ...other];
+  const mergedTexts =
+    texts.length > 1
+      ? [
+          {
+            ...texts[texts.length - 1],
+            content: texts.map((t) => (t as ChatBubbleMessage).content).join("\n"),
+          },
+        ]
+      : texts;
+
+  return [first, ...system, ...tools, ...reasoning, ...mergedTexts, ...other];
 }
 
 export function isReasoningItem(

@@ -210,6 +210,7 @@ export function useChatInbox({
   const stuckTimerRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const silentTimerRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const analyzingTimerRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const deltaIdleRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   function resetTurn(tabId: string): void {
     turnCompletedRef.current.delete(tabId);
@@ -223,6 +224,7 @@ export function useChatInbox({
     }
     clearSilentTimer(tabId);
     clearAnalyzingTimer(tabId);
+    clearDeltaIdle(tabId);
   }
 
   function clearStuckTimer(tabId: string): void {
@@ -254,7 +256,27 @@ export function useChatInbox({
   const STUCK_MAX_ATTEMPTS = 5;
   const SILENT_TIMEOUT_MS = 15_000;
   const ANALYZING_TIMEOUT_MS = 15_000;
+  const DELTA_IDLE_TIMEOUT_MS = 10_000;
   const stuckStartRef = useRef<Map<string, number>>(new Map());
+
+  function clearDeltaIdle(tabId: string): void {
+    const timer = deltaIdleRef.current.get(tabId);
+    if (timer) {
+      clearTimeout(timer);
+      deltaIdleRef.current.delete(tabId);
+    }
+  }
+
+  function scheduleDeltaIdle(tabId: string, sid?: string): void {
+    clearDeltaIdle(tabId);
+    deltaIdleRef.current.set(tabId, setTimeout(() => {
+      deltaIdleRef.current.delete(tabId);
+      const current = sessionsRef.current.get(tabId);
+      if (!current?.isLoading) return;
+      commitStreaming(tabId, sid);
+      updateTab(tabId, { isLoading: false, toolProgress: null });
+    }, DELTA_IDLE_TIMEOUT_MS));
+  }
 
   function finalizeStuckTurn(tabId: string, sid?: string, showWarning = true): void {
     const current = sessionsRef.current.get(tabId);
@@ -613,13 +635,14 @@ export function useChatInbox({
         case "message.delta": {
           const text = textFromPayload(payload);
           if (text) {
-            updateTab(tabId, { isLoading: true });
+            updateTab(tabId, { isLoading: true, toolProgress: null });
             pendingChunksRef.current.set(
               tabId,
               `${pendingChunksRef.current.get(tabId) ?? ""}${text}`,
             );
             scheduleFlush(tabId);
             scheduleStuckProbe(tabId, runtimeSid);
+            scheduleDeltaIdle(tabId, runtimeSid);
           }
           break;
         }
@@ -628,9 +651,11 @@ export function useChatInbox({
           clearStuckTimer(tabId);
           clearSilentTimer(tabId);
           clearAnalyzingTimer(tabId);
+          clearDeltaIdle(tabId);
           stuckStartRef.current.delete(tabId);
           if (turnCompletedRef.current.get(tabId)) {
-            break; // Duplicate terminal event — skip
+            updateTab(tabId, { isLoading: false, toolProgress: null });
+            break;
           }
           turnCompletedRef.current.set(tabId, true);
           const frame = flushFramesRef.current.get(tabId);
@@ -740,6 +765,7 @@ export function useChatInbox({
 
         case "tool.start":
           clearStuckTimer(tabId);
+          clearDeltaIdle(tabId);
           commitStreaming(tabId, runtimeSid);
           const toolId = stringField(payload, "tool_id");
           const toolName = stringField(payload, "name", "Tool");
@@ -890,6 +916,7 @@ export function useChatInbox({
 
         case "error":
           commitStreaming(tabId, runtimeSid);
+          clearDeltaIdle(tabId);
           resetTurn(tabId);
           const errorMessage = stringField(payload, "message");
           updateTabMessages(tabId, (prev) => [
@@ -953,7 +980,6 @@ export function useChatInbox({
           if (statusKind === "process" && statusText) {
             updateTab(tabId, { toolProgress: statusText });
           }
-          scheduleStuckProbe(tabId, runtimeSid);
           if (statusText && statusKind !== "process") {
             const current = sessionsRef.current.get(tabId);
             const tone =
@@ -1098,6 +1124,8 @@ export function useChatInbox({
       silentTimerRef.current.clear();
       for (const timer of analyzingTimerRef.current.values()) clearTimeout(timer);
       analyzingTimerRef.current.clear();
+      for (const timer of deltaIdleRef.current.values()) clearTimeout(timer);
+      deltaIdleRef.current.clear();
       if (typeof cleanup === "function") {
         cleanup();
       }
