@@ -52,7 +52,6 @@ import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
 
 const HomeScreen = lazy(() => import("../Home/Home"));
-const ModelControlScreen = lazy(() => import("../ModelControl/ModelControl"));
 const Agents = lazy(() => import("../Agents/Agents"));
 const Settings = lazy(() => import("../Settings/Settings"));
 const Skills = lazy(() => import("../Skills/Skills"));
@@ -61,10 +60,11 @@ const Persona = lazy(() => import("../Persona/Persona"));
 const Tools = lazy(() => import("../Tools/Tools"));
 const Gateway = lazy(() => import("../Gateway/Gateway"));
 const Models = lazy(() => import("../Models/Models"));
-const Providers = lazy(() => import("../Providers/Providers"));
+const ApiKeysTab = lazy(() => import("../Models/ApiKeysTab"));
+const ToolsKeysTab = lazy(() => import("../Models/ToolsKeysTab"));
+const RoutingTab = lazy(() => import("../Models/RoutingTab"));
 const Schedules = lazy(() => import("../Schedules/Schedules"));
 const ConfigEditor = lazy(() => import("../ConfigEditor/ConfigEditor"));
-const Routing = lazy(() => import("../Routing/Routing"));
 const Kanban = lazy(() => import("../Kanban/Kanban"));
 const Sessions = lazy(() => import("../Sessions/Sessions"));
 
@@ -96,21 +96,20 @@ function SubTabBar({ tabs, activeTab, onSelect, t }: { tabs: SubView[]; activeTa
 
 type PrimaryView = "home" | "chat" | "sessions" | "agents" | "modelControl" | "extensions" | "kanban" | "system";
 type SubView =
-  | "models" | "providers" | "routing" | "runtime" | "credentials"
-  | "skills" | "plugins" | "persona" | "tools" | "agents"
+  | "models" | "apikeys" | "toolkeys" | "routing"
+  | "skills" | "plugins" | "tools" | "persona" | "agents"
   | "schedules" | "gateway" | "config" | "settings" | "kanban";
 
 const SUB_TO_PRIMARY: Record<SubView, PrimaryView> = {
-  models: "modelControl", providers: "modelControl", routing: "modelControl",
-  runtime: "modelControl", credentials: "modelControl",
-  skills: "extensions", plugins: "extensions", persona: "agents", tools: "extensions", agents: "agents",
+  models: "modelControl", apikeys: "modelControl", toolkeys: "modelControl", routing: "modelControl",
+  skills: "extensions", plugins: "extensions", tools: "extensions", persona: "agents", agents: "agents",
   schedules: "system", gateway: "system", config: "system", settings: "system", kanban: "kanban",
 };
 
 const SUB_VIEWS: Record<string, SubView[]> = {
   extensions: ["skills", "plugins", "tools"],
   system: ["settings", "schedules", "gateway", "config"],
-  modelControl: ["runtime", "models", "providers", "routing", "credentials"],
+  modelControl: ["models", "apikeys", "toolkeys", "routing"],
   agents: ["persona", "agents"],
 };
 
@@ -410,9 +409,10 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
           <SubTabBar tabs={SUB_VIEWS.modelControl} activeTab={effectiveSub} onSelect={(id) => setActiveSubView(id)} t={t} />
           <div className="sub-tab-content">
             {effectiveSub === "models" ? <Suspense fallback={<TabSpinner />}><Models visible={true} profile={activeProfile} onNavigate={(v) => goTo(v)} /></Suspense>
-              : effectiveSub === "providers" ? (remoteMode ? <RemoteNotice feature="Providers" /> : <Suspense fallback={<TabSpinner />}><Providers profile={activeProfile} visible={true} /></Suspense>)
-              : effectiveSub === "routing" ? (remoteMode ? <RemoteNotice feature="Routing" /> : <Suspense fallback={<TabSpinner />}><Routing profile={activeProfile} /></Suspense>)
-              : <Suspense fallback={<TabSpinner />}><ModelControlScreen profile={activeProfile} activeTab={effectiveSub || "runtime"} /></Suspense>}
+              : effectiveSub === "apikeys" ? <Suspense fallback={<TabSpinner />}><ApiKeysTab profile={activeProfile} /></Suspense>
+              : effectiveSub === "toolkeys" ? <Suspense fallback={<TabSpinner />}><ToolsKeysTab profile={activeProfile} /></Suspense>
+              : effectiveSub === "routing" ? <Suspense fallback={<TabSpinner />}><RoutingTab profile={activeProfile} /></Suspense>
+              : <Suspense fallback={<TabSpinner />}><Models visible={true} profile={activeProfile} onNavigate={(v) => goTo(v)} /></Suspense>}
           </div>
         </div>)}
         {primaryView === "extensions" && (<div style={paneStyle}>

@@ -204,7 +204,7 @@ export function inferIcon(n: string): string {
   if (n.includes("todo") || n.includes("task")) return "☑️";
   if (n.includes("cron") || n.includes("schedule")) return "⏰";
   if (n.includes("delegate") || n.includes("subagent")) return "👥";
-  if (n.includes("list") || n.includes("skills")) return "📋";
+  if (n.includes("list") || n.includes("skills")) return "📚";
   if (n.includes("status") || n.includes("health") || n.includes("govern")) return "ℹ️";
   if (n.includes("snapshot") || n.includes("screen") || n.includes("browser")) return "📸";
   if (n.includes("analytics") || n.includes("dashboard")) return "📊";

@@ -1,8 +1,10 @@
 use serde_json::{json, Value};
 use tauri::{command, State, AppHandle};
 use crate::AppState;
-use std::fs;
+use crate::config_utils;
+use crate::model_store;
 use crate::python;
+use std::fs;
 #[command]
 pub async fn send_message(
     state: State<'_, AppState>,
@@ -69,15 +71,30 @@ pub async fn clear_staged_attachments(app: AppHandle, session_id: String) -> Res
 
 #[command]
 pub async fn discover_provider_models(
+    app: AppHandle,
     _state: State<'_, AppState>,
     provider: String,
     base_url: Option<String>,
     api_key: Option<String>,
-    _profile: Option<String>,
+    profile: Option<String>,
 ) -> Result<Value, String> {
     let api_key = match api_key {
         Some(k) if !k.is_empty() => k,
-        _ => return Ok(json!({ "models": [], "status": "no-key", "cached": false })),
+        _ => {
+            // No explicit key — look up from model store's apiKeyEnvVar, then read .env
+            let env_key = resolve_api_key_env(&provider, &app, &profile);
+            match env_key {
+                Some(key) if !key.is_empty() => {
+                    let env_path = python::get_hermes_home_with_profile(Some(&app), profile.clone()).join(".env");
+                    let env_map = config_utils::read_env(&env_path);
+                    match env_map.get(&key) {
+                        Some(v) if !v.is_empty() => v.clone(),
+                        _ => return Ok(json!({ "models": [], "status": "no-key", "cached": false })),
+                    }
+                }
+                _ => return Ok(json!({ "models": [], "status": "no-key", "cached": false })),
+            }
+        }
     };
 
     let url = resolve_models_url(&provider, base_url.as_deref());
@@ -113,6 +130,23 @@ pub async fn discover_provider_models(
 
     let models = extract_model_ids(&body);
     Ok(json!({ "models": models, "status": "ok", "cached": false }))
+}
+
+/// Look up the API key env var name for a provider.
+/// First checks the model store (user-registered providers carry `apiKeyEnvVar`),
+/// then falls back to the `<PROVIDER>_API_KEY` convention.
+fn resolve_api_key_env(provider: &str, app: &AppHandle, profile: &Option<String>) -> Option<String> {
+    // Try model store first
+    if let Ok(store) = model_store::read_model_store(Some(app), profile.clone()) {
+        for p in store.providers.values() {
+            if p.provider_key == provider && !p.api_key_env_var.is_empty() {
+                return Some(p.api_key_env_var.clone());
+            }
+        }
+    }
+    // Fallback: <PROVIDER>_API_KEY
+    let key = format!("{}_API_KEY", provider.to_uppercase());
+    Some(key)
 }
 
 fn resolve_models_url(provider: &str, base_url: Option<&str>) -> String {

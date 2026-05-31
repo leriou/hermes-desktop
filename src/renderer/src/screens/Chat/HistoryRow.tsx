@@ -35,7 +35,7 @@ export function getToolMeta(name: string): ToolMeta {
     return { icon: "\u{1F50E}", label: "ByteRover" };
   if (n.includes("mcp_zread")) return { icon: "\u{1F4DA}", label: "ZRead" };
   if (n === "skill_view" || n === "skill_manage")
-    return { icon: "\u{1F9E9}", label: "Skill" };
+    return { icon: "\u{1F4DA}", label: "Skill" };
   if (n === "web_extract" || n === "web_search" || n.includes("browse"))
     return { icon: "\u{1F310}", label: "Web" };
   if (n === "mcp_web_search_prime_web_search_prime")
