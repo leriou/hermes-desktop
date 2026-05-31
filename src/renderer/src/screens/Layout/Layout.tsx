@@ -156,7 +156,6 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
   useChatInbox({
     sessions: sessionManager.sessions, activeTabId, chatVisible: primaryView === "chat",
     findTabBySessionId: sessionManager.findTabBySessionId, updateTab: sessionManager.updateTab, updateTabMessages: sessionManager.updateTabMessages,
-    gatewayClient: wsClient,
   });
 
   const goTo = useCallback((v: string) => {

@@ -3,7 +3,6 @@ import {
   tuiSessionActiveList,
   tuiSessionStatus,
 } from "@renderer/lib/hermes-tauri";
-import type { WsGatewayClient } from "@renderer/lib/wsGatewayClient";
 import { useEffect, useRef } from "react";
 import type {
   ChatBubbleMessage,
@@ -71,7 +70,6 @@ interface UseChatInboxArgs {
     id: string,
     updater: (prev: ChatMessage[]) => ChatMessage[],
   ) => void;
-  gatewayClient?: WsGatewayClient;
 }
 
 const LIVE_EVENT_TYPES = new Set([
@@ -201,7 +199,6 @@ export function useChatInbox({
   findTabBySessionId,
   updateTab,
   updateTabMessages,
-  gatewayClient,
 }: UseChatInboxArgs): void {
   const sessionsRef = useRef(sessions);
   const activeTabIdRef = useRef(activeTabId);
@@ -1116,12 +1113,14 @@ export function useChatInbox({
       }
     }
 
-    // Subscribe to events via WS gateway client (preferred) or Tauri event listener (fallback)
-    const unsubscribe = gatewayClient
-      ? gatewayClient.onEvent(processEvent)
-      : onTuiEvent((rawEvent: RawTuiEvent) => {
-          processEvent(normalizeTuiEvent(rawEvent));
-        });
+    // Always subscribe to Tauri events as the reliable baseline.
+    // The WS client may not be connected (stdio mode, gateway not ready),
+    // so falling back to Tauri only when `gatewayClient` is falsy breaks
+    // event delivery.  WS is used for sending commands (interrupt, steer),
+    // but event listening goes through the always-available Tauri bridge.
+    const unsubscribe = onTuiEvent((rawEvent: RawTuiEvent) => {
+      processEvent(normalizeTuiEvent(rawEvent));
+    });
 
     return () => {
       flushFramesRef.current.clear();
@@ -1138,7 +1137,7 @@ export function useChatInbox({
         unsubscribe();
       }
     };
-  }, [findTabBySessionId, updateTab, updateTabMessages, gatewayClient]);
+  }, [findTabBySessionId, updateTab, updateTabMessages]);
 }
 
 function formatCompressingTitle(statusText: string): string {
