@@ -5,7 +5,7 @@ import { SubagentRow } from "./SubagentRow";
 import { ToolGroupRow, getFriendlyToolDescription } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
-import { buildRenderableTranscript } from "./renderTranscript";
+import { buildRenderableTranscript, stripHceCompaction } from "./renderTranscript";
 import { TodoPanel } from "../../components/common/TodoPanel";
 import { ChatEventRow } from "./ChatEventRow";
 import type {
@@ -289,11 +289,11 @@ export const MessageList = memo(function MessageList({
       {isLoading && todos.length > 0 && (
         <TodoPanel todos={todos} defaultCollapsed />
       )}
-      {isLoading && streamingText && (
+      {isLoading && streamingText && !streamingText.startsWith("[HCE COMPACTION") && (
         <div className="chat-message chat-message-agent">
           <HermesAvatar />
           <div className="chat-bubble chat-bubble-agent">
-            <StreamingMarkdown>{streamingText}</StreamingMarkdown>
+            <StreamingMarkdown>{stripHceCompaction(streamingText) || streamingText}</StreamingMarkdown>
           </div>
         </div>
       )}

@@ -126,6 +126,18 @@ function mergeAgentTextsWithinTurns(messages: ChatMessage[]): ChatMessage[] {
   });
 }
 
+export function isHceCompaction(m: ChatMessage): boolean {
+  if (!isBubble(m)) return false;
+  const content = (m.content as string) || "";
+  return content.startsWith("[HCE COMPACTION");
+}
+
+export function stripHceCompaction(text: string): string {
+  return text
+    .replace(/\[HCE COMPACTION[\s\S]*?--- END OF HCE CONTEXT CAPSULE---\s*/g, "")
+    .trim();
+}
+
 export function buildRenderableTranscript({
   messages,
   isLoading,
@@ -135,8 +147,10 @@ export function buildRenderableTranscript({
   todos = [],
 }: BuildRenderableTranscriptArgs): RenderTranscriptItem[] {
   // Drop reasoning messages — they break tool-call grouping.
-  // Live thinking is shown via the streamingReasoning prop instead.
-  const filtered = messages.filter((m) => kindOf(m) !== "reasoning");
+  // Drop HCE compaction messages — they are system-internal, not for display.
+  const filtered = messages.filter(
+    (m) => kindOf(m) !== "reasoning" && !isHceCompaction(m),
+  );
 
   const processed = mergeAgentTextsWithinTurns(
     groupToolCalls(mergeContinuationLabels(filtered)).filter((m) => {
