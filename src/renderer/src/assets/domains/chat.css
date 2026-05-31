@@ -2630,6 +2630,54 @@
     color 0.15s ease;
 }
 
+/* ── Compact call list (no-args tools) ─────────────────────────────── */
+
+.tool-compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tool-compact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.tool-compact-row:hover {
+  background: var(--bg-hover);
+}
+
+.tool-compact-row--pending {
+  background: var(--accent-subtle);
+}
+
+.tool-compact-row--fail {
+  background: var(--error-bg);
+}
+
+.tool-compact-num {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 20px;
+  text-align: center;
+}
+
+.tool-compact-status {
+  display: inline-flex;
+  align-items: center;
+  min-width: 16px;
+}
+
+.tool-compact-duration {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
 .tool-group-detail-btn:hover,
 .tool-group-detail-btn:focus-visible {
   background: var(--surface-hover);

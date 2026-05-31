@@ -34,7 +34,7 @@ describe("ApprovalModal", () => {
     ).toContain("--project");
 
     fireEvent.click(
-      container.querySelector(".chat-approval-approve") as HTMLButtonElement,
+      container.querySelector(".btn-primary") as HTMLButtonElement,
     );
     expect(onDecision).toHaveBeenCalledWith("approve", "manual");
   });

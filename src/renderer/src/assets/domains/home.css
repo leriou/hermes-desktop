@@ -1,16 +1,16 @@
-.home-container { display: flex; flex-direction: column; gap: 24px; padding: 48px 40px; max-width: 860px; margin: 0 auto; width: 100%; }
+.home-container { display: flex; flex-direction: column; gap: 20px; padding: 32px; max-width: 860px; margin: 0 auto; width: 100%; }
 .home-header { display: flex; align-items: center; justify-content: space-between; }
 .home-title-row { display: flex; align-items: center; gap: 12px; }
 .home-title { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
 .home-error-banner { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 10px; background: var(--error-bg); color: var(--error); font-size: 15px; }
 .home-health-strip { display: flex; gap: 12px; flex-wrap: wrap; }
-.home-health-card { padding: 14px 18px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-soft); box-shadow: var(--shadow-card-soft); flex: 1; min-width: 140px; }
+.home-health-card { padding: 14px 16px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-soft); box-shadow: var(--shadow-card-soft); flex: 1; min-width: 140px; }
 .home-health-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .home-health-card-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
 .home-health-card-icon { color: var(--text-muted); }
 .home-health-card-value { font-size: 18px; font-weight: 600; }
 .home-health-card-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.home-section { padding: 16px 20px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-soft); box-shadow: var(--shadow-card-soft); }
+.home-section { padding: 16px 18px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-soft); box-shadow: var(--shadow-card-soft); }
 .home-section-title { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
 .home-mcp-warnings { display: flex; flex-direction: column; gap: 8px; }
 .home-mcp-warning-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
@@ -19,7 +19,7 @@
 .home-mcp-server-detail { color: var(--text-muted); }
 .home-latest-error code { font-size: 13px; word-break: break-all; }
 .home-actions { display: flex; gap: 12px; }
-.home-action-card { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-soft); box-shadow: var(--shadow-card-soft); cursor: pointer; text-align: left; color: inherit; font-family: var(--font-sans); flex: 1; transition: all var(--transition); }
+.home-action-card { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-soft); box-shadow: var(--shadow-card-soft); cursor: pointer; text-align: left; color: inherit; font-family: var(--font-sans); flex: 1; transition: all var(--transition); }
 .home-action-card:hover { background: var(--surface-hover); box-shadow: none; transform: translateY(-1px); }
 .home-action-main { display: flex; align-items: center; gap: 14px; }
 .home-action-title { font-size: 16px; font-weight: 600; margin-bottom: 2px; }

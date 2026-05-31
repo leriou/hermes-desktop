@@ -204,6 +204,14 @@ export function inferIcon(n: string): string {
   if (n.includes("todo") || n.includes("task")) return "☑️";
   if (n.includes("cron") || n.includes("schedule")) return "⏰";
   if (n.includes("delegate") || n.includes("subagent")) return "👥";
+  if (n.includes("list") || n.includes("skills")) return "📋";
+  if (n.includes("status") || n.includes("health") || n.includes("govern")) return "ℹ️";
+  if (n.includes("snapshot") || n.includes("screen") || n.includes("browser")) return "📸";
+  if (n.includes("analytics") || n.includes("dashboard")) return "📊";
+  if (n.includes("review") || n.includes("audit") || n.includes("council")) return "🔎";
+  if (n.includes("relay") || n.includes("proxy")) return "🔗";
+  if (n.includes("session") || n.includes("history")) return "📂";
+  if (n.includes("clear") || n.includes("reset") || n.includes("purge")) return "🗑️";
   return "🔧";
 }
 
@@ -212,6 +220,18 @@ export interface ToolDescription {
   action: string;
   detail: string;
   kind: "code" | "path" | "text";
+}
+
+function inferVerbAction(nameLower: string, formatted: string): string {
+  if (nameLower.includes("list")) return `Listing ${formatted}`;
+  if (nameLower.includes("status") || nameLower.includes("health")) return `Checking ${formatted}`;
+  if (nameLower.includes("snapshot")) return `Taking ${formatted}`;
+  if (nameLower.includes("analytics")) return `Analyzing via ${formatted}`;
+  if (nameLower.includes("search")) return `Searching via ${formatted}`;
+  if (nameLower.includes("clear") || nameLower.includes("reset") || nameLower.includes("purge")) return `Clearing ${formatted}`;
+  if (nameLower.includes("back")) return `Going back`;
+  if (nameLower.includes("review") || nameLower.includes("audit")) return `Reviewing via ${formatted}`;
+  return formatted;
 }
 
 export function getFriendlyToolDescription(
@@ -320,6 +340,18 @@ export function getFriendlyToolDescription(
   const truncatedTarget =
     target.length > 60 ? target.slice(0, 57) + "…" : target;
 
+  // For empty-args tools, derive a verb phrase from the tool name
+  const emptyArgs = !target && !actionType && Object.keys(argsObj).length === 0;
+  if (emptyArgs) {
+    const verbAction = inferVerbAction(nameLower, formatted);
+    return {
+      icon: inferIcon(nameLower),
+      action: verbAction,
+      detail: "",
+      kind: "text" as const,
+    };
+  }
+
   return {
     icon: inferIcon(nameLower),
     action: actionType ? `${formatted} · ${actionType}` : formatted,
@@ -415,6 +447,65 @@ function SingleToolFootprint({
           call={call}
           index={0}
           onClose={() => setShowDetail(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Compact call list (no-args tools) ─────────────────────────────── */
+
+function CompactCallList({
+  calls,
+}: {
+  calls: ToolCallMessage[];
+}): React.JSX.Element {
+  const [detailIdx, setDetailIdx] = useState<number | null>(null);
+
+  return (
+    <div className="tool-compact-list">
+      {calls.map((call, i) => {
+        const pending = call.result === undefined;
+        return (
+          <div
+            key={call.callId || i}
+            className={`tool-compact-row ${
+              pending
+                ? "tool-compact-row--pending"
+                : call.success === false
+                  ? "tool-compact-row--fail"
+                  : "tool-compact-row--ok"
+            }`}
+          >
+            <span className="tool-compact-num">{i + 1}</span>
+            <span className="tool-compact-status">
+              {pending ? (
+                <span className="chat-tool-pending">running…</span>
+              ) : call.success === false ? (
+                <span className="chat-tool-fail">✗</span>
+              ) : (
+                <span className="chat-tool-ok">✓</span>
+              )}
+            </span>
+            {call.durationS !== undefined && (
+              <span className="tool-compact-duration">{call.durationS.toFixed(1)}s</span>
+            )}
+            <button
+              className="tool-group-detail-btn"
+              onClick={() => setDetailIdx(i)}
+              aria-label={`查看第 ${i + 1} 次调用详情`}
+              title="查看详情"
+            >
+              <ClipboardList size={14} />
+            </button>
+          </div>
+        );
+      })}
+      {detailIdx !== null && (
+        <DetailModal
+          call={calls[detailIdx]}
+          index={detailIdx}
+          onClose={() => setDetailIdx(null)}
         />
       )}
     </div>
@@ -584,7 +675,11 @@ export const ToolGroupRow = memo(function ToolGroupRow({
           </span>
         </summary>
         <div className="chat-history-body">
-          <ToolTable calls={msg.calls} columns={columns} />
+          {columns.length > 0 ? (
+            <ToolTable calls={msg.calls} columns={columns} />
+          ) : (
+            <CompactCallList calls={msg.calls} />
+          )}
         </div>
       </details>
     </div>

@@ -165,7 +165,7 @@ describe("Chat command wiring", () => {
     expect(view.container.querySelector(".chat-approval-inline-card")).not.toBeNull();
 
     const approveButton = view.container.querySelector(
-      ".chat-approval-approve",
+      ".btn-primary",
     ) as HTMLButtonElement;
     await act(async () => {
       fireEvent.click(approveButton);
