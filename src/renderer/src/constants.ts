@@ -2,17 +2,6 @@
 export { ALL_CATEGORIES, CATEGORY_META } from "./lib/model-types";
 export type { BusinessCategory } from "./lib/model-types";
 
-export const BUSINESS_CATEGORIES = {
-  general: { key: "general", labelKey: "models.categories.general" },
-  coding: { key: "coding", labelKey: "models.categories.coding" },
-  analysis: { key: "analysis", labelKey: "models.categories.analysis" },
-  creative: { key: "creative", labelKey: "models.categories.creative" },
-  reasoning: { key: "reasoning", labelKey: "models.categories.reasoning" },
-  "fast-mode": { key: "fast-mode", labelKey: "models.categories.fastMode" },
-  vision: { key: "vision", labelKey: "models.categories.vision" },
-  voice: { key: "voice", labelKey: "models.categories.voice" },
-} as const;
-
 // ── Shared Types ────────────────────────────────────────
 
 export interface FieldDef {
@@ -899,14 +888,8 @@ export const GATEWAY_PLATFORMS: PlatformDef[] = [
 
 // ── Install ─────────────────────────────────────────────
 
-export const UNIX_INSTALL_CMD =
+const UNIX_INSTALL_CMD =
   "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash";
-export const INSTALL_CMD_UNIX = UNIX_INSTALL_CMD;
-export const WINDOWS_INSTALL_CMD =
-  "powershell -NoProfile -ExecutionPolicy Bypass -c \"$hermesHome = Join-Path $env:USERPROFILE '.hermes'; $installDir = Join-Path $hermesHome 'hermes-agent'; $installer = [ScriptBlock]::Create((irm https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.ps1 -UseBasicParsing)); & $installer -SkipSetup -HermesHome $hermesHome -InstallDir $installDir\"";
-export const INSTALL_CMD = UNIX_INSTALL_CMD;
-
-export const INSTALL_CMD_WIN = WINDOWS_INSTALL_CMD;
 
 export function getInstallCmd(): string {
   return UNIX_INSTALL_CMD;

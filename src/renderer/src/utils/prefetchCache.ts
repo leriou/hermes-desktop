@@ -159,21 +159,3 @@ export const cache = {
   },
 };
 
-/**
- * Hook-friendly helper: returns a stable function that fetches with cache.
- * Invalidates automatically after a mutation.
- *
- * Usage:
- *   const loadModels = useCachedLoader("models", 30_000, () => api.listModels());
- *   // In useEffect:
- *   const data = await loadModels();
- *   // After mutation:
- *   cache.invalidate("models");
- */
-export function cachedLoader<T>(
-  key: string,
-  ttlMs: number,
-  fetcher: () => Promise<T>,
-): () => Promise<T> {
-  return () => cache.getOrFetch(key, ttlMs, fetcher);
-}

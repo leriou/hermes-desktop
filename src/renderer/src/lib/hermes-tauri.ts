@@ -1241,14 +1241,6 @@ export function writeConfigYaml(
   return invoke("write_config_yaml", { content, profile });
 }
 
-// TUI Gateway WebSocket
-export function getGatewayWsPort(): Promise<{
-  port: number;
-  host: string;
-} | null> {
-  return invoke("get_gateway_ws_port");
-}
-
 // TUI Gateway
 export function tuiSlashExec(sessionId: string, command: string): Promise<any> {
   return invoke("tui_slash_exec", { sessionId, command });

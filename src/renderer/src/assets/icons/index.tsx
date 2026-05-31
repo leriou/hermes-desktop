@@ -1,8 +1,6 @@
 export {
   ArrowRight,
   Bot,
-  Brain,
-  Building,
   ChevronDown,
   ChevronUp,
   ChevronRight,
@@ -12,10 +10,8 @@ export {
   ExternalLink,
   KeyRound,
   Layers,
-  Monitor,
   Moon,
   Plus,
-  Puzzle,
   Search,
   Send,
   Settings,
@@ -24,10 +20,8 @@ export {
   Sun,
   Timer,
   Users,
-  Wrench,
   X,
   Save,
-  Eye,
 } from "lucide-react";
 
 export { RefreshCw as Refresh } from "lucide-react";

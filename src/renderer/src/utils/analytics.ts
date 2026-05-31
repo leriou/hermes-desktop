@@ -81,13 +81,6 @@ export function captureScreenView(screen: string): void {
   capture("screen_view", { screen });
 }
 
-export function captureFeatureUsage(
-  feature: string,
-  details?: Record<string, unknown>,
-): void {
-  capture("feature_used", { feature, ...details });
-}
-
 export function getAnalyticsConsent(): boolean {
   return isAnalyticsEnabled();
 }
@@ -107,13 +100,5 @@ export function setAnalyticsConsent(enabled: boolean): void {
     } catch {
       // ignore
     }
-  }
-}
-
-export function resetAnalytics(): void {
-  try {
-    posthog.reset();
-  } catch {
-    // ignore
   }
 }
