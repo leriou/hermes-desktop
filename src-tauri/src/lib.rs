@@ -5,11 +5,14 @@ mod profiles;
 mod memory;
 mod session_utils;
 mod skill_utils;
+mod sqlite_utils;
 mod config_utils;
 mod ssh_tunnel;
 mod cron_utils;
 mod soul_utils;
 mod model_utils;
+mod model_store;
+mod model_translation;
 mod menu;
 mod voice_input;
 
@@ -135,10 +138,10 @@ pub fn run() {
     })
     .invoke_handler(tauri::generate_handler![
         abort_chat, add_memory_entry, add_model, adopt_hermes_home, cancel_oauth_login, 
-        check_for_updates, check_install, clear_staged_attachments, copy_diagnostics, copy_to_clipboard,
-        create_cron_job, create_profile, delete_profile, delete_session, delete_session_chain, 
+        check_for_updates, check_install, check_needs_migration, clear_staged_attachments, copy_diagnostics, copy_to_clipboard,
+        create_cron_job, create_profile, delete_model, delete_profile, delete_session, delete_session_chain, 
         discover_memory_providers, discover_provider_models, download_update, 
-        gateway_status, get_build_info, runtime_health, home_health_summary, get_app_version, get_config, get_connection_config,
+        gateway_status, get_build_info, get_gateway_ws_port, runtime_health, home_health_summary, get_app_version, get_config, get_connection_config,
         get_credential_pool, get_env, get_hermes_home, get_hermes_version, get_locale, 
         get_model_aliases, get_model_config, get_platform_enabled, get_plugins,
         get_routing_config, 
@@ -152,13 +155,13 @@ pub fn run() {
         kanban_unblock_task, list_bundled_skills, list_cached_sessions, list_cron_history, 
         list_cron_jobs, list_installed_skills, list_mcp_servers, list_models, 
         list_profiles, list_sessions, list_templates, oauth_login, open_external, 
-        pause_cron_job, quit_app, read_config_yaml, read_cron_output, read_logs, 
-        read_memory, read_soul, refresh_hermes_version, remove_cron_job, 
+        pause_cron_job, quit_app, read_config_yaml, read_cron_output, read_logs, read_model_store, 
+        read_memory, read_soul, refresh_hermes_version, register_provider, remove_cron_job, 
         remove_memory_entry, remove_model, reset_soul, resume_cron_job, 
         run_hermes_backup, run_hermes_doctor, run_hermes_dump, run_hermes_import, 
-        run_hermes_update, search_sessions, select_folder, select_hermes_folder, 
+        run_hermes_update, run_model_migration, save_model, search_sessions, select_folder, select_hermes_folder, 
         send_message, set_active_profile, set_config, set_connection_config, 
-        set_credential_pool, set_env, set_locale, set_model_config, 
+        set_credential_pool, set_env, set_locale, set_model_config, set_routing_config, 
         set_platform_enabled, set_plugin_enabled, set_ssh_config, 
         set_toolset_enabled, stage_attachment, start_gateway, start_install, 
         start_ssh_tunnel, stop_gateway, stop_ssh_tunnel, sync_session_cache, 
@@ -170,10 +173,10 @@ pub fn run() {
         tui_session_status, tui_session_title, tui_session_usage, tui_set_goal,
         tui_set_model, tui_slash_exec, tui_steer, tui_submit_prompt, 
         tui_tools_configure, tui_tools_list, tui_tools_show, tui_undo, 
-        uninstall_skill, update_cron_job, update_memory_entry, update_model, 
+        uninstall_skill, unregister_provider, update_cron_job, update_memory_entry, update_model, 
         update_session_title, validate_hermes_home, verify_install, voice_tts,
         voice_model_status, voice_download_model, voice_start, voice_stop, 
-        write_config_yaml, write_memory, write_soul, write_user_profile
+        write_config_yaml, write_memory, write_model_store, write_soul, write_user_profile
     ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")

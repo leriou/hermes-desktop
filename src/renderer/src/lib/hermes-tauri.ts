@@ -1150,13 +1150,79 @@ export function readLogs(
   return invoke("read_logs", { logFile, lines });
 }
 
+import type {
+  ModelConfigStore,
+  ClientProvider,
+  ClientModel,
+  RegisterProviderInput,
+  SaveModelInput,
+  RoutingConfig,
+} from "./model-types";
+
+// ── Model Store (new desktop-models.json based) ──
+
+/** Check if legacy config.yaml models exist that need migration to desktop-models.json */
+export function checkNeedsMigration(profile?: string): Promise<{
+  needsMigration: boolean;
+  legacyModelCount: number;
+  providerCount: number;
+}> {
+  return invoke("check_needs_migration", { profile });
+}
+
+/** Run migration from legacy config.yaml to desktop-models.json format */
+export function runModelMigration(profile?: string): Promise<ModelConfigStore> {
+  return invoke("run_model_migration", { profile });
+}
+
+/** Load the full model store from desktop-models.json, merged with config.yaml */
+export function readModelStore(profile?: string): Promise<ModelConfigStore> {
+  return invoke("read_model_store", { profile });
+}
+
+/** Save the full model store to desktop-models.json and sync to config.yaml */
+export function writeModelStore(
+  store: ModelConfigStore,
+  profile?: string,
+): Promise<ModelConfigStore> {
+  return invoke("write_model_store", { store, profile });
+}
+
+/** Register a new provider (saves to store + writes API key to .env) */
+export function registerProvider(
+  input: RegisterProviderInput,
+  profile?: string,
+): Promise<ClientProvider> {
+  return invoke("register_provider", { input, profile });
+}
+
+/** Unregister a provider and delete all its models */
+export function unregisterProvider(
+  providerId: string,
+  profile?: string,
+): Promise<boolean> {
+  return invoke("unregister_provider", { providerId, profile });
+}
+
+/** Create or update a ClientModel, sync to config.yaml */
+export function saveModel(
+  input: SaveModelInput,
+  profile?: string,
+): Promise<ClientModel> {
+  return invoke("save_model", { input, profile });
+}
+
+/** Delete a ClientModel from store + config.yaml */
+export function deleteModel(
+  modelId: string,
+  providerId: string,
+  profile?: string,
+): Promise<boolean> {
+  return invoke("delete_model", { modelId, providerId, profile });
+}
+
 export function setRoutingConfig(
-  data: {
-    defaultModel?: string;
-    defaultProvider?: string;
-    defaultBaseUrl?: string;
-    fallbacks?: Array<{ model: string; provider: string }>;
-  },
+  data: RoutingConfig,
   profile?: string,
 ): Promise<boolean> {
   return invoke("set_routing_config", { data, profile });
@@ -1173,6 +1239,14 @@ export function writeConfigYaml(
   profile?: string,
 ): Promise<boolean> {
   return invoke("write_config_yaml", { content, profile });
+}
+
+// TUI Gateway WebSocket
+export function getGatewayWsPort(): Promise<{
+  port: number;
+  host: string;
+} | null> {
+  return invoke("get_gateway_ws_port");
 }
 
 // TUI Gateway

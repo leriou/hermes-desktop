@@ -1923,21 +1923,75 @@
   max-width: var(--chat-column-width, 880px);
 }
 
-.chat-input-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.chat-input-pill {
   background: var(--surface-composer);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-composer);
-  padding: 4px 6px 4px 16px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: var(--shadow-composer);
+  border-radius: 16px;
+  padding: 8px 12px 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  border: none;
+  transition: box-shadow 0.2s ease;
 }
 
-.chat-input-wrapper:focus-within {
-  border-color: var(--border-focus);
+.chat-input-pill:focus-within {
   box-shadow: var(--shadow-float-soft);
+}
+
+.chat-input-textarea-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.chat-input-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 2px;
+  gap: 8px;
+}
+
+.chat-input-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-input-toolbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.chat-input-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-input-pill .chat-model-bar {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.chat-input-pill .chat-status-inline {
+  margin-left: 0;
+}
+
+.chat-input-pill .chat-attachment-strip {
+  background: transparent;
+  border: none;
+  padding: 0 0 4px;
+  margin-bottom: 0;
+}
+
+.chat-input-pill .chat-clarify-bar {
+  margin: 0 0 4px;
+  background: transparent;
+  border: none;
 }
 
 .chat-input {
@@ -3595,12 +3649,6 @@
 }
 
 /* Model picker */
-.chat-bottom-bar {
-  display: flex;
-  align-items: center;
-  margin-top: 6px;
-}
-
 .chat-model-bar {
   position: relative;
   display: flex;
@@ -3984,3 +4032,6 @@
 .chat-event-title { font-weight: 500; color: var(--text-secondary); }
 .chat-event-content { color: var(--text-muted); margin-left: 4px; }
 .chat-event-code { font-size: 11px; color: var(--text-muted); margin-left: 4px; padding: 1px 5px; border-radius: 3px; background: var(--code-bg); font-family: var(--font-mono); }
+
+/* ── Streaming markdown tail ── */
+.streaming-tail { color: var(--text-secondary); opacity: 0.85; }

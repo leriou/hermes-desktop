@@ -47,6 +47,8 @@ interface ChatInputProps {
   onQuickAsk: (text: string, attachments: Attachment[]) => void;
   onAbort: () => void;
   onVoiceTranscript?: (text: string) => void;
+  modelPicker?: React.ReactNode;
+  statusBar?: React.ReactNode;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
@@ -61,6 +63,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       onQuickAsk,
       onAbort,
       onVoiceTranscript,
+      modelPicker,
+      statusBar,
     },
     ref,
   ): React.JSX.Element {
@@ -467,49 +471,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             </div>
           </div>
         )}
-        {(attachments.length > 0 || attachmentError) && (
-          <div className="chat-attachment-strip">
-            {attachments.map((att) => (
-              <AttachmentChip
-                key={att.id}
-                attachment={att}
-                onRemove={() => removeAttachment(att.id)}
-              />
-            ))}
-            {attachmentError && (
-              <div className="chat-attachment-error" role="alert">
-                {attachmentError}
-              </div>
-            )}
-          </div>
-        )}
-        {pendingClarify && (
-          <div className="chat-clarify-bar">
-            <div className="chat-clarify-question">
-              {pendingClarify.question}
-            </div>
-            {pendingClarify.choices && pendingClarify.choices.length > 0 && (
-              <div className="chat-clarify-choices">
-                {pendingClarify.choices.map((choice) => (
-                  <button
-                    key={choice}
-                    className="chat-clarify-choice"
-                    onClick={() => {
-                      setInput(choice);
-                      requestAnimationFrame(() => {
-                        autoResize();
-                        inputRef.current?.focus();
-                      });
-                    }}
-                  >
-                    {choice}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <div className="chat-input-wrapper">
+        <div className="chat-input-pill">
           <input
             ref={fileInputRef}
             type="file"
@@ -517,89 +479,141 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             style={{ display: "none" }}
             onChange={handleFileInputChange}
           />
-          <button
-            className="chat-attach-btn"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
-            title={t("chat.attach")}
-            aria-label={t("chat.attach")}
-            type="button"
-          >
-            <Paperclip size={16} />
-          </button>
-          {voicePhase !== "idle" ? (
-            <button
-              className={`chat-voice-btn ${voicePhase === "recording" ? "chat-voice-btn-active" : ""}`}
-              onClick={handleVoiceToggle}
-              disabled={voicePhase === "downloading" || voicePhase === "transcribing"}
-              title={
-                voicePhase === "downloading"
-                  ? t("chat.voiceDownloading", { percent: voiceDownloadPct })
-                  : voicePhase === "recording"
-                    ? t("chat.voiceStop")
-                    : t("chat.voiceTranscribing")
-              }
-              type="button"
-            >
-              {voicePhase === "recording" ? <MicOff size={16} /> : <Mic size={16} />}
-              {voicePhase === "downloading" && (
-                <span className="chat-voice-pct">{voiceDownloadPct}%</span>
+          {(attachments.length > 0 || attachmentError) && (
+            <div className="chat-attachment-strip">
+              {attachments.map((att) => (
+                <AttachmentChip
+                  key={att.id}
+                  attachment={att}
+                  onRemove={() => removeAttachment(att.id)}
+                />
+              ))}
+              {attachmentError && (
+                <div className="chat-attachment-error" role="alert">
+                  {attachmentError}
+                </div>
               )}
-              {voicePhase === "recording" && <span className="chat-voice-pulse" />}
-              {voicePhase === "transcribing" && <span className="chat-voice-loading" />}
-            </button>
-          ) : (
-            <button
-              className="chat-voice-btn"
-              onClick={handleVoiceToggle}
-              title={t("chat.voiceStart")}
-              type="button"
-            >
-              <Mic size={16} />
-            </button>
+            </div>
           )}
-          <textarea
-            ref={inputRef}
-            className="chat-input"
-            placeholder={
-              pendingClarify ? t("chat.answerClarify") : t("chat.typeMessage")
-            }
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            rows={1}
-            autoFocus
-          />
-          {isLoading ? (
-            <button
-              className="chat-send-btn chat-stop-btn"
-              onClick={onAbort}
-              title={t("common.stop")}
-            >
-              <Stop size={14} />
-            </button>
-          ) : (
-            <>
-              {input.trim() && hasSession && (
+          {pendingClarify && (
+            <div className="chat-clarify-bar">
+              <div className="chat-clarify-question">
+                {pendingClarify.question}
+              </div>
+              {pendingClarify.choices && pendingClarify.choices.length > 0 && (
+                <div className="chat-clarify-choices">
+                  {pendingClarify.choices.map((choice) => (
+                    <button
+                      key={choice}
+                      className="chat-clarify-choice"
+                      onClick={() => {
+                        setInput(choice);
+                        requestAnimationFrame(() => {
+                          autoResize();
+                          inputRef.current?.focus();
+                        });
+                      }}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="chat-input-textarea-row">
+            <textarea
+              ref={inputRef}
+              className="chat-input"
+              placeholder={
+                pendingClarify ? t("chat.answerClarify") : t("chat.typeMessage")
+              }
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              rows={1}
+              autoFocus
+            />
+            {input.trim() && hasSession && (
+              <button
+                className="chat-btw-btn"
+                onClick={handleQuickAsk}
+                title={t("chat.quickAskTitle")}
+              >
+                💭
+              </button>
+            )}
+          </div>
+          <div className="chat-input-toolbar-row">
+            <div className="chat-input-toolbar-left">
+              <button
+                className="chat-attach-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                title={t("chat.attach")}
+                aria-label={t("chat.attach")}
+                type="button"
+              >
+                <Paperclip size={16} />
+              </button>
+              {modelPicker}
+            </div>
+            <div className="chat-input-toolbar-center">
+              {statusBar}
+            </div>
+            <div className="chat-input-toolbar-right">
+              {voicePhase !== "idle" ? (
                 <button
-                  className="chat-btw-btn"
-                  onClick={handleQuickAsk}
-                  title={t("chat.quickAskTitle")}
+                  className={`chat-voice-btn ${voicePhase === "recording" ? "chat-voice-btn-active" : ""}`}
+                  onClick={handleVoiceToggle}
+                  disabled={voicePhase === "downloading" || voicePhase === "transcribing"}
+                  title={
+                    voicePhase === "downloading"
+                      ? t("chat.voiceDownloading", { percent: voiceDownloadPct })
+                      : voicePhase === "recording"
+                        ? t("chat.voiceStop")
+                        : t("chat.voiceTranscribing")
+                  }
+                  type="button"
                 >
-                  💭
+                  {voicePhase === "recording" ? <MicOff size={16} /> : <Mic size={16} />}
+                  {voicePhase === "downloading" && (
+                    <span className="chat-voice-pct">{voiceDownloadPct}%</span>
+                  )}
+                  {voicePhase === "recording" && <span className="chat-voice-pulse" />}
+                  {voicePhase === "transcribing" && <span className="chat-voice-loading" />}
+                </button>
+              ) : (
+                <button
+                  className="chat-voice-btn"
+                  onClick={handleVoiceToggle}
+                  title={t("chat.voiceStart")}
+                  type="button"
+                >
+                  <Mic size={16} />
                 </button>
               )}
-              <button
-                className="chat-send-btn"
-                onClick={handleSend}
-                disabled={!canSend}
-                title={t("chat.send")}
-              >
-                <Send size={16} />
-              </button>
-            </>
-          )}
+              {isLoading ? (
+                <button
+                  className="chat-send-btn chat-stop-btn"
+                  onClick={onAbort}
+                  title={t("common.stop")}
+                >
+                  <Stop size={14} />
+                </button>
+              ) : (
+                <button
+                  className="chat-send-btn"
+                  onClick={handleSend}
+                  disabled={!canSend}
+                  title={t("chat.send")}
+                >
+                  <Send size={16} />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </>
     );

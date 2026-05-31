@@ -444,3 +444,16 @@ pub async fn tui_undo(state: State<'_, AppState>, session_id: String) -> Result<
     let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("command.dispatch", json!({ "session_id": session_id, "name": name, "arg": arg })).await.map_err(|e| e.to_string())
 }
+
+#[command]
+pub async fn get_gateway_ws_port(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    let gw = {
+        let gateway_guard = state.gateway.lock().await;
+        gateway_guard.as_ref().cloned()
+    };
+
+    match gw {
+        Some(g) => Ok(g.get_ws_port().await),
+        None => Ok(None),
+    }
+}

@@ -3,6 +3,7 @@ import type { ChatInputHandle } from "../ChatInput";
 import type { Attachment, ChatMessage, ClarifyRequest } from "../types";
 import { describeInputIntent } from "../inputIntent";
 import { createTauriChatGatewayClient } from "../tauriChatGatewayClient";
+import type { WsGatewayClient } from "@renderer/lib/wsGatewayClient";
 
 interface LocalCommands {
   isLocal: (text: string) => boolean;
@@ -30,6 +31,7 @@ interface UseChatActionsArgs {
     sessionId: string,
     command: string,
   ) => Promise<boolean>;
+  wsGatewayClient?: WsGatewayClient;
 }
 
 interface UseChatActionsResult {
@@ -55,6 +57,7 @@ export function useChatActions({
   updateTab,
   streamingText,
   executeGatewayCommand,
+  wsGatewayClient,
 }: UseChatActionsArgs): UseChatActionsResult {
   const isLoadingRef = useRef(isLoading);
   const hermesSessionIdRef = useRef(hermesSessionId);
@@ -113,11 +116,19 @@ export function useChatActions({
         const sid = hermesSessionIdRef.current;
         if (sid) {
           try {
-            await gatewayClientRef.current.respondClarify(
-              sid,
-              text,
-              clarify?.requestId,
-            );
+            if (wsGatewayClient) {
+              await wsGatewayClient.call("tui_clarify_respond", {
+                sessionId: sid,
+                answer: text,
+                requestId: clarify?.requestId,
+              });
+            } else {
+              await gatewayClientRef.current.respondClarify(
+                sid,
+                text,
+                clarify?.requestId,
+              );
+            }
           } catch {
             setIsLoading(false);
           }
@@ -183,10 +194,18 @@ export function useChatActions({
 
         if (action.kind === "steer" && sid) {
           try {
-            const result = await gatewayClientRef.current.steer(
-              sid,
-              action.text,
-            );
+            let result: any;
+            if (wsGatewayClient) {
+              result = await wsGatewayClient.call("tui_steer", {
+                sessionId: sid,
+                text: action.text,
+              });
+            } else {
+              result = await gatewayClientRef.current.steer(
+                sid,
+                action.text,
+              );
+            }
             const payload = (result?.result ?? result ?? {}) as {
               status?: string;
             };
@@ -225,7 +244,14 @@ export function useChatActions({
         }
 
         if (sid) {
-          gatewayClientRef.current.interrupt(sid).catch((err) => {
+          const doInterrupt = async (): Promise<void> => {
+            if (wsGatewayClient) {
+              await wsGatewayClient.call("tui_interrupt", { sessionId: sid });
+            } else {
+              await gatewayClientRef.current.interrupt(sid);
+            }
+          };
+          doInterrupt().catch((err) => {
             console.error("[useChatActions] Pipelined interrupt failed:", err);
           });
         }
@@ -276,6 +302,7 @@ export function useChatActions({
       setPendingClarify,
       setHermesSessionId,
       executeGatewayCommand,
+      wsGatewayClient,
     ],
   );
 
@@ -312,9 +339,12 @@ export function useChatActions({
   const handleAbort = useCallback(() => {
     abortRequestedRef.current = true;
     if (hermesSessionIdRef.current) {
-      gatewayClientRef.current
-        .interrupt(hermesSessionIdRef.current)
-        .catch(() => {});
+      const sid = hermesSessionIdRef.current;
+      if (wsGatewayClient) {
+        wsGatewayClient.call("tui_interrupt", { sessionId: sid }).catch(() => {});
+      } else {
+        gatewayClientRef.current.interrupt(sid).catch(() => {});
+      }
     }
 
     if (streamingText && streamingText.trim()) {
@@ -360,6 +390,7 @@ export function useChatActions({
     setMessages,
     updateTab,
     activeTabId,
+    wsGatewayClient,
   ]);
 
   return { handleSend, handleQuickAsk, handleAbort };

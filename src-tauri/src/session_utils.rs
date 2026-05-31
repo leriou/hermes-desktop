@@ -1,5 +1,6 @@
 use serde_json::{json, Value};
 use crate::python;
+use crate::sqlite_utils;
 use tauri::{AppHandle, Runtime};
 
 fn profile_home<R: Runtime>(app: Option<&AppHandle<R>>, profile: Option<String>) -> std::path::PathBuf {
@@ -22,10 +23,7 @@ pub fn list_sessions<R: Runtime>(app: Option<&AppHandle<R>>, profile: Option<Str
 }
 
 fn read_sessions_from_db(db_path: &std::path::Path, limit: Option<u32>, offset: Option<u32>) -> Result<Vec<Value>, String> {
-    let conn = rusqlite::Connection::open_with_flags(
-        db_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    ).map_err(|e| e.to_string())?;
+    let conn = sqlite_utils::open_ro(db_path).map_err(|e| e.to_string())?;
 
     let lim = limit.unwrap_or(2000);
     let off = offset.unwrap_or(0);
@@ -131,10 +129,7 @@ pub fn search_sessions<R: Runtime>(app: Option<&AppHandle<R>>, query: &str, limi
 }
 
 fn search_sessions_from_db(db_path: &std::path::Path, query: &str, limit: u32) -> Result<Vec<Value>, String> {
-    let conn = rusqlite::Connection::open_with_flags(
-        db_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    ).map_err(|e| e.to_string())?;
+    let conn = sqlite_utils::open_ro(db_path).map_err(|e| e.to_string())?;
 
     // Try FTS5 first, fall back to LIKE
     let has_fts = conn
@@ -385,10 +380,7 @@ fn parse_relative_time(s: &str) -> u64 {
 
 pub fn get_related_session_ids<R: Runtime>(app: Option<&AppHandle<R>>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
     let db_path = state_db_path(app, profile).ok_or("state.db not found")?;
-    let conn = rusqlite::Connection::open_with_flags(
-        &db_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    ).map_err(|e| e.to_string())?;
+    let conn = sqlite_utils::open_ro(&db_path).map_err(|e| e.to_string())?;
 
     // Walk parent chain to find the root
     let mut chain: Vec<String> = vec![session_id.to_string()];
@@ -444,7 +436,7 @@ pub fn delete_session_chain<R: Runtime>(app: Option<&AppHandle<R>>, session_id: 
 
     let ids_arr = ids.as_array().cloned().unwrap_or_else(|| vec![json!(session_id)]);
 
-    let conn = rusqlite::Connection::open(&db_path).map_err(|e| e.to_string())?;
+    let conn = sqlite_utils::open_rw(&db_path).map_err(|e| e.to_string())?;
     for id_val in &ids_arr {
         let sid = id_val.as_str().unwrap_or(session_id);
         conn.execute("DELETE FROM messages WHERE session_id = ?1", rusqlite::params![sid])

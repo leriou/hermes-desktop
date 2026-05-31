@@ -1,127 +1,73 @@
 import { memo, useMemo } from "react";
+import { AgentMarkdown } from "./AgentMarkdown";
 
 /**
- * Cheap regex-based markdown renderer for the streaming phase.
- * Avoids react-markdown's AST parse cost. Handles:
- * - fenced code blocks (``` ... ```)
- * - completed GFM table blocks
- * - bold (**text**)
- * - italic (*text*)
- * - inline code (`code`)
- * - line breaks
+ * Incremental streaming markdown renderer.
+ *
+ * Instead of rebuilding the entire HTML on every text delta, we find the last
+ * stable paragraph boundary (double newline) and render only the stable portion
+ * through react-markdown (via AgentMarkdown). The trailing incomplete paragraph
+ * is appended as raw text with a "streaming-tail" class.
+ *
+ * This prevents the full AST parse and React reconciliation overhead for every
+ * streaming chunk, keeping the UI responsive during long streaming responses.
  */
-function isTableRow(line: string): boolean {
-  const trimmed = line.trim();
-  return (
-    trimmed.startsWith("|") &&
-    trimmed.endsWith("|") &&
-    trimmed.split("|").length >= 4
-  );
+
+function findStableBoundary(text: string): number {
+  // Find the last double-newline boundary
+  const idx = text.lastIndexOf("\n\n");
+  // If no boundary found, or it's at the very start, the whole text is tail
+  return idx > 0 ? idx : 0;
 }
 
-function isSeparatorRow(line: string): boolean {
-  if (!isTableRow(line)) return false;
-  return line
-    .trim()
-    .slice(1, -1)
-    .split("|")
-    .every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
-}
-
-function splitCells(line: string): string[] {
-  return line
-    .trim()
-    .slice(1, -1)
-    .split("|")
-    .map((cell) => cell.trim());
-}
-
-function renderCompletedTables(text: string): string {
-  const lines = text.split("\n");
-  const out: string[] = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    if (!isTableRow(lines[i]) || !isSeparatorRow(lines[i + 1] ?? "")) {
-      out.push(lines[i]);
-      i += 1;
-      continue;
-    }
-
-    const start = i;
-    const header = splitCells(lines[i]);
-    i += 2;
-    const rows: string[][] = [];
-    while (i < lines.length && isTableRow(lines[i])) {
-      rows.push(splitCells(lines[i]));
-      i += 1;
-    }
-
-    const isClosed = i >= lines.length || lines[i].trim() === "";
-    if (!isClosed || rows.length === 0) {
-      out.push(...lines.slice(start, i));
-      continue;
-    }
-
-    out.push(
-      `<div class="sm-table-wrap"><table class="sm-table"><thead><tr>${header
-        .map((cell) => `<th>${cell}</th>`)
-        .join("")}</tr></thead><tbody>${rows
-        .map(
-          (row) =>
-            `<tr>${header.map((_, idx) => `<td>${row[idx] ?? ""}</td>`).join("")}</tr>`,
-        )
-        .join("")}</tbody></table></div>`,
-    );
-    if (i < lines.length) {
-      out.push(lines[i]);
-      i += 1;
-    }
-  }
-
-  return out.join("\n");
-}
-
-function renderLightweightMd(raw: string): string {
-  // Escape HTML to prevent XSS (we trust gateway output but be safe)
-  let text = raw
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-  // Fenced code blocks
-  text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
-    return `<div class="sm-code-block"><div class="sm-code-header"><span>${lang || "code"}</span></div><pre><code>${code}</code></pre></div>`;
-  });
-  // Incomplete trailing code block (streaming in progress)
-  text = text.replace(/```(\w*)\n([\s\S]*)$/g, (_match, lang, code) => {
-    return `<div class="sm-code-block sm-code-streaming"><div class="sm-code-header"><span>${lang || "code"}</span></div><pre><code>${code}</code></pre></div>`;
-  });
-  text = renderCompletedTables(text);
-
-  // Bold
-  text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  // Italic (single *, not preceded/followed by *)
-  text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
-  // Inline code
-  text = text.replace(/`([^`]+)`/g, '<code class="sm-inline-code">$1</code>');
-  // Line breaks
-  text = text.replace(/\n/g, "<br>");
-
-  return text;
+interface StreamingMarkdownProps {
+  children: string;
 }
 
 const StreamingMarkdown = memo(function StreamingMarkdown({
   children,
-}: {
-  children: string;
-}): React.JSX.Element {
-  const html = useMemo(() => renderLightweightMd(children), [children]);
+}: StreamingMarkdownProps): React.JSX.Element {
+  const { stableText, streamingTail } = useMemo(() => {
+    if (!children) return { stableText: "", streamingTail: "" };
+
+    const boundary = findStableBoundary(children);
+    const stableText = boundary > 0 ? children.slice(0, boundary) : "";
+    // The tail starts after the double newline
+    const streamingTail =
+      boundary > 0 ? children.slice(boundary + "\n\n".length) : children;
+
+    return { stableText, streamingTail };
+  }, [children]);
+
+  // Edge case: completely empty
+  if (!children) {
+    return <div className="markdown-body sm-streaming" />;
+  }
+
+  // Edge case: no stable text — render everything as raw streaming tail
+  if (!stableText) {
+    return (
+      <div className="markdown-body sm-streaming">
+        <span className="streaming-tail">{children}</span>
+      </div>
+    );
+  }
+
+  // Edge case: no streaming tail — render only the stable part
+  if (!streamingTail) {
+    return (
+      <div className="markdown-body sm-streaming">
+        <AgentMarkdown>{stableText}</AgentMarkdown>
+      </div>
+    );
+  }
+
+  // Normal case: stable text + streaming tail
   return (
-    <div
-      className="markdown-body sm-streaming"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="markdown-body sm-streaming">
+      <AgentMarkdown>{stableText}</AgentMarkdown>
+      <span className="streaming-tail">{streamingTail}</span>
+    </div>
   );
 });
 

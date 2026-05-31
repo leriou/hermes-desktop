@@ -1,18 +1,30 @@
 use anyhow::{anyhow, Result};
+use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::TcpStream;
 use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot, Mutex as TokioMutex};
 use tauri::{AppHandle, Emitter, Listener, Runtime};
 use std::sync::{Arc, Mutex as StdMutex};
+use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use crate::python;
 use std::time::Duration;
 use tokio::time::timeout;
 
 struct SendWrapper<T>(T);
 unsafe impl<T> Send for SendWrapper<T> {}
+
+/// Which transport the TUI gateway subprocess is using.
+/// `Stdio` uses stdin/stdout pipes (JSON-RPC over lines).
+/// `WebSocket` uses a local WS connection to the Python FastAPI server.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum GatewayMode {
+    Stdio,
+    WebSocket { port: u16, host: String },
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JsonRpcRequest {
@@ -79,6 +91,14 @@ pub struct GatewayFailure {
     pub status_at_failure: GatewayStatus,
 }
 
+/// Type alias for the split WebSocket write half we keep inside an
+/// `Arc<Mutex<…>>` so it can be shared between the writer task and the
+/// disconnect-detection path.
+type WsWrite = futures_util::stream::SplitSink<
+    WebSocketStream<MaybeTlsStream<TcpStream>>,
+    Message,
+>;
+
 pub struct TuiGateway<R: Runtime = tauri::Wry> {
     app: AppHandle<R>,
     profile: Option<String>,
@@ -90,6 +110,7 @@ pub struct TuiGateway<R: Runtime = tauri::Wry> {
 
 pub(crate) struct TuiGatewayInner {
     pub(crate) status: GatewayStatus,
+    pub(crate) mode: GatewayMode,
     pub(crate) stdin_tx: Option<mpsc::Sender<String>>,
     pub(crate) stop_tx: Option<oneshot::Sender<()>>,
     pub(crate) restart_count: u32,
@@ -107,6 +128,7 @@ impl<R: Runtime> TuiGateway<R> {
             profile,
             inner: Arc::new(TokioMutex::new(TuiGatewayInner {
                 status: GatewayStatus::Stopped,
+                mode: GatewayMode::Stdio,
                 stdin_tx: None,
                 stop_tx: None,
                 restart_count: 0,
@@ -144,6 +166,18 @@ impl<R: Runtime> TuiGateway<R> {
         }
     }
 
+    /// Return the WebSocket URL if the gateway is running in WebSocket mode.
+    /// Returns `None` for stdio mode or when no port is available yet.
+    pub async fn get_ws_port(&self) -> Option<String> {
+        let inner = self.inner.lock().await;
+        match &inner.mode {
+            GatewayMode::WebSocket { port, host } => {
+                Some(format!("ws://{}:{}/api/ws", host, port))
+            }
+            GatewayMode::Stdio => None,
+        }
+    }
+
     pub async fn get_health(&self) -> serde_json::Value {
         let inner = self.inner.lock().await;
         let python_path = python::get_python_path(Some(&self.app));
@@ -154,6 +188,7 @@ impl<R: Runtime> TuiGateway<R> {
 
         serde_json::json!({
             "status": inner.status,
+            "mode": inner.mode,
             "restartCount": inner.restart_count,
             "maxRestarts": inner.max_restarts,
             "activeSessionId": inner.active_session_id,
@@ -241,14 +276,278 @@ impl<R: Runtime> TuiGateway<R> {
         }
     }
 
+    /// Try WebSocket mode first, then fall back to stdio.
     async fn spawn_process(self: Arc<Self>) -> Result<()> {
+        // Attempt WebSocket mode
+        match self.clone().spawn_process_ws().await {
+            Ok(()) => {
+                log_info("gateway", "spawn", "WebSocket mode started successfully");
+                return Ok(());
+            }
+            Err(e) => {
+                log_error("gateway", "spawn", &format!(
+                    "WebSocket mode failed ({}), falling back to stdio", e
+                ));
+            }
+        }
+
+        // Fall back to stdio mode
+        log_info("gateway", "spawn", "Attempting stdio fallback...");
+        self.spawn_process_stdio().await
+    }
+
+    // ------------------------------------------------------------------
+    //  WebSocket mode
+    // ------------------------------------------------------------------
+
+    async fn spawn_process_ws(self: Arc<Self>) -> Result<()> {
         let python_path = python::get_python_path(Some(&self.app));
         let repo_path = python::get_hermes_repo(Some(&self.app));
         let hermes_home = python::get_hermes_home_with_profile(Some(&self.app), self.profile.clone());
 
-        log_info("gateway", "spawn", &format!("Spawning: {:?} -m tui_gateway.entry", python_path));
-        log_info("gateway", "spawn", &format!("CWD: {:?}", repo_path));
-        log_info("gateway", "spawn", &format!("HERMES_HOME: {:?}", hermes_home));
+        log_info("gateway", "spawn_ws", &format!(
+            "Spawning: {:?} -m tui_gateway.ws_entry", python_path
+        ));
+        log_info("gateway", "spawn_ws", &format!("CWD: {:?}", repo_path));
+        log_info("gateway", "spawn_ws", &format!("HERMES_HOME: {:?}", hermes_home));
+
+        let mut args = vec!["-m", "tui_gateway.ws_entry"];
+        let p_str: String;
+        if let Some(ref p) = self.profile {
+            if p != "default" && !p.is_empty() {
+                p_str = p.clone();
+                args.push("-p");
+                args.push(&p_str);
+            }
+        }
+
+        let mut child = Command::new(&python_path)
+            .args(&args)
+            .current_dir(&repo_path)
+            .env("HERMES_HOME", &hermes_home)
+            .env("PYTHONUNBUFFERED", "1")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| {
+                log_error("gateway", "spawn_ws", &format!("spawn failed: {}", e));
+                e
+            })?;
+
+        log_info("gateway", "spawn_ws", &format!("Process spawned, PID: {:?}", child.id()));
+
+        let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to open stdout"))?;
+        let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to open stderr"))?;
+
+        // Stderr reader
+        tokio::spawn(async move {
+            let mut reader = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                let truncated: String = line.chars().take(200).collect();
+                log_error("gateway", "ws_stderr", &truncated);
+            }
+        });
+
+        // ---- read port from stdout with timeout ----
+        let mut stdout_reader = BufReader::new(stdout).lines();
+        let (port, host) = {
+            let mut result: Option<(u16, String)> = None;
+            // Try up to 10 lines; bail on the first valid port JSON.
+            for _ in 0..10 {
+                let line = match timeout(Duration::from_secs(15), stdout_reader.next_line()).await
+                {
+                    Ok(Ok(Some(line))) => line,
+                    Ok(Ok(None)) => return Err(anyhow!("Process stdout closed before sending port")),
+                    Ok(Err(e)) => return Err(anyhow!("Failed to read stdout: {}", e)),
+                    Err(_) => return Err(anyhow!("Timeout waiting for port from WS entry")),
+                };
+
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&line) {
+                    if let Some(err) = parsed.get("error").and_then(|v| v.as_str()) {
+                        return Err(anyhow!("WS entry reported error: {}", err));
+                    }
+                    if let (Some(p), Some(h)) = (
+                        parsed.get("port").and_then(|v| v.as_u64()),
+                        parsed.get("host").and_then(|v| v.as_str()),
+                    ) {
+                        result = Some((p as u16, h.to_string()));
+                        break;
+                    }
+                }
+                // This line isn't the port JSON — could be a startup log line
+                log_info("gateway", "ws_stdout", &format!("non-port line: {}", &line));
+            }
+            result.ok_or_else(|| anyhow!("No valid port JSON found in stdout after 10 lines"))?
+        };
+
+        log_info("gateway", "spawn_ws", &format!("Resolved port: {} host: {}", port, host));
+
+        // ---- WebSocket connection ----
+        let ws_url = format!("ws://{}:{}/api/ws", host, port);
+        let (ws_stream, _) = connect_async(&ws_url).await.map_err(|e| {
+            log_error("gateway", "ws_connect", &format!("Connection failed to {}: {}", ws_url, e));
+            anyhow!("Failed to connect to WebSocket at {}: {}", ws_url, e)
+        })?;
+
+        log_info("gateway", "ws_connect", &format!("Connected to {}", ws_url));
+
+        let (ws_write, ws_read) = ws_stream.split();
+
+        // ---- channels ----
+        let (stdin_tx, mut stdin_rx) = mpsc::channel::<String>(32);
+        let (stop_tx, mut stop_rx) = oneshot::channel::<()>();
+
+        {
+            let mut inner = self.inner.lock().await;
+            inner.mode = GatewayMode::WebSocket { port, host: host.clone() };
+            inner.stdin_tx = Some(stdin_tx);
+            inner.stop_tx = Some(stop_tx);
+        }
+
+        // ---- WS writer task ----
+        let ws_write = Arc::new(TokioMutex::new(ws_write));
+        let ws_write_clone = ws_write.clone();
+        tokio::spawn(async move {
+            while let Some(line) = stdin_rx.recv().await {
+                let msg = Message::Text(line.into());
+                if ws_write_clone.lock().await.send(msg).await.is_err() {
+                    log_error("gateway", "ws_write", "Failed to send WS message");
+                    break;
+                }
+            }
+        });
+
+        // ---- WS reader task (process JSON-RPC lines) ----
+        let pending_requests = self.pending_requests.clone();
+        let session_aliases = self.session_aliases.clone();
+        let app_handle = self.app.clone();
+        let profile = self.profile.clone();
+        let mut ws_read = ws_read;
+        let self_ref = self.clone();
+
+        tokio::spawn(async move {
+            while let Some(msg_result) = ws_read.next().await {
+                let line = match msg_result {
+                    Ok(Message::Text(text)) => text,
+                    Ok(Message::Close(_)) => {
+                        log_info("gateway", "ws", "WS connection closed by server");
+                        break;
+                    }
+                    Ok(Message::Ping(_)) | Ok(Message::Pong(_)) => continue,
+                    Err(e) => {
+                        log_error("gateway", "ws_read", &format!("WS error: {}", e));
+                        break;
+                    }
+                    _ => continue,
+                };
+
+                if let Ok(response) = serde_json::from_str::<JsonRpcResponse>(&line) {
+                    if let Some(id) = response.id {
+                        let mut pending = pending_requests.lock().unwrap();
+                        if let Some(tx) = pending.remove(&id) {
+                            if let Some(err) = response.error {
+                                let _ = tx.send(Err(anyhow!("RPC Error {}: {}", err.code, err.message)));
+                            } else {
+                                let _ = tx.send(Ok(response.result.unwrap_or(serde_json::Value::Null)));
+                            }
+                        }
+                    }
+                } else if let Ok(notification) = serde_json::from_str::<JsonRpcNotification>(&line) {
+                    if let Some(ref sid) = notification.params.session_id {
+                        let evt_type = &notification.params.event_type;
+                        let payload = &notification.params.payload;
+                        let persist_sid = session_aliases
+                            .lock()
+                            .unwrap()
+                            .get(sid)
+                            .cloned()
+                            .unwrap_or_else(|| sid.clone());
+
+                        if evt_type == "message.complete" {
+                            if let Some(text) = payload.get("text").and_then(|v| v.as_str()) {
+                                crate::session_utils::persist_message(Some(&app_handle), &persist_sid, "assistant", text, None, None, profile.clone());
+                            }
+                        } else if evt_type == "tool.start" {
+                            if let Some(tool_id) = payload.get("tool_id").and_then(|v| v.as_str()) {
+                                let name = payload.get("name").and_then(|v| v.as_str());
+                                let args = payload.get("args_text").or_else(|| payload.get("args")).and_then(|v| v.as_str()).unwrap_or("");
+                                crate::session_utils::persist_message(Some(&app_handle), &persist_sid, "tool_call", args, Some(tool_id), name, profile.clone());
+                            }
+                        } else if evt_type == "tool.complete" {
+                            if let Some(tool_id) = payload.get("tool_id").and_then(|v| v.as_str()) {
+                                let name = payload.get("name").and_then(|v| v.as_str());
+                                let result_value = payload
+                                    .get("result_text")
+                                    .or_else(|| payload.get("result"))
+                                    .or_else(|| payload.get("summary"));
+                                let result = match result_value {
+                                    Some(serde_json::Value::String(s)) => s.clone(),
+                                    Some(v) => v.to_string(),
+                                    None => String::new(),
+                                };
+                                crate::session_utils::persist_message(Some(&app_handle), &persist_sid, "tool", &result, Some(tool_id), name, profile.clone());
+                            }
+                        }
+                    }
+                    let _ = app_handle.emit("tui-event", &notification.params);
+                } else {
+                    let truncated: String = line.chars().take(200).collect();
+                    log_info("gateway", "ws_msg", &truncated);
+                }
+            }
+
+            // WS disconnected — trigger process exit handling
+            log_info("gateway", "ws", "WS reader exiting, triggering exit handler");
+            TuiGateway::handle_exit(self_ref);
+        });
+
+        // ---- monitor process exit ----
+        let self_clone = self.clone();
+        tokio::spawn(async move {
+            tokio::select! {
+                res = child.wait() => {
+                    match res {
+                        Ok(status) => log_info("gateway", "exit_ws", &format!("Process exited with status: {}", status)),
+                        Err(e) => log_error("gateway", "exit_ws", &format!("Error waiting for process: {}", e)),
+                    }
+                    TuiGateway::handle_exit(self_clone);
+                }
+                _ = &mut stop_rx => {
+                    log_info("gateway", "stop_ws", "Stop signal received, terminating process");
+                    let _ = child.kill().await;
+                }
+            }
+        });
+
+        // Proactive watchdog for startup timeout
+        let watchdog_gw = self.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(15)).await;
+            let status = { watchdog_gw.inner.lock().await.status };
+            if status == GatewayStatus::Starting || status == GatewayStatus::Reconnecting {
+                log_error("gateway", "watchdog", "STALE state detected after 15s, forcing failure");
+                watchdog_gw.record_failure("Watchdog: Startup/Reconnect timeout".to_string(), status).await;
+                let mut inner = watchdog_gw.inner.lock().await;
+                inner.status = GatewayStatus::Failed;
+            }
+        });
+
+        Ok(())
+    }
+
+    // ------------------------------------------------------------------
+    //  Stdio (fallback) mode — original implementation
+    // ------------------------------------------------------------------
+
+    async fn spawn_process_stdio(self: Arc<Self>) -> Result<()> {
+        let python_path = python::get_python_path(Some(&self.app));
+        let repo_path = python::get_hermes_repo(Some(&self.app));
+        let hermes_home = python::get_hermes_home_with_profile(Some(&self.app), self.profile.clone());
+
+        log_info("gateway", "spawn_stdio", &format!("Spawning: {:?} -m tui_gateway.entry", python_path));
+        log_info("gateway", "spawn_stdio", &format!("CWD: {:?}", repo_path));
+        log_info("gateway", "spawn_stdio", &format!("HERMES_HOME: {:?}", hermes_home));
 
         let mut args = vec!["-m", "tui_gateway.entry"];
         let p_str: String;
@@ -270,11 +569,11 @@ impl<R: Runtime> TuiGateway<R> {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| {
-                log_error("gateway", "spawn", &format!("spawn failed: {}", e));
+                log_error("gateway", "spawn_stdio", &format!("spawn failed: {}", e));
                 e
             })?;
 
-        log_info("gateway", "spawn", &format!("Process spawned, PID: {:?}", child.id()));
+        log_info("gateway", "spawn_stdio", &format!("Process spawned, PID: {:?}", child.id()));
 
         let stdin = child.stdin.take().ok_or_else(|| anyhow!("Failed to open stdin"))?;
         let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to open stdout"))?;
@@ -285,6 +584,7 @@ impl<R: Runtime> TuiGateway<R> {
 
         {
             let mut inner = self.inner.lock().await;
+            inner.mode = GatewayMode::Stdio;
             inner.stdin_tx = Some(stdin_tx);
             inner.stop_tx = Some(stop_tx);
         }
@@ -374,13 +674,13 @@ impl<R: Runtime> TuiGateway<R> {
             tokio::select! {
                 res = child.wait() => {
                     match res {
-                        Ok(status) => log_info("gateway", "exit", &format!("Process exited with status: {}", status)),
-                        Err(e) => log_error("gateway", "exit", &format!("Error waiting for process: {}", e)),
+                        Ok(status) => log_info("gateway", "exit_stdio", &format!("Process exited with status: {}", status)),
+                        Err(e) => log_error("gateway", "exit_stdio", &format!("Error waiting for process: {}", e)),
                     }
                     TuiGateway::handle_exit(self_clone);
                 }
                 _ = &mut stop_rx => {
-                    log_info("gateway", "stop", "Stop signal received, terminating process");
+                    log_info("gateway", "stop_stdio", "Stop signal received, terminating process");
                     let _ = child.kill().await;
                 }
             }
@@ -396,7 +696,6 @@ impl<R: Runtime> TuiGateway<R> {
                 watchdog_gw.record_failure("Watchdog: Startup/Reconnect timeout".to_string(), status).await;
                 let mut inner = watchdog_gw.inner.lock().await;
                 inner.status = GatewayStatus::Failed;
-                // No need to call stop() as it's already failed/not-ready
             }
         });
 
@@ -521,6 +820,10 @@ impl<R: Runtime> TuiGateway<R> {
         }
     }
 
+    /// Send a JSON-RPC request to the gateway. Works identically for both
+    /// Stdio and WebSocket modes because the writer task abstracts the
+    /// transport.  `call()` writes to the `mpsc` channel and the writer
+    /// task forwards to the correct destination.
     pub async fn call(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value> {
         let (stdin_tx, status) = {
             let inner = self.inner.lock().await;
@@ -594,6 +897,18 @@ mod tests {
         assert_eq!(json, serde_json::json!("Ready"));
     }
 
+    #[test]
+    fn test_gateway_mode_serialization() {
+        let mode = GatewayMode::Stdio;
+        let json = serde_json::to_value(&mode).unwrap();
+        assert_eq!(json, serde_json::json!("Stdio"));
+
+        let mode = GatewayMode::WebSocket { port: 9000, host: "127.0.0.1".into() };
+        let json = serde_json::to_value(&mode).unwrap();
+        assert_eq!(json["port"], 9000);
+        assert_eq!(json["host"], "127.0.0.1");
+    }
+
     #[tokio::test]
     async fn test_restart_backoff_calculation() {
         let restart_count = 3;
@@ -603,7 +918,6 @@ mod tests {
 
     #[test]
     fn test_error_classification() {
-        // This is a logic test for how we want to classify errors in the caller
         let timeout_err = anyhow!("Gateway RPC timeout (30s)");
         assert!(timeout_err.to_string().contains("timeout"));
 
@@ -616,17 +930,14 @@ mod tests {
         let app = tauri::test::mock_app();
         let gateway = Arc::new(TuiGateway::new(app.handle().clone(), None));
 
-        // Mock a pending request
         let (tx, rx) = oneshot::channel();
         gateway.pending_requests.lock().unwrap().insert(123, tx);
 
-        // Stop the gateway
         gateway.stop().await;
 
-        // Verify request was failed
         let res = rx.await;
-        assert!(res.is_ok()); // The oneshot itself succeeded
-        assert!(res.unwrap().is_err()); // But it sent an error
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_err());
 
         assert_eq!(gateway.pending_requests.lock().unwrap().len(), 0);
     }
@@ -655,5 +966,24 @@ mod tests {
         }
         assert!(!gateway.is_busy().await);
         assert!(!gateway.is_running().await);
+    }
+
+    #[tokio::test]
+    async fn test_get_ws_port() {
+        let app = tauri::test::mock_app();
+        let gateway = TuiGateway::new(app.handle().clone(), None);
+
+        // Stdio mode returns None
+        assert_eq!(gateway.get_ws_port().await, None);
+
+        // WebSocket mode returns the URL
+        {
+            let mut inner = gateway.inner.lock().await;
+            inner.mode = GatewayMode::WebSocket { port: 8080, host: "127.0.0.1".into() };
+        }
+        assert_eq!(
+            gateway.get_ws_port().await,
+            Some("ws://127.0.0.1:8080/api/ws".to_string())
+        );
     }
 }

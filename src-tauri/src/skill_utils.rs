@@ -2,6 +2,7 @@ use std::fs;
 use std::collections::HashMap;
 use serde_json::{json, Value};
 use crate::python;
+use crate::sqlite_utils;
 use tauri::AppHandle;
 
 /// Parse YAML frontmatter from SKILL.md for name and description.
@@ -48,10 +49,7 @@ fn get_skill_usage_counts(app: Option<&AppHandle>) -> HashMap<String, i64> {
         return counts;
     }
 
-    if let Ok(conn) = rusqlite::Connection::open_with_flags(
-        &db_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
-    ) {
+    if let Ok(conn) = sqlite_utils::open_ro(&db_path) {
         let stmt_res = conn.prepare(
             "SELECT item_key, COUNT(*) as cnt FROM access_events WHERE tool_name = 'skill_view' GROUP BY item_key"
         );

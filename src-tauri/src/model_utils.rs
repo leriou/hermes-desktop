@@ -9,7 +9,7 @@ fn config_path(app: Option<&AppHandle>, profile: Option<String>) -> std::path::P
     python::get_hermes_home_with_profile(app, profile).join("config.yaml")
 }
 
-fn read_yaml(app: Option<&AppHandle>, profile: Option<String>) -> Result<BTreeMap<String, Value>, String> {
+pub(crate) fn read_yaml(app: Option<&AppHandle>, profile: Option<String>) -> Result<BTreeMap<String, Value>, String> {
     let path = config_path(app, profile);
     if !path.exists() {
         return Ok(BTreeMap::new());
@@ -21,7 +21,7 @@ fn read_yaml(app: Option<&AppHandle>, profile: Option<String>) -> Result<BTreeMa
     Ok(map.into_iter().collect())
 }
 
-fn write_yaml(app: Option<&AppHandle>, profile: Option<String>, root: &BTreeMap<String, Value>) -> Result<(), String> {
+pub(crate) fn write_yaml(app: Option<&AppHandle>, profile: Option<String>, root: &BTreeMap<String, Value>) -> Result<(), String> {
     let json_obj: serde_json::Map<String, Value> = root.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
     let json_val = Value::Object(json_obj);
     let yaml_val: serde_yaml::Value = serde_json::from_value(json_val).map_err(|e| e.to_string())?;
@@ -29,7 +29,7 @@ fn write_yaml(app: Option<&AppHandle>, profile: Option<String>, root: &BTreeMap<
     fs::write(config_path(app, profile), yaml_str).map_err(|e| e.to_string())
 }
 
-fn build_alias_map(root: &BTreeMap<String, Value>) -> HashMap<String, Vec<String>> {
+pub(crate) fn build_alias_map(root: &BTreeMap<String, Value>) -> HashMap<String, Vec<String>> {
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
     let aliases = match root.get("model_aliases") {
         Some(v) => v.as_object().cloned().unwrap_or_default(),
@@ -98,11 +98,11 @@ pub fn list_models(app: Option<&AppHandle>, profile: Option<String>) -> Result<V
     Ok(json!(models))
 }
 
-pub fn add_model(app: Option<&AppHandle>, _name: String, provider: String, model: String, base_url: String, alias: Option<String>, profile: Option<String>) -> Result<Value, String> {
+pub fn add_model(app: Option<&AppHandle>, name: String, provider: String, model: String, base_url: String, alias: Option<String>, profile: Option<String>) -> Result<Value, String> {
     let mut root = read_yaml(app, profile.clone())?;
 
     let prov_name = provider.strip_prefix("custom:").unwrap_or(&provider).to_string();
-    let model_id = if model.is_empty() { _name.clone() } else { model.clone() };
+    let model_id = if model.is_empty() { name.clone() } else { model.clone() };
 
     if !root.contains_key("providers") {
         root.insert("providers".to_string(), json!({}));

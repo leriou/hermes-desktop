@@ -3,6 +3,7 @@ import {
   tuiSessionActiveList,
   tuiSessionStatus,
 } from "@renderer/lib/hermes-tauri";
+import type { WsGatewayClient } from "@renderer/lib/wsGatewayClient";
 import { useEffect, useRef } from "react";
 import type {
   ChatBubbleMessage,
@@ -70,6 +71,7 @@ interface UseChatInboxArgs {
     id: string,
     updater: (prev: ChatMessage[]) => ChatMessage[],
   ) => void;
+  gatewayClient?: WsGatewayClient;
 }
 
 const LIVE_EVENT_TYPES = new Set([
@@ -199,6 +201,7 @@ export function useChatInbox({
   findTabBySessionId,
   updateTab,
   updateTabMessages,
+  gatewayClient,
 }: UseChatInboxArgs): void {
   const sessionsRef = useRef(sessions);
   const activeTabIdRef = useRef(activeTabId);
@@ -581,12 +584,10 @@ export function useChatInbox({
       });
     }
 
-    const cleanup = onTuiEvent((rawEvent: RawTuiEvent) => {
-      const event = normalizeTuiEvent(rawEvent);
+    const processEvent = (event: NormalizedTuiEvent): void => {
       const tabId = tabForEvent(event);
       if (!tabId) return;
       const state = sessionsRef.current.get(tabId);
-
 
       const runtimeSid =
         event.sessionId ??
@@ -1113,7 +1114,14 @@ export function useChatInbox({
           break;
         }
       }
-    });
+    }
+
+    // Subscribe to events via WS gateway client (preferred) or Tauri event listener (fallback)
+    const unsubscribe = gatewayClient
+      ? gatewayClient.onEvent(processEvent)
+      : onTuiEvent((rawEvent: RawTuiEvent) => {
+          processEvent(normalizeTuiEvent(rawEvent));
+        });
 
     return () => {
       flushFramesRef.current.clear();
@@ -1126,11 +1134,11 @@ export function useChatInbox({
       analyzingTimerRef.current.clear();
       for (const timer of deltaIdleRef.current.values()) clearTimeout(timer);
       deltaIdleRef.current.clear();
-      if (typeof cleanup === "function") {
-        cleanup();
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
       }
     };
-  }, [findTabBySessionId, updateTab, updateTabMessages]);
+  }, [findTabBySessionId, updateTab, updateTabMessages, gatewayClient]);
 }
 
 function formatCompressingTitle(statusText: string): string {

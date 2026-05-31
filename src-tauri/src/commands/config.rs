@@ -378,3 +378,125 @@ pub async fn get_routing_config(app: AppHandle, profile: Option<String>) -> Resu
         "fallbackProviders": fallbacks,
     }))
 }
+
+#[command]
+pub async fn set_routing_config(
+    app: AppHandle,
+    data: Value,
+    profile: Option<String>,
+) -> Result<Value, String> {
+    use serde_yaml::Value as YamlValue;
+
+    let home = python::get_hermes_home_with_profile(Some(&app), profile);
+    if !home.exists() {
+        fs::create_dir_all(&home).map_err(|e| format!("Failed to create profile directory: {}", e))?;
+    }
+    let config_path = home.join("config.yaml");
+
+    // Read existing config.yaml (preserve all other sections)
+    let content = if config_path.exists() {
+        fs::read_to_string(&config_path).map_err(|e| e.to_string())?
+    } else {
+        String::new()
+    };
+
+    let mut doc: YamlValue = if content.trim().is_empty() {
+        YamlValue::Mapping(serde_yaml::Mapping::new())
+    } else {
+        serde_yaml::from_str(&content).map_err(|e| format!("YAML parse error: {}", e))?
+    };
+
+    if let YamlValue::Mapping(ref mut root_map) = doc {
+        // Update model section
+        let mut model = serde_yaml::Mapping::new();
+
+        if let Some(default_model) = data.get("defaultModel").and_then(|v| v.as_str()) {
+            model.insert(
+                YamlValue::String("default".to_string()),
+                YamlValue::String(default_model.to_string()),
+            );
+        }
+        if let Some(default_provider) = data.get("defaultProvider").and_then(|v| v.as_str()) {
+            model.insert(
+                YamlValue::String("provider".to_string()),
+                YamlValue::String(default_provider.to_string()),
+            );
+        }
+        if let Some(default_base_url) = data.get("defaultBaseUrl").and_then(|v| v.as_str()) {
+            model.insert(
+                YamlValue::String("base_url".to_string()),
+                YamlValue::String(default_base_url.to_string()),
+            );
+        }
+        if let Some(max_tokens) = data.get("maxTokens").and_then(|v| v.as_i64()) {
+            model.insert(
+                YamlValue::String("max_tokens".to_string()),
+                YamlValue::Number((max_tokens as i64).into()),
+            );
+        }
+
+        if !model.is_empty() {
+            root_map.insert(
+                YamlValue::String("model".to_string()),
+                YamlValue::Mapping(model),
+            );
+        }
+
+        // Update fallback_providers section
+        if let Some(fallbacks) = data.get("fallbacks").and_then(|v| v.as_array()) {
+            let mut fallback_seq = serde_yaml::Sequence::new();
+            for fb in fallbacks {
+                let mut fb_map = serde_yaml::Mapping::new();
+                if let Some(fb_model) = fb.get("model").and_then(|v| v.as_str()) {
+                    fb_map.insert(
+                        YamlValue::String("model".to_string()),
+                        YamlValue::String(fb_model.to_string()),
+                    );
+                }
+                if let Some(fb_provider) = fb.get("provider").and_then(|v| v.as_str()) {
+                    fb_map.insert(
+                        YamlValue::String("provider".to_string()),
+                        YamlValue::String(fb_provider.to_string()),
+                    );
+                }
+                if !fb_map.is_empty() {
+                    fallback_seq.push(YamlValue::Mapping(fb_map));
+                }
+            }
+            root_map.insert(
+                YamlValue::String("fallback_providers".to_string()),
+                YamlValue::Sequence(fallback_seq),
+            );
+        } else if let Some(fallback_providers) = data.get("fallbackProviders").and_then(|v| v.as_array()) {
+            let mut fallback_seq = serde_yaml::Sequence::new();
+            for fb in fallback_providers {
+                let mut fb_map = serde_yaml::Mapping::new();
+                if let Some(fb_model) = fb.get("model").and_then(|v| v.as_str()) {
+                    fb_map.insert(
+                        YamlValue::String("model".to_string()),
+                        YamlValue::String(fb_model.to_string()),
+                    );
+                }
+                if let Some(fb_provider) = fb.get("provider").and_then(|v| v.as_str()) {
+                    fb_map.insert(
+                        YamlValue::String("provider".to_string()),
+                        YamlValue::String(fb_provider.to_string()),
+                    );
+                }
+                if !fb_map.is_empty() {
+                    fallback_seq.push(YamlValue::Mapping(fb_map));
+                }
+            }
+            root_map.insert(
+                YamlValue::String("fallback_providers".to_string()),
+                YamlValue::Sequence(fallback_seq),
+            );
+        }
+    }
+
+    let yaml_str = serde_yaml::to_string(&doc).map_err(|e| format!("YAML serialization error: {}", e))?;
+    fs::write(&config_path, yaml_str).map_err(|e| e.to_string())?;
+
+    log::info!("Wrote routing config to {:?}", config_path);
+    Ok(json!({"success": true}))
+}

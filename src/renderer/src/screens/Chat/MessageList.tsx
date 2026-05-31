@@ -22,10 +22,7 @@ interface MessageListProps {
   messages: ChatMessage[];
   isLoading: boolean;
   toolProgress: string | null;
-  streamingText?: string;
-  streamingReasoning?: string;
   scrollerRef?: React.Ref<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
-  todos?: TodoItem[];
 }
 
 function getActiveToolCall(messages: ChatMessage[]): ToolCallMessage | null {
@@ -304,10 +301,7 @@ export const MessageList = memo(function MessageList({
   messages,
   isLoading,
   toolProgress,
-  streamingText,
-  streamingReasoning,
   scrollerRef,
-  todos,
 }: MessageListProps): React.JSX.Element {
   const visibleMessages = useMemo(
     () =>
@@ -315,11 +309,11 @@ export const MessageList = memo(function MessageList({
         messages,
         isLoading,
         toolProgress,
-        streamingText,
-        streamingReasoning,
-        todos,
+        streamingText: "",
+        streamingReasoning: "",
+        todos: [],
       }),
-    [messages, isLoading, toolProgress, streamingText, streamingReasoning, todos],
+    [messages, isLoading, toolProgress],
   );
 
   return (
@@ -438,5 +432,46 @@ export const MessageList = memo(function MessageList({
         );
       })}
     </div>
+  );
+});
+
+/**
+ * Streaming bubble rendered OUTSIDE the stable message list.
+ * This avoids triggering re-renders on the entire virtual list every time
+ * a new streaming chunk arrives. The component is stable enough to be memo'd.
+ */
+export const StreamingBubble = memo(function StreamingBubble({
+  streamingText,
+  streamingReasoning,
+  todos,
+}: {
+  streamingText: string;
+  streamingReasoning: string;
+  todos: TodoItem[];
+}): React.JSX.Element | null {
+  if (!streamingReasoning && !streamingText && todos.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {streamingReasoning && (
+        <LiveReasoningRow text={streamingReasoning} />
+      )}
+      {todos.length > 0 && (
+        <TodoPanel
+          todos={todos}
+          defaultCollapsed={true}
+        />
+      )}
+      {streamingText && (
+        <div className="chat-message chat-message-agent">
+          <HermesAvatar />
+          <div className="chat-bubble chat-bubble-agent">
+            <StreamingMarkdown>{streamingText}</StreamingMarkdown>
+          </div>
+        </div>
+      )}
+    </>
   );
 });

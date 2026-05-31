@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 
-import { MessageList } from "./MessageList";
+import { MessageList, StreamingBubble } from "./MessageList";
 import { MessageTimelineNavigator } from "./MessageTimelineNavigator";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
@@ -596,6 +596,8 @@ function Chat({
               messages={messages}
               isLoading={isLoading}
               toolProgress={toolProgress}
+            />
+            <StreamingBubble
               streamingText={streamingText}
               streamingReasoning={streamingReasoning}
               todos={todos}
@@ -651,28 +653,30 @@ function Chat({
           onVoiceTranscript={(text) => {
             chatInputRef.current?.setText(text);
           }}
+          modelPicker={
+            <ModelPicker
+              currentModel={modelConfig.currentModel}
+              currentProvider={modelConfig.currentProvider}
+              currentBaseUrl={modelConfig.currentBaseUrl}
+              displayModel={modelConfig.displayModel}
+              modelGroups={modelConfig.modelGroups}
+              onOpen={modelConfig.reload}
+              onSelectModel={handleSelectModel}
+            />
+          }
+          statusBar={
+            <ChatStatusBar
+              usage={usage}
+              isLoading={isLoading}
+              hasMessages={messages.length > 0}
+              sessionStart={session.sessionStart}
+              responseStart={session.responseStart}
+              lastResponseDuration={session.lastResponseDuration}
+              verbose={verbose}
+              onToggleVerbose={toggleVerbose}
+            />
+          }
         />
-        <div className="chat-bottom-bar">
-          <ModelPicker
-            currentModel={modelConfig.currentModel}
-            currentProvider={modelConfig.currentProvider}
-            currentBaseUrl={modelConfig.currentBaseUrl}
-            displayModel={modelConfig.displayModel}
-            modelGroups={modelConfig.modelGroups}
-            onOpen={modelConfig.reload}
-            onSelectModel={handleSelectModel}
-          />
-          <ChatStatusBar
-            usage={usage}
-            isLoading={isLoading}
-            hasMessages={messages.length > 0}
-            sessionStart={session.sessionStart}
-            responseStart={session.responseStart}
-            lastResponseDuration={session.lastResponseDuration}
-            verbose={verbose}
-            onToggleVerbose={toggleVerbose}
-          />
-        </div>
       </div>
       {!pendingApproval && (
         <ApprovalModal

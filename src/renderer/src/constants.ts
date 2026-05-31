@@ -1,3 +1,18 @@
+// ── Model Categories ────────────────────────────────────
+export { ALL_CATEGORIES, CATEGORY_META } from "./lib/model-types";
+export type { BusinessCategory } from "./lib/model-types";
+
+export const BUSINESS_CATEGORIES = {
+  general: { key: "general", labelKey: "models.categories.general" },
+  coding: { key: "coding", labelKey: "models.categories.coding" },
+  analysis: { key: "analysis", labelKey: "models.categories.analysis" },
+  creative: { key: "creative", labelKey: "models.categories.creative" },
+  reasoning: { key: "reasoning", labelKey: "models.categories.reasoning" },
+  "fast-mode": { key: "fast-mode", labelKey: "models.categories.fastMode" },
+  vision: { key: "vision", labelKey: "models.categories.vision" },
+  voice: { key: "voice", labelKey: "models.categories.voice" },
+} as const;
+
 // ── Shared Types ────────────────────────────────────────
 
 export interface FieldDef {

@@ -40,6 +40,19 @@
   --md-blockquote-border: #c8c5bf;
   --md-blockquote-text: #6f6f6b;
   --md-table-header-bg: rgba(0, 0, 0, 0.028);
+
+  /* ── Variable aliases for component compatibility ── */
+  --bg-card: var(--bg-secondary);
+  --border-primary: var(--border-bright);
+  --text-tertiary: var(--text-muted);
+  --border-tertiary: var(--border-soft);
+  --border-secondary: var(--border-soft);
+  --text-success: var(--success);
+  --text-info: var(--accent-text);
+  --border-color: var(--border);
+  --danger: var(--error);
+  --surface-subtle: var(--bg-tertiary);
+  --border-softer: rgba(20, 20, 18, 0.035);
   --md-table-stripe: rgba(0, 0, 0, 0.010);
   --md-inline-code-text: #7a5830;
   --selection: rgba(20, 20, 18, 0.10);
