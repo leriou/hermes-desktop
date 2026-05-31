@@ -249,36 +249,36 @@ function Memory({ profile }: { profile?: string }): React.JSX.Element {
       </div>
 
       {/* Tabs */}
-      <div className="memory-tabs">
+      <div className="pill-tabs">
         <button
-          className={`memory-tab ${tab === "entries" ? "active" : ""}`}
+          className={`pill-tab ${tab === "entries" ? "active" : ""}`}
           onClick={() => setTab("entries")}
         >
           {t("memory.agentMemory")}
           {data.memory.lastModified && (
-            <span className="memory-tab-time">
+            <span className="pill-tab-hint">
               {timeAgo(data.memory.lastModified)}
             </span>
           )}
         </button>
         <button
-          className={`memory-tab ${tab === "profile" ? "active" : ""}`}
+          className={`pill-tab ${tab === "profile" ? "active" : ""}`}
           onClick={() => setTab("profile")}
         >
           {t("memory.userProfile")}
           {data.user.lastModified && (
-            <span className="memory-tab-time">
+            <span className="pill-tab-hint">
               {timeAgo(data.user.lastModified)}
             </span>
           )}
         </button>
         <button
-          className={`memory-tab ${tab === "providers" ? "active" : ""}`}
+          className={`pill-tab ${tab === "providers" ? "active" : ""}`}
           onClick={() => setTab("providers")}
         >
           {t("memory.providersTitle")}
           {memoryProvider && (
-            <span className="memory-tab-time">{memoryProvider}</span>
+            <span className="pill-tab-hint">{memoryProvider}</span>
           )}
         </button>
       </div>

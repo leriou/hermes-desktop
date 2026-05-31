@@ -315,17 +315,17 @@ function ConfigEditor({ profile }: ConfigEditorProps): React.JSX.Element {
     <div className="config-editor-container">
       {/* Tab Bar */}
       <div className="config-tab-bar-wrapper">
-        <div className="tab-bar">
+        <div className="pill-tabs">
           {TABS.map((tab) => {
             const isDirty = getDirtyForTab(tab.id);
             return (
               <button
                 key={tab.id}
-                className={`tab-item ${activeTab === tab.id ? "tab-active" : ""}`}
+                className={`pill-tab ${activeTab === tab.id ? "active" : ""}`}
                 onClick={() => setActiveTab(tab.id)}
               >
                 {tab.label}
-                {isDirty && <span className="tab-dirty-dot" />}
+                {isDirty && <span className="pill-tab-dot" />}
               </button>
             );
           })}

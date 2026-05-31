@@ -297,20 +297,20 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
         </button>
       </div>
 
-      <div className="tools-tabs">
+      <div className="pill-tabs">
         <button
-          className={`tools-tab ${activeTab === "tools" ? "active" : ""}`}
+          className={`pill-tab ${activeTab === "tools" ? "active" : ""}`}
           onClick={() => setActiveTab("tools")}
         >
           {t("tools.tabTools")}
         </button>
         <button
-          className={`tools-tab ${activeTab === "mcp" ? "active" : ""}`}
+          className={`pill-tab ${activeTab === "mcp" ? "active" : ""}`}
           onClick={() => setActiveTab("mcp")}
         >
           {t("tools.tabMcp")}
           {mcpTools.length > 0 && (
-            <span className="tools-tab-count">{mcpTools.length}</span>
+            <span className="pill-tab-hint">{mcpTools.length}</span>
           )}
         </button>
       </div>

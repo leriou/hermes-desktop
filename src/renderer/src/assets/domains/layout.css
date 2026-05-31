@@ -315,11 +315,11 @@
   padding: 0 32px 32px; /* Side padding to match tab bar */
 }
 
-/* Generic Pill Tabs (used for sub-sub navigation) */
+/* Generic Pill Tabs (shared across all screens) */
 .pill-tabs {
   display: flex;
   background: var(--bg-tertiary);
-  padding: 3px;
+  padding: 4px;
   border-radius: 100px;
   border: 1px solid var(--border-soft);
   gap: 2px;
@@ -328,12 +328,15 @@
 }
 
 .pill-tab {
-  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
   border-radius: 100px;
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -350,4 +353,22 @@
   color: var(--text-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border-soft);
+}
+
+.pill-tab-hint {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.pill-tab.active .pill-tab-hint {
+  color: var(--text-secondary);
+}
+
+.pill-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
 }

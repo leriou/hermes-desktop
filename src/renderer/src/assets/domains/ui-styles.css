@@ -657,13 +657,3 @@
   color: var(--text-tertiary);
   padding: 8px 0;
 }
-
-.btn-ghost {
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.btn-ghost:hover {
-  background: var(--surface-hover);
-}

@@ -160,23 +160,28 @@ export function formatToolName(name: string): string {
 const TARGET_KEYS = [
   "symbol", "code", "ticker", "stock_code", "entity_id",
   "path", "file", "filename", "filepath", "directory", "dir", "target", "dest",
-  "url", "link", "uri",
+  "url", "urls", "link", "uri",
   "query", "pattern", "search_query", "search",
   "name", "id", "key",
   "content", "text", "prompt", "note",
   "command", "cmd",
 ];
 
-const ACTION_KEYS = ["action", "operation", "method", "mode", "type", "verb"];
-
 function extractTarget(args: Record<string, any>): string {
   for (const key of TARGET_KEYS) {
     const val = args[key];
     if (typeof val === "string" && val.trim()) return val.trim();
     if (typeof val === "number") return String(val);
+    // Handle arrays (e.g. urls: ["https://..."])
+    if (Array.isArray(val) && val.length > 0) {
+      const first = val[0];
+      if (typeof first === "string") return first;
+    }
   }
   return "";
 }
+
+const ACTION_KEYS = ["action", "operation", "method", "mode", "type", "verb"];
 
 function extractAction(args: Record<string, any>): string {
   for (const key of ACTION_KEYS) {
