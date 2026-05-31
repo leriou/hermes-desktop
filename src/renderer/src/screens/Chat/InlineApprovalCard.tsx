@@ -17,8 +17,8 @@ export function InlineApprovalCard({ request, submitting, onDecision }: InlineAp
         {request.description && <div className="chat-approval-inline-desc">{request.description}</div>}
       </div>
       <div className="chat-approval-inline-actions">
-        <button className="chat-approval-deny" disabled={submitting} onClick={() => onDecision("deny", "manual")}>Deny</button>
-        <button className="chat-approval-approve" disabled={submitting} onClick={() => onDecision("approve", "manual")}>Approve</button>
+        <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={() => onDecision("deny", "manual")}>Deny</button>
+        <button className="btn btn-sm btn-primary" disabled={submitting} onClick={() => onDecision("approve", "manual")}>Approve</button>
       </div>
     </div>
   );

@@ -58,7 +58,7 @@ function Home({ onNavigate, onNewChat, profile }: HomeProps): React.JSX.Element 
     <div className="home-container">
       <div className="home-header">
         <div className="home-title-row"><Activity size={18} /><h2 className="home-title">{t("navigation.home")}</h2></div>
-        <button className="home-refresh-btn" onClick={loadHealth} disabled={loading}><RefreshCw size={14} /><span>{loading ? "..." : (t("common.refresh") || "Refresh")}</span></button>
+        <button className="btn btn-ghost btn-sm" onClick={loadHealth} disabled={loading}><RefreshCw size={14} /><span>{loading ? "..." : (t("common.refresh") || "Refresh")}</span></button>
       </div>
       {error && <div className="home-error-banner"><AlertTriangle size={14} /><span>{error}</span></div>}
       <div className="home-health-strip">

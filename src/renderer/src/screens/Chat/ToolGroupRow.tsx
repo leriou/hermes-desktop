@@ -198,7 +198,7 @@ export function inferIcon(n: string): string {
   if (n.includes("search") || n.includes("grep") || n.includes("find")) return "🔍";
   if (n.includes("web") || n.includes("url") || n.includes("browse") || n.includes("download")) return "🌐";
   if (n.includes("memory") || n.includes("fact") || n.includes("store")) return "🧠";
-  if (n.includes("stock") || n.includes("finance") || n.includes("trade") || n.includes("market") || n.includes("ticker")) return "📊";
+  if (n.includes("stock") || n.includes("finance") || n.includes("trade") || n.includes("market") || n.includes("ticker")) return "📈";
   if (n.includes("file") || n.includes("dir")) return "📁";
   if (n.includes("code") || n.includes("script") || n.includes("exec")) return "🔨";
   if (n.includes("todo") || n.includes("task")) return "☑️";

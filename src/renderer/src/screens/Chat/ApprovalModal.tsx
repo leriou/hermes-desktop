@@ -175,14 +175,14 @@ export function ApprovalModal({
 
         <div className="chat-approval-modal-actions">
           <button
-            className="chat-approval-deny"
+            className="btn btn-sm btn-secondary"
             disabled={submitting}
             onClick={() => onDecision("deny", "manual")}
           >
             Deny
           </button>
           <button
-            className="chat-approval-approve"
+            className="btn btn-sm btn-primary"
             disabled={submitting}
             onClick={() => onDecision("approve", "manual")}
           >

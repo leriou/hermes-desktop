@@ -1392,26 +1392,6 @@
 
 .chat-approval-modal-actions button {
   min-width: 92px;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.chat-approval-deny {
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-}
-
-.chat-approval-approve {
-  background: var(--success);
-  color: #fff;
-}
-
-.chat-approval-modal-actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .chat-approval-history {
@@ -3541,11 +3521,6 @@
 .chat-approval-inline-expand:hover { color: var(--text-primary); }
 .chat-approval-inline-desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 .chat-approval-inline-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.chat-approval-approve, .chat-approval-deny { padding: 4px 14px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; font-weight: 500; }
-.chat-approval-approve { background: var(--accent); color: #fff; }
-.chat-approval-approve:hover { background: var(--accent-hover); }
-.chat-approval-deny { background: var(--bg-tertiary); color: var(--text-secondary); }
-.chat-approval-deny:hover { background: var(--bg-hover); }
 .chat-clarify-inline-choices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .chat-clarify-inline-choice { padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border-softer); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all var(--transition); }
 .chat-clarify-inline-choice:hover { background: var(--surface-hover); color: var(--text-primary); }

@@ -318,7 +318,7 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
       {error && <div className="plugins-error">{error}</div>}
 
       {activeTab === "tools" ? (
-        <div className="tools-tab-content">
+        <div>
           {builtinTools.length > 0 && (
             <div className="tools-section">
               <div className="tools-section-header">
@@ -358,7 +358,7 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
           )}
         </div>
       ) : (
-        <div className="tools-tab-content">
+        <div>
           {mcpTools.length > 0 ? (
             <div className="tools-grid">
               {mcpTools.map((tool) => (
