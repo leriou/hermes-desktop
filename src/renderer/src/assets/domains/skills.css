@@ -23,18 +23,6 @@
   margin-bottom: 16px;
 }
 
-.skills-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.skills-subtitle {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
 .skills-error {
   display: flex;
   align-items: center;
@@ -46,39 +34,6 @@
   margin-bottom: 12px;
   color: var(--error);
   font-size: 13px;
-}
-
-/* Tabs */
-.skills-tabs {
-  display: flex;
-  gap: 2px;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  padding: 2px;
-  margin-bottom: 12px;
-}
-
-.skills-tab {
-  flex: 1;
-  padding: 8px 16px;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  transition: all var(--transition);
-}
-
-.skills-tab:hover {
-  color: var(--text-primary);
-}
-
-.skills-tab.active {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
 }
 
 /* Search */
@@ -559,18 +514,6 @@
   justify-content: space-between;
   flex-shrink: 0;
   padding-top: 16px;
-}
-
-.schedules-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.schedules-subtitle {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-top: 2px;
 }
 
 .schedules-header-actions {
@@ -1138,54 +1081,10 @@
 /* ========================================================================
    PERSONA TABS
    ======================================================================== */
-.persona-tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 12px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  padding: 3px;
-}
-
-.persona-tab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: calc(var(--radius-md) - 2px);
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-  font-family: var(--font-sans);
-}
-
-.persona-tab:hover {
-  color: var(--text-primary);
-  background: var(--bg-tertiary);
-}
-
-.persona-tab.active {
-  background: var(--accent-subtle);
-  color: var(--accent-text);
-}
-
 .persona-tab-file {
   font-size: 10px;
   opacity: 0.5;
   font-family: var(--font-mono);
-}
-
-.persona-tab-chars {
-  font-size: 10px;
-  opacity: 0.4;
-  font-family: var(--font-mono);
-  margin-left: auto;
 }
 
 .persona-actions {
@@ -1199,32 +1098,11 @@
 /* ========================================================================
    PLUGINS
    ======================================================================== */
-.plugins-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 24px;
-  overflow-y: auto;
-}
-
 .plugins-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 16px;
-}
-
-.plugins-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 4px;
-  color: var(--text-primary);
-}
-
-.plugins-subtitle {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin: 0;
 }
 
 .plugins-grid {

@@ -371,14 +371,6 @@
 /* ========================================================================
    TOOLS CONFIGURATION
    ======================================================================== */
-.tools-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 24px 32px;
-  overflow-y: auto;
-}
-
 .tools-loading {
   flex: 1;
   display: flex;
@@ -391,18 +383,6 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
-}
-
-.tools-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.tools-subtitle {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-top: 2px;
 }
 
 .tools-grid {

@@ -462,17 +462,6 @@
   flex: 1;
 }
 
-.sessions-cluster-icon {
-  color: var(--text-muted);
-  flex-shrink: 0;
-  opacity: 0.6;
-}
-
-.sessions-cluster-header:hover .sessions-cluster-icon {
-  opacity: 1;
-  color: var(--text-secondary);
-}
-
 .sessions-cluster-items {
   border: 1px solid var(--border);
   border-top: 0;

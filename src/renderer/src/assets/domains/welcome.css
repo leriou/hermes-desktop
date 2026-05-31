@@ -6,10 +6,6 @@
   gap: 0;
 }
 
-.welcome-logo {
-  border-radius: var(--radius-lg);
-}
-
 .welcome-title {
   font-size: 32px;
   font-weight: 700;
@@ -306,13 +302,6 @@
   margin: 0;
 }
 
-.install-confirm-state--replace {
-  padding: 10px 12px;
-  background: var(--warning-bg);
-  border: 1px solid var(--warning);
-  border-radius: var(--radius-md);
-}
-
 .install-confirm-note,
 .install-confirm-hint {
   font-size: 12px;
@@ -439,12 +428,6 @@
 .setup-provider-name {
   font-size: 14px;
   font-weight: 700;
-}
-
-.setup-provider-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 2px;
 }
 
 .setup-provider-tag {

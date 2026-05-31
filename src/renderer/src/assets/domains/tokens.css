@@ -458,9 +458,6 @@ body {
 }
 
 /* ----- Loading ----- */
-.loading-screen {
-  background: var(--bg-primary);
-}
 
 .loading-spinner {
   width: 28px;

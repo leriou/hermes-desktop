@@ -1,14 +1,6 @@
 /* ========================================================================
    KANBAN
    ======================================================================== */
-.kanban-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-  padding: 24px 32px 0;
-}
-
 .kanban-header {
   display: flex;
   align-items: flex-start;
@@ -219,16 +211,6 @@
 
 .kanban-card-readonly:hover {
   background: var(--bg-tertiary);
-}
-
-.kanban-hq-banner {
-  font-size: 12px;
-  color: var(--text-secondary);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 8px 12px;
-  margin-bottom: 8px;
 }
 
 .kanban-pill-id {

@@ -43,10 +43,6 @@
   padding: 16px 0;
 }
 
-.sidebar.collapsed .sidebar-logo-full {
-  display: none;
-}
-
 .sidebar-logo-icon {
   display: none;
 }
@@ -87,26 +83,6 @@
   gap: 12px;
   padding: 24px 10px 12px; /* Extra padding so traffic lights don't overlap */
   background: transparent; /* Ensure it doesn't cover sidebar rounding */
-}
-
-.sidebar-brand-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--accent);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.sidebar-brand-name {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
 }
 
 .sidebar-nav {
@@ -232,38 +208,6 @@
 
 .sidebar-update-btn.error:hover {
   background: var(--error);
-}
-
-/* Theme Switcher */
-.theme-switcher {
-  display: flex;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  padding: 2px;
-  gap: 2px;
-}
-
-.theme-switcher-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 0;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--text-muted);
-  transition: all var(--transition);
-}
-
-.theme-switcher-btn:hover {
-  color: var(--text-secondary);
-}
-
-.theme-switcher-btn.active {
-  background: var(--surface-card);
-  color: var(--text-primary);
 }
 
 .content {

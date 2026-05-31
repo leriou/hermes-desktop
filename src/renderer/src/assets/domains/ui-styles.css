@@ -2,8 +2,6 @@
    Tauri ProMotion 120Hz & GPU Acceleration Optimization
    ======================================================================== */
 [data-gpu="available"] .session-sidebar-list,
-[data-gpu="available"] .messages-container,
-[data-gpu="available"] .kanban-column-list,
 [data-gpu="available"] .chat-pane {
   /* Removed transforms to fix jitter */
 }
@@ -173,10 +171,6 @@
   backdrop-filter: blur(30px) saturate(1.5) !important;
   -webkit-backdrop-filter: blur(30px) saturate(1.5) !important;
 }
-[data-theme="apple"] .chat-input-wrapper {
-  backdrop-filter: blur(24px) saturate(1.4) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(1.4) !important;
-}
 [data-theme="apple"] .chat-bubble-agent {
   backdrop-filter: blur(16px) saturate(1.2) !important;
   -webkit-backdrop-filter: blur(16px) saturate(1.2) !important;
@@ -325,26 +319,6 @@
 }
 
 /* ── Card UI aesthetics updates (Marvis styles) ── */
-[data-ui-style="glass"] .chat-input-wrapper,
-[data-ui-style="liquid"] .chat-input-wrapper {
-  background: color-mix(in srgb, var(--bg-secondary) 65%, transparent) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.25),
-    0 1px 8px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-}
-
-[data-theme="light"][data-ui-style="glass"] .chat-input-wrapper,
-[data-theme="light"][data-ui-style="liquid"] .chat-input-wrapper {
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow:
-    0 10px 25px rgba(0, 0, 0, 0.05),
-    0 1px 4px rgba(0, 0, 0, 0.03) !important;
-}
-
 /* 磨砂气泡与内描边 */
 [data-ui-style="glass"] .chat-bubble-agent,
 [data-ui-style="liquid"] .chat-bubble-agent {
@@ -355,17 +329,6 @@
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
-}
-
-[data-ui-style="glass"] .chat-bubble-user,
-[data-ui-style="liquid"] .chat-bubble-user {
-  background: color-mix(in srgb, var(--user-bubble) 85%, transparent) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 [data-theme="light"][data-ui-style="glass"] .chat-bubble-agent,
@@ -500,24 +463,6 @@
 }
 
 .text-accent { color: var(--accent-primary); }
-
-.gateway-status-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--warning) 10%, transparent);
-  border-bottom: 1px solid var(--border-softer);
-  font-size: 12px;
-  color: var(--text-secondary);
-  animation: slide-down 0.3s ease-out;
-}
-
-@keyframes slide-down {
-  from { opacity: 0; transform: translateY(-100%); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
 /* ========================================================================
    Workbench / Empty State

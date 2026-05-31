@@ -29,31 +29,6 @@
   margin-bottom: 4px;
 }
 
-.config-editor-header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.config-editor-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-.config-editor-path {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-family: var(--font-mono, monospace);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0.8;
-}
-
 .config-editor-header-actions {
   display: flex;
   align-items: center;
@@ -188,70 +163,6 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* ── Schema Hints & Diff ── */
-
-.config-schema-hints {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 8px 16px;
-  background: var(--warning-bg);
-  border: 1px solid color-mix(in srgb, var(--warning) 20%, transparent);
-  border-radius: 10px;
-  margin-bottom: 8px;
-}
-
-.config-schema-hint {
-  font-size: 12px;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.config-schema-hint-key {
-  font-family: var(--font-mono, monospace);
-  color: var(--warning);
-  font-weight: 600;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 1px 4px;
-  border-radius: 3px;
-}
-
-.config-diff-preview {
-  padding: 16px;
-  background: var(--surface-card-strong);
-  border: 1px solid var(--accent-subtle);
-  border-radius: 14px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow-card-soft);
-}
-
-.config-diff-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--accent-text);
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.config-diff-keys {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.config-diff-key {
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
-  padding: 4px 10px;
-  background: var(--accent-subtle);
-  border-radius: 6px;
-  color: var(--accent-text);
-  border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
-}
 
 /* ── Main Body ── */
 
@@ -310,214 +221,7 @@
   font-weight: 600;
 }
 
-/* ── View Toggle ── */
 
-.config-view-toggle {
-  display: flex;
-  background: var(--bg-tertiary);
-  border-radius: 10px;
-  padding: 3px;
-  border: 1px solid var(--border-softer);
-  gap: 2px;
-}
-
-.config-view-btn {
-  padding: 5px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  background: transparent;
-  border: none;
-  border-radius: 7px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.config-view-btn.active {
-  background: var(--surface-card-strong);
-  color: var(--accent-text);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.config-view-btn:hover:not(.active) {
-  color: var(--text-secondary);
-}
-
-/* ── Structured View ── */
-
-.config-structured {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overscroll-behavior: none;
-  background: transparent;
-  padding-bottom: 40px;
-}
-
-.config-structured-section {
-  border-bottom: 1px solid var(--border-softer);
-  padding: 24px 32px;
-  transition: background 0.2s ease;
-}
-
-.config-structured-section:hover {
-  background: color-mix(in srgb, var(--accent-subtle) 2%, transparent);
-}
-
-.config-structured-section:last-child {
-  border-bottom: none;
-}
-
-.config-structured-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.config-structured-section-key {
-  font-family: var(--font-mono, monospace);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent-text);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.config-structured-goto {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: transparent;
-  transition: all 0.2s ease;
-}
-
-.config-structured-goto:hover {
-  color: var(--accent-text);
-  text-decoration-color: var(--accent-subtle);
-}
-
-.config-struct-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px 24px;
-}
-
-.config-struct-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.config-struct-label {
-  font-size: 11px;
-  font-weight: 700;
-  font-family: var(--font-mono, monospace);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.config-struct-input {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-softer) !important;
-  border-radius: 8px !important;
-  padding: 8px 12px !important;
-  font-size: 13px !important;
-  color: var(--text-primary) !important;
-  transition: all 0.2s ease !important;
-}
-
-.config-struct-input:focus {
-  border-color: var(--accent-primary) !important;
-  background: var(--surface-card-strong) !important;
-  box-shadow: 0 0 0 3px var(--accent-subtle) !important;
-}
-
-/* ── Lists & Cards ── */
-
-.config-struct-alias-list,
-.config-struct-fallback-list,
-.config-struct-providers {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.config-struct-alias-row,
-.config-struct-fallback-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-softer);
-  border-radius: 10px;
-  font-size: 13px;
-}
-
-.config-struct-alias-name {
-  font-family: var(--font-mono, monospace);
-  font-weight: 600;
-  color: var(--accent-text);
-  min-width: 100px;
-}
-
-.config-struct-provider-card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
-  padding: 16px;
-  box-shadow: var(--shadow-card-soft);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.config-struct-provider-card:hover {
-  border-color: var(--border-bright);
-  box-shadow: var(--shadow-float-soft);
-}
-
-.config-struct-provider-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-softer);
-}
-
-.config-struct-provider-name {
-  font-family: var(--font-mono, monospace);
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.config-struct-provider-models {
-  margin-top: 16px;
-  background: color-mix(in srgb, var(--bg-primary) 30%, transparent);
-  padding: 12px;
-  border-radius: 10px;
-}
-
-.config-struct-provider-models-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-  letter-spacing: 0.05em;
-}
-
-.config-struct-model-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
 
 /* ── YAML Editor ── */
 
@@ -543,15 +247,6 @@
   background: var(--selection);
 }
 
-.config-struct-empty {
-  padding: 12px;
-  font-size: 13px;
-  color: var(--text-muted);
-  text-align: center;
-  background: var(--surface-subtle);
-  border-radius: 10px;
-  border: 1px dashed var(--border-soft);
-}
 
 /* ========================================================================
    TAB BAR
@@ -1050,17 +745,6 @@
   }
 }
 
-.config-toast-success {
-  background: var(--success-bg, #064e3b);
-  color: var(--success, #34d399);
-  border: 1px solid color-mix(in srgb, var(--success, #34d399) 20%, transparent);
-}
-
-.config-toast-error {
-  background: var(--error-bg, #7f1d1d);
-  color: var(--error, #fca5a5);
-  border: 1px solid color-mix(in srgb, var(--error, #fca5a5) 20%, transparent);
-}
 
 /* ========================================================================
    WARNING BANNER (Raw YAML Tab)
