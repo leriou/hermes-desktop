@@ -425,6 +425,16 @@ pub async fn tui_undo(state: State<'_, AppState>, session_id: String) -> Result<
     gw.call("clarify.respond", json!({ "session_id": session_id, "answer": answer, "request_id": request_id })).await.map_err(|e| e.to_string())
 }
 
+#[command] pub async fn tui_sudo_respond(state: State<'_, AppState>, session_id: String, password: String, request_id: Option<String>) -> Result<Value, String> {
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
+    gw.call("sudo.respond", json!({ "session_id": session_id, "password": password, "request_id": request_id })).await.map_err(|e| e.to_string())
+}
+
+#[command] pub async fn tui_secret_respond(state: State<'_, AppState>, session_id: String, value: String, request_id: Option<String>) -> Result<Value, String> {
+    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
+    gw.call("secret.respond", json!({ "session_id": session_id, "value": value, "request_id": request_id })).await.map_err(|e| e.to_string())
+}
+
 #[command] pub async fn tui_steer(state: State<'_, AppState>, session_id: String, text: String) -> Result<Value, String> {
     let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
     gw.call("session.steer", json!({ "session_id": session_id, "text": text })).await.map_err(|e| e.to_string())

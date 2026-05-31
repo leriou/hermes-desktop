@@ -12,13 +12,13 @@ import { cache } from "../../utils/prefetchCache";
 import { useModelStore } from "../../hooks/useModelStore";
 import ModelsList from "./ModelsList";
 import ProviderRegistrationModal from "./ProviderRegistrationModal";
-import ModelEditModal from "./ModelEditModal";
 import type {
   ClientModel,
   ClientProvider,
   RegisterProviderInput,
   BusinessCategory,
 } from "../../lib/model-types";
+import { CATEGORY_CARDINALITY } from "../../lib/model-types";
 
 interface TemplateModel {
   name: string;
@@ -54,7 +54,6 @@ function Models({
   } = useModelStore(profile);
 
   const [showProviderModal, setShowProviderModal] = useState(false);
-  const [editingModel, setEditingModel] = useState<ClientModel | null>(null);
   const [showMigrationBanner, setShowMigrationBanner] = useState(false);
   const [migrating, setMigrating] = useState(false);
 
@@ -134,6 +133,23 @@ function Models({
     categories?: BusinessCategory[];
     contextLength?: number;
   }) {
+    // For single-model categories, clear that category from other models first
+    if (updates.categories) {
+      const newCats = updates.categories;
+      const singleCats = newCats.filter(
+        (c) => CATEGORY_CARDINALITY[c] === "single",
+      );
+      for (const cat of singleCats) {
+        for (const [id, m] of Object.entries(store.models)) {
+          if (id === modelId) continue;
+          if (m.categories.includes(cat)) {
+            await updateStoreModel(id, {
+              categories: m.categories.filter((c) => c !== cat),
+            });
+          }
+        }
+      }
+    }
     await updateStoreModel(modelId, updates);
   }
 
@@ -209,8 +225,8 @@ function Models({
         onAddProvider={() => setShowProviderModal(true)}
         onDiscoverModels={handleDiscoverModels}
         onDeleteProvider={handleDeleteProvider}
-        onEditModel={setEditingModel}
         onDeleteModel={handleDeleteModel}
+        onUpdateModel={handleUpdateModel}
       />
 
       {showProviderModal && (
@@ -218,15 +234,6 @@ function Models({
           profile={profile}
           onClose={() => setShowProviderModal(false)}
           onSave={handleAddProvider}
-        />
-      )}
-
-      {editingModel && (
-        <ModelEditModal
-          model={editingModel}
-          profile={profile}
-          onClose={() => setEditingModel(null)}
-          onSave={handleUpdateModel}
         />
       )}
     </>

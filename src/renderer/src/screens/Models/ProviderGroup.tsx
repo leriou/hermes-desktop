@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
-import { Plus, RefreshCw as Refresh, ChevronDown, ChevronRight } from "lucide-react";
-import { Trash, Pencil } from "../../assets/icons";
+import { Plus, RefreshCw as Refresh, ChevronDown, ChevronRight, Save } from "lucide-react";
+import { Trash } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
 import { useDiscoveredModels } from "../../hooks/useDiscoveredModels";
-import { CATEGORY_META } from "../../lib/model-types";
+import { CATEGORY_META, CATEGORY_CARDINALITY, ALL_CATEGORIES } from "../../lib/model-types";
 import type {
   ClientProvider,
   ClientModel,
@@ -11,15 +11,19 @@ import type {
 } from "../../lib/model-types";
 import BrandLogo from "../../components/common/BrandLogo";
 
+const CONTEXT_OPTIONS = [0, 128000, 200000, 500000, 1000000];
+const CATEGORY_ROW_SPLIT = 7; // first 7 cats in row 1, rest in row 2
+
 interface ProviderGroupProps {
   provider: ClientProvider;
   models: ClientModel[];
+  allModels: ClientModel[];
   profile?: string;
-  existingModelIds: Set<string>; // modelId strings already in this provider
+  existingModelIds: Set<string>;
   onDiscoverModels: (modelIds: string[]) => Promise<void>;
   onDeleteProvider: (providerId: string) => void;
-  onEditModel: (model: ClientModel) => void;
   onDeleteModel: (modelId: string) => void;
+  onUpdateModel: (modelId: string, updates: { alias?: string; categories?: BusinessCategory[]; contextLength?: number }) => Promise<void>;
   onToggleCollapse?: () => void;
   collapsed?: boolean;
 }
@@ -27,12 +31,13 @@ interface ProviderGroupProps {
 export default function ProviderGroup({
   provider,
   models,
+  allModels,
   profile = "default",
   existingModelIds,
   onDiscoverModels,
   onDeleteProvider,
-  onEditModel,
   onDeleteModel,
+  onUpdateModel,
   collapsed: externalCollapsed,
   onToggleCollapse,
 }: ProviderGroupProps) {
@@ -45,6 +50,10 @@ export default function ProviderGroup({
   const [addingModelIds, setAddingModelIds] = useState<Set<string>>(new Set());
   const [addedModelIds, setAddedModelIds] = useState<Set<string>>(new Set());
 
+  // Inline editing state per model
+  const [editState, setEditState] = useState<Record<string, { alias: string; contextLength: number }>>({});
+  const [savingModel, setSavingModel] = useState<string | null>(null);
+
   const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
   const toggle = onToggleCollapse || (() => setInternalCollapsed((v) => !v));
 
@@ -56,12 +65,10 @@ export default function ProviderGroup({
     refreshToken: discoveryRefresh,
   });
 
-  // Filter out models already added
   const undiscoveredModels = useMemo(() => {
     return discovery.models.filter((m) => !existingModelIds.has(m));
   }, [discovery.models, existingModelIds]);
 
-  // Check if a model is being added or has been added
   const isModelAdding = useCallback(
     (modelId: string) => addingModelIds.has(modelId),
     [addingModelIds],
@@ -71,6 +78,45 @@ export default function ProviderGroup({
     (modelId: string) => addedModelIds.has(modelId) || existingModelIds.has(modelId),
     [addedModelIds, existingModelIds],
   );
+
+  function getEditState(model: ClientModel) {
+    if (editState[model.id]) return editState[model.id];
+    return { alias: model.alias, contextLength: model.contextLength };
+  }
+
+  function setModelEdit(modelId: string, patch: Partial<{ alias: string; contextLength: number }>) {
+    setEditState((prev) => ({
+      ...prev,
+      [modelId]: { ...(prev[modelId] ?? {}), ...patch },
+    }));
+  }
+
+  function isDirty(model: ClientModel) {
+    const ed = editState[model.id];
+    if (!ed) return false;
+    return ed.alias !== model.alias || ed.contextLength !== model.contextLength;
+  }
+
+  async function handleSaveModel(model: ClientModel) {
+    const ed = getEditState(model);
+    setSavingModel(model.id);
+    try {
+      await onUpdateModel(model.id, {
+        alias: ed.alias.trim(),
+        contextLength: ed.contextLength,
+      });
+      // Clear edit state so it re-reads from model props
+      setEditState((prev) => {
+        const next = { ...prev };
+        delete next[model.id];
+        return next;
+      });
+    } catch {
+      // Error handled by parent
+    } finally {
+      setSavingModel(null);
+    }
+  }
 
   async function handleAddDiscovered(modelId: string) {
     setAddingModelIds((prev) => new Set(prev).add(modelId));
@@ -94,6 +140,8 @@ export default function ProviderGroup({
   }
 
   const modelCount = models.length;
+  const catRow1 = ALL_CATEGORIES.slice(0, CATEGORY_ROW_SPLIT);
+  const catRow2 = ALL_CATEGORIES.slice(CATEGORY_ROW_SPLIT);
 
   return (
     <div className="provider-group">
@@ -235,94 +283,169 @@ export default function ProviderGroup({
             </div>
           ) : (
             <div className="provider-models-list">
-              {models.map((model) => (
-                <div key={model.id} className="provider-model-row">
-                  <div className="provider-model-info">
-                    <span className="provider-model-id">{model.modelId}</span>
-                    {model.alias && (
-                      <span className="provider-model-alias">
-                        ({model.alias})
+              {models.map((model) => {
+                const modelCats = new Set(model.categories);
+                const ed = getEditState(model);
+                const dirty = isDirty(model);
+                const saving = savingModel === model.id;
+                return (
+                  <div key={model.id} className="provider-model-card">
+                    {/* Row 1: Model info + inline editing */}
+                    <div className="provider-model-top">
+                      <span className="provider-model-id" title={model.modelId}>
+                        {model.modelId}
                       </span>
-                    )}
-                    {model.discovered && (
-                      <span className="provider-model-tag provider-model-tag--discovered">
-                        已发现
+                      <span className={`provider-model-source ${model.discovered ? "provider-model-source--discovered" : "provider-model-source--manual"}`}>
+                        {model.discovered ? "API" : "Manual"}
                       </span>
-                    )}
-                    {!model.discovered && (
-                      <span className="provider-model-tag provider-model-tag--manual">
-                        手动
-                      </span>
-                    )}
-                    {model.categories.length > 0 && (
-                      <div className="provider-model-categories">
-                        {model.categories.map((cat: BusinessCategory) => {
+                      <input
+                        className="provider-model-inline-alias"
+                        type="text"
+                        value={ed.alias}
+                        onChange={(e) => setModelEdit(model.id, { alias: e.target.value })}
+                        placeholder="alias"
+                      />
+                      <select
+                        className="provider-model-inline-select"
+                        value={ed.contextLength}
+                        onChange={(e) => setModelEdit(model.id, { contextLength: Number(e.target.value) })}
+                      >
+                        {CONTEXT_OPTIONS.map((v) => (
+                          <option key={v} value={v}>
+                            {v === 0 ? "Context" : `${(v / 1000).toFixed(0)}k`}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="provider-model-top-spacer" />
+                      <div className="provider-model-actions">
+                        {dirty && (
+                          <button
+                            className="btn btn-primary btn-xs"
+                            onClick={() => handleSaveModel(model)}
+                            disabled={saving}
+                            title={t("models.save")}
+                          >
+                            {saving ? <span className="loading-spinner-sm" /> : <Save size={12} />}
+                          </button>
+                        )}
+                        {confirmDeleteModel === model.id ? (
+                          <div className="provider-model-delete-confirm">
+                            <span style={{ fontSize: 12 }}>
+                              {t("models.deleteConfirm")}
+                            </span>
+                            <button
+                              className="btn btn-xs btn-danger-text"
+                              onClick={() => {
+                                onDeleteModel(model.id);
+                                setConfirmDeleteModel(null);
+                              }}
+                            >
+                              {t("models.yes")}
+                            </button>
+                            <button
+                              className="btn btn-xs"
+                              onClick={() => setConfirmDeleteModel(null)}
+                            >
+                              {t("models.no")}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            className="btn-ghost btn-xs"
+                            style={{ color: "var(--error)" }}
+                            onClick={() => setConfirmDeleteModel(model.id)}
+                            title={t("models.deleteModelTitle")}
+                          >
+                            <Trash size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Row 2-3: Category tags */}
+                    <div className="provider-model-categories">
+                      <div className="provider-model-cat-row">
+                        {catRow1.map((cat) => {
                           const meta = CATEGORY_META[cat];
+                          const active = modelCats.has(cat);
                           return (
-                            <span
+                            <button
                               key={cat}
-                              className="provider-model-category-chip"
-                              style={{
+                              className={`provider-model-cat-btn ${active ? "active" : ""}`}
+                              style={active ? {
                                 backgroundColor: `${meta.color}20`,
                                 color: meta.color,
                                 borderColor: meta.color,
+                              } : undefined}
+                              onClick={async () => {
+                                let newCats: BusinessCategory[];
+                                if (active) {
+                                  newCats = model.categories.filter((c) => c !== cat);
+                                } else {
+                                  newCats = [...model.categories, cat];
+                                }
+                                if (!active && CATEGORY_CARDINALITY[cat] === "single") {
+                                  for (const m of allModels) {
+                                    if (m.id === model.id) continue;
+                                    if (m.categories.includes(cat)) {
+                                      await onUpdateModel(m.id, {
+                                        categories: m.categories.filter((c) => c !== cat),
+                                      });
+                                    }
+                                  }
+                                }
+                                await onUpdateModel(model.id, { categories: newCats });
                               }}
-                              title={meta.labelKey}
+                              title={meta.label}
                             >
-                              {meta.icon}
-                            </span>
+                              {meta.icon} {meta.label}
+                            </button>
                           );
                         })}
                       </div>
-                    )}
-                    {model.contextLength > 0 && (
-                      <span className="provider-model-context">
-                        {model.contextLength.toLocaleString()} tokens
-                      </span>
-                    )}
-                  </div>
-                  <div className="provider-model-actions">
-                    <button
-                      className="btn-ghost btn-xs"
-                      onClick={() => onEditModel(model)}
-                      title={t("models.editModel")}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    {confirmDeleteModel === model.id ? (
-                      <div className="provider-model-delete-confirm">
-                        <span style={{ fontSize: 12 }}>
-                          {t("models.deleteConfirm")}
-                        </span>
-                        <button
-                          className="btn btn-xs btn-danger-text"
-                          onClick={() => {
-                            onDeleteModel(model.id);
-                            setConfirmDeleteModel(null);
-                          }}
-                        >
-                          {t("models.yes")}
-                        </button>
-                        <button
-                          className="btn btn-xs"
-                          onClick={() => setConfirmDeleteModel(null)}
-                        >
-                          {t("models.no")}
-                        </button>
+                      <div className="provider-model-cat-row">
+                        {catRow2.map((cat) => {
+                          const meta = CATEGORY_META[cat];
+                          const active = modelCats.has(cat);
+                          return (
+                            <button
+                              key={cat}
+                              className={`provider-model-cat-btn ${active ? "active" : ""}`}
+                              style={active ? {
+                                backgroundColor: `${meta.color}20`,
+                                color: meta.color,
+                                borderColor: meta.color,
+                              } : undefined}
+                              onClick={async () => {
+                                let newCats: BusinessCategory[];
+                                if (active) {
+                                  newCats = model.categories.filter((c) => c !== cat);
+                                } else {
+                                  newCats = [...model.categories, cat];
+                                }
+                                if (!active && CATEGORY_CARDINALITY[cat] === "single") {
+                                  for (const m of allModels) {
+                                    if (m.id === model.id) continue;
+                                    if (m.categories.includes(cat)) {
+                                      await onUpdateModel(m.id, {
+                                        categories: m.categories.filter((c) => c !== cat),
+                                      });
+                                    }
+                                  }
+                                }
+                                await onUpdateModel(model.id, { categories: newCats });
+                              }}
+                              title={meta.label}
+                            >
+                              {meta.icon} {meta.label}
+                            </button>
+                          );
+                        })}
                       </div>
-                    ) : (
-                      <button
-                        className="btn-ghost btn-xs"
-                        style={{ color: "var(--error)" }}
-                        onClick={() => setConfirmDeleteModel(model.id)}
-                        title={t("models.deleteModelTitle")}
-                      >
-                        <Trash size={14} />
-                      </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

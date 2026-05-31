@@ -671,23 +671,6 @@
   text-decoration: line-through;
 }
 
-.todo-item-completed .todo-item-content {
-  color: var(--text-muted, #888);
-  text-decoration: line-through;
-  opacity: 0.8;
-}
-
-.todo-item-in_progress {
-  font-weight: 500;
-  color: var(--text-primary, #ffffff);
-}
-
-.todo-item-cancelled {
-  color: var(--text-muted, #888);
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-
 /* Spin animation fallback if not active */
 .animate-spin {
   animation: spin 1s linear infinite;
@@ -951,10 +934,6 @@
   box-shadow: none;
 }
 
-.chat-bubble-user {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
-}
-
 .chat-bubble-agent {
   background: var(--agent-bubble);
   color: var(--agent-bubble-text);
@@ -1076,12 +1055,6 @@
   text-shadow: none !important;
 }
 
-.chat-code-block .linenumber {
-  color: var(--text-muted) !important;
-  opacity: 0.5;
-  user-select: none;
-}
-
 /* Subagent row */
 .chat-subagent-row {
   display: flex;
@@ -1134,32 +1107,6 @@
 .sm-streaming {
   word-break: break-word;
 }
-.sm-code-block {
-  border-radius: 8px;
-  margin: 8px 0;
-  overflow: hidden;
-  background: var(--code-bg);
-  border: 1px solid var(--code-border);
-}
-.sm-code-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 5px 12px;
-  font-size: 12px;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--code-border);
-}
-.sm-code-block pre {
-  margin: 0;
-  padding: 12px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.5;
-  overflow-x: auto;
-}
-.sm-code-streaming {
-  border-right: 2px solid var(--accent);
-}
 .sm-table-wrap {
   max-width: 100%;
   overflow-x: auto;
@@ -1182,16 +1129,6 @@
   background: var(--bg-secondary);
   color: var(--text-primary);
   font-weight: 650;
-}
-.sm-inline-code {
-  background: var(--code-bg);
-  color: var(--md-inline-code-text);
-  padding: 2px 7px;
-  border-radius: 5px;
-  font-family: var(--font-mono);
-  font-size: 0.88em;
-  border: 1px solid var(--code-border);
-  font-weight: 500;
 }
 
 /* Diff view */
@@ -1729,43 +1666,6 @@
 /* ── Pre (spacing override) ── */
 .chat-bubble-agent pre {
   margin: 8px 0;
-}
-
-/* Typing indicator */
-.chat-typing {
-  display: inline-flex;
-  gap: 5px;
-  padding: 4px 0;
-}
-
-.chat-typing-dot {
-  display: block;
-  width: 6px;
-  height: 6px;
-  background: var(--text-muted);
-  border-radius: 50%;
-  animation: typingBounce 1.4s infinite;
-}
-
-.chat-typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.chat-typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes typingBounce {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.4;
-  }
-  30% {
-    transform: translateY(-4px);
-    opacity: 1;
-  }
 }
 
 /* Input area */
@@ -2978,20 +2878,6 @@
   background: var(--bg-elevated);
   padding: 2px 6px;
   border-radius: 4px;
-}
-
-
-.chat-typing-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.chat-typing-label {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 400;
-  animation: pulseOpacity 2s infinite ease-in-out;
 }
 
 

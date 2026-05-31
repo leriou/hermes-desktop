@@ -4,12 +4,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::TcpStream;
 use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot, Mutex as TokioMutex};
 use tauri::{AppHandle, Emitter, Listener, Runtime};
 use std::sync::{Arc, Mutex as StdMutex};
-use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{connect_async, tungstenite::Message};
 use crate::python;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -90,14 +89,6 @@ pub struct GatewayFailure {
     pub error: String,
     pub status_at_failure: GatewayStatus,
 }
-
-/// Type alias for the split WebSocket write half we keep inside an
-/// `Arc<Mutex<…>>` so it can be shared between the writer task and the
-/// disconnect-detection path.
-type WsWrite = futures_util::stream::SplitSink<
-    WebSocketStream<MaybeTlsStream<TcpStream>>,
-    Message,
->;
 
 pub struct TuiGateway<R: Runtime = tauri::Wry> {
     app: AppHandle<R>,

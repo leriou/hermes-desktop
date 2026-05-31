@@ -10,7 +10,7 @@ use crate::model_utils::{read_yaml, write_yaml};
 pub fn translate_to_yaml(store: &ModelConfigStore) -> BTreeMap<String, Value> {
     let mut root: BTreeMap<String, Value> = BTreeMap::new();
 
-    // 1. Write model.default section
+    // 1. Write model.default section — from store.default_model
     if !store.default_model.is_empty() {
         if let Some(default_model) = store.models.get(&store.default_model) {
             if let Some(default_provider) = store.providers.get(&default_model.provider_id) {
@@ -85,6 +85,86 @@ pub fn translate_to_yaml(store: &ModelConfigStore) -> BTreeMap<String, Value> {
     }
     if !aliases_json.is_empty() {
         root.insert("model_aliases".to_string(), json!(aliases_json));
+    }
+
+    // 4. Write business categories → config.yaml model-role sections
+
+    // Auxiliary tasks: category key → (config.yaml auxiliary.<key>, uses base_url?)
+    let aux_tasks: &[(&str, bool)] = &[
+        ("vision", true),
+        ("web_extract", true),
+        ("compression", true),
+        ("approval", true),
+        ("mcp", true),
+        ("title_generation", true),
+        ("skills_hub", true),
+        ("curator", true),
+        ("triage_specifier", true),
+        ("kanban_decomposer", true),
+    ];
+
+    let mut auxiliary_json = serde_json::Map::new();
+    for (cat_key, _with_base_url) in aux_tasks {
+        // Find the first (and presumably only) model with this category
+        for model in store.models.values() {
+            if !model.categories.iter().any(|c| c == cat_key) {
+                continue;
+            }
+            let provider = match store.providers.get(&model.provider_id) {
+                Some(p) => p,
+                None => continue,
+            };
+            let mut task = serde_json::Map::new();
+            task.insert("provider".to_string(), json!(provider.provider_key));
+            task.insert("model".to_string(), json!(model.model_id));
+            if !provider.base_url.is_empty() {
+                task.insert("base_url".to_string(), json!(provider.base_url));
+            }
+            auxiliary_json.insert(cat_key.to_string(), json!(task));
+            break; // single-model role
+        }
+    }
+
+    // delegation — top-level config key, not inside auxiliary
+    for model in store.models.values() {
+        if !model.categories.iter().any(|c| c == "delegation") {
+            continue;
+        }
+        let provider = match store.providers.get(&model.provider_id) {
+            Some(p) => p,
+            None => continue,
+        };
+        let mut delegation = serde_json::Map::new();
+        delegation.insert("model".to_string(), json!(model.model_id));
+        delegation.insert("provider".to_string(), json!(provider.provider_key));
+        if !provider.base_url.is_empty() {
+            delegation.insert("base_url".to_string(), json!(provider.base_url));
+        }
+        root.insert("delegation".to_string(), json!(delegation));
+        break;
+    }
+
+    // fallback — multi-model, writes fallback_providers[]
+    let mut fallbacks: Vec<Value> = Vec::new();
+    for model in store.models.values() {
+        if !model.categories.iter().any(|c| c == "fallback") {
+            continue;
+        }
+        let provider = match store.providers.get(&model.provider_id) {
+            Some(p) => p,
+            None => continue,
+        };
+        fallbacks.push(json!({
+            "model": model.model_id,
+            "provider": provider.provider_key,
+        }));
+    }
+    if !fallbacks.is_empty() {
+        root.insert("fallback_providers".to_string(), json!(fallbacks));
+    }
+
+    if !auxiliary_json.is_empty() {
+        root.insert("auxiliary".to_string(), json!(auxiliary_json));
     }
 
     root
@@ -179,6 +259,81 @@ pub fn translate_from_yaml(yaml: &BTreeMap<String, Value>) -> ModelConfigStore {
                     if model.alias.is_empty() {
                         model.alias = alias_name.clone();
                     }
+                    break;
+                }
+            }
+        }
+    }
+
+    // 5. Extract business categories from config.yaml role sections
+    let default_model_id = yaml
+        .get("model")
+        .and_then(|m| m.get("default"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    // Tag primary model
+    if !default_model_id.is_empty() {
+        for model in store.models.values_mut() {
+            if model.model_id == default_model_id && !model.categories.contains(&"primary".to_string()) {
+                model.categories.push("primary".to_string());
+            }
+        }
+    }
+
+    // Tag fallback models
+    if let Some(fallbacks) = yaml.get("fallback_providers").and_then(|v| v.as_array()) {
+        for fb in fallbacks {
+            let fb_model = fb.get("model").and_then(|v| v.as_str()).unwrap_or("");
+            let fb_provider = fb.get("provider").and_then(|v| v.as_str()).unwrap_or("");
+            if fb_model.is_empty() { continue; }
+            for model in store.models.values_mut() {
+                if model.model_id != fb_model { continue; }
+                let prov = match store.providers.get(&model.provider_id) {
+                    Some(p) => p,
+                    None => continue,
+                };
+                if prov.provider_key == fb_provider && !model.categories.contains(&"fallback".to_string()) {
+                    model.categories.push("fallback".to_string());
+                    break;
+                }
+            }
+        }
+    }
+
+    // Tag delegation model
+    if let Some(deleg) = yaml.get("delegation") {
+        let d_model = deleg.get("model").and_then(|v| v.as_str()).unwrap_or("");
+        let d_provider = deleg.get("provider").and_then(|v| v.as_str()).unwrap_or("");
+        if !d_model.is_empty() {
+            for model in store.models.values_mut() {
+                if model.model_id != d_model { continue; }
+                let prov = match store.providers.get(&model.provider_id) {
+                    Some(p) => p,
+                    None => continue,
+                };
+                if prov.provider_key == d_provider && !model.categories.contains(&"delegation".to_string()) {
+                    model.categories.push("delegation".to_string());
+                    break;
+                }
+            }
+        }
+    }
+
+    // Tag auxiliary models
+    if let Some(aux) = yaml.get("auxiliary").and_then(|v| v.as_object()) {
+        for (task_key, task_val) in aux {
+            let t_model = task_val.get("model").and_then(|v| v.as_str()).unwrap_or("");
+            let t_provider = task_val.get("provider").and_then(|v| v.as_str()).unwrap_or("");
+            if t_model.is_empty() { continue; }
+            for model in store.models.values_mut() {
+                if model.model_id != t_model { continue; }
+                let prov = match store.providers.get(&model.provider_id) {
+                    Some(p) => p,
+                    None => continue,
+                };
+                if prov.provider_key == t_provider && !model.categories.contains(task_key) {
+                    model.categories.push(task_key.clone());
                     break;
                 }
             }

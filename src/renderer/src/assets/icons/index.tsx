@@ -40,4 +40,3 @@ export { Package } from "lucide-react";
 export { Pencil } from "lucide-react";
 export { Volume2 } from "lucide-react";
 export { Code } from "lucide-react";
-export { Route } from "lucide-react";

@@ -435,17 +435,6 @@
   white-space: nowrap;
 }
 
-.tools-source-built-in {
-  background: var(--accent-subtle);
-  color: var(--accent-text);
-}
-
-.tools-source-plugin {
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-}
-
 .tools-card-description {
   font-size: 12px;
   color: var(--text-muted);

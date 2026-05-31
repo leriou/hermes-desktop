@@ -18,7 +18,7 @@ mod voice_input;
 
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::Mutex;
-use tauri::{Emitter, Runtime};
+use tauri::Runtime;
 use tui_gateway::TuiGateway;
 use ssh_tunnel::SshTunnelManager;
 use voice_input::VoiceState;
@@ -118,22 +118,6 @@ pub fn run() {
         }
       });
 
-      // Test event delivery — frontend should see this 2s after startup
-      let handle = app.handle().clone();
-      std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_secs(2));
-        let payload = serde_json::json!({
-          "type": "test.ping",
-          "sid": null,
-          "payload": { "message": "Event system OK" }
-        });
-        eprintln!("[SETUP] Emitting test event...");
-        match handle.emit_to("main", "tui-event", &payload) {
-          Ok(_) => eprintln!("[SETUP] Test event emitted to main window"),
-          Err(e) => eprintln!("[SETUP] Test event emit FAILED: {}", e),
-        }
-      });
-
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
@@ -167,6 +151,7 @@ pub fn run() {
         start_ssh_tunnel, stop_gateway, stop_ssh_tunnel, sync_session_cache, 
         test_remote_connection, test_ssh_connection, trigger_cron_job, 
         tui_approval_respond, tui_clarify_respond, tui_commands_catalog,
+        tui_secret_respond, tui_sudo_respond,
         tui_command_dispatch,
         tui_complete_slash, tui_compress, tui_create_session, tui_interrupt, 
         tui_resume_session, tui_session_active_list, tui_session_branch, tui_session_history,

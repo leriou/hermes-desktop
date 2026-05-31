@@ -4,6 +4,7 @@ import ProviderGroup from "./ProviderGroup";
 import type {
   ClientProvider,
   ClientModel,
+  BusinessCategory,
 } from "../../lib/model-types";
 
 interface ModelsListProps {
@@ -13,8 +14,8 @@ interface ModelsListProps {
   onAddProvider: () => void;
   onDiscoverModels: (providerId: string, modelIds: string[]) => Promise<void>;
   onDeleteProvider: (providerId: string) => void;
-  onEditModel: (model: ClientModel) => void;
   onDeleteModel: (modelId: string) => void;
+  onUpdateModel: (modelId: string, updates: { alias?: string; categories?: BusinessCategory[]; contextLength?: number }) => Promise<void>;
 }
 
 export default function ModelsList({
@@ -24,8 +25,8 @@ export default function ModelsList({
   onAddProvider,
   onDiscoverModels,
   onDeleteProvider,
-  onEditModel,
   onDeleteModel,
+  onUpdateModel,
 }: ModelsListProps) {
   const { t } = useI18n();
 
@@ -72,12 +73,13 @@ export default function ModelsList({
           key={provider.id}
           provider={provider}
           models={modelsByProvider[provider.id] || []}
+          allModels={models}
           profile={profile}
           existingModelIds={existingModelIdsByProvider[provider.id] || new Set()}
           onDiscoverModels={(modelIds) => onDiscoverModels(provider.id, modelIds)}
           onDeleteProvider={onDeleteProvider}
-          onEditModel={onEditModel}
           onDeleteModel={onDeleteModel}
+          onUpdateModel={onUpdateModel}
         />
       ))}
     </div>
