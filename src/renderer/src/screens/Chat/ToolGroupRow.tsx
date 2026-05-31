@@ -250,6 +250,17 @@ export function getFriendlyToolDescription(
 
   // ── Specific tool handlers ────────────────────────────────────────
 
+  // Skill tools — check before generic "view" handler
+  if (nameLower.includes("skill")) {
+    const skillName = argsObj.name || displayParam || "";
+    return {
+      icon: "📚",
+      action: skillName ? `Viewing Skill · ${skillName}` : "Viewing Skill",
+      detail: "",
+      kind: "text",
+    };
+  }
+
   if (
     nameLower.includes("terminal") ||
     nameLower.includes("command") ||
