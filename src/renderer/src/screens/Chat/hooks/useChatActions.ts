@@ -4,6 +4,7 @@ import type { Attachment, ChatMessage, ClarifyRequest } from "../types";
 import { describeInputIntent } from "../inputIntent";
 import { createTauriChatGatewayClient } from "../tauriChatGatewayClient";
 import type { WsGatewayClient } from "@renderer/lib/wsGatewayClient";
+import { notify, notifyError, createStatusMessage } from "../systemEvents";
 
 interface LocalCommands {
   isLocal: (text: string) => boolean;
@@ -129,7 +130,11 @@ export function useChatActions({
                 clarify?.requestId,
               );
             }
-          } catch {
+          } catch (err) {
+            setMessages((prev) => [
+              ...prev,
+              ...notifyError((err as Error).message || "Failed to respond to clarification"),
+            ]);
             setIsLoading(false);
           }
         }
@@ -158,12 +163,7 @@ export function useChatActions({
         } catch (err) {
           setMessages((prev) => [
             ...prev,
-            {
-              id: `error-${Date.now()}`,
-              role: "agent",
-              content: `Error: ${(err as Error).message || String(err)}`,
-              timestamp: Date.now(),
-            },
+            ...notifyError((err as Error).message || String(err)),
           ]);
           setIsLoading(false);
         }
@@ -178,15 +178,7 @@ export function useChatActions({
             queuedInputRef.current.push({ text: action.text, attachments });
             setMessages((prev) => [
               ...prev,
-              {
-                id: `queued-${Date.now()}`,
-                kind: "system_status",
-                role: "agent",
-                title: "Queued for next turn",
-                content: action.displayText,
-                tone: "info",
-                timestamp: Date.now(),
-              },
+              createStatusMessage("info", "Queued for next turn", action.displayText),
             ]);
           }
           return;
@@ -212,33 +204,20 @@ export function useChatActions({
             if (payload.status === "queued") {
               setMessages((prev) => [
                 ...prev,
-                {
-                  id: `steer-${Date.now()}`,
-                  kind: "system_status",
-                  role: "agent",
-                  title: "Steer queued",
-                  content: action.displayText,
-                  tone: "success",
-                  timestamp: Date.now(),
-                },
+                createStatusMessage("success", "Steer queued", action.displayText),
               ]);
               return;
             }
           } catch {
-            // Fall back to queue semantics so in-flight input is never dropped.
+            setMessages((prev) => [
+              ...prev,
+              createStatusMessage("info", "Queued for next turn", "Steer failed, input queued instead."),
+            ]);
           }
           queuedInputRef.current.push({ text: action.text, attachments });
           setMessages((prev) => [
             ...prev,
-            {
-              id: `queued-${Date.now()}`,
-              kind: "system_status",
-              role: "agent",
-              title: "Queued for next turn",
-              content: action.displayText,
-              tone: "info",
-              timestamp: Date.now(),
-            },
+            createStatusMessage("info", "Queued for next turn", action.displayText),
           ]);
           return;
         }
@@ -252,7 +231,10 @@ export function useChatActions({
             }
           };
           doInterrupt().catch((err) => {
-            console.error("[useChatActions] Pipelined interrupt failed:", err);
+            setMessages((prev) => [
+              ...prev,
+              createStatusMessage("warning", "Interrupt failed", (err as Error).message || "Could not interrupt session"),
+            ]);
           });
         }
       }
@@ -282,12 +264,7 @@ export function useChatActions({
         }
         setMessages((prev) => [
           ...prev,
-          {
-            id: `error-${Date.now()}`,
-            role: "agent",
-            content: `Error: ${(err as Error).message || String(err)}`,
-            timestamp: Date.now(),
-          },
+          ...notifyError((err as Error).message || String(err)),
         ]);
         setIsLoading(false);
       }
@@ -329,7 +306,11 @@ export function useChatActions({
           setHermesSessionId(sid);
           hermesSessionIdRef.current = sid;
         }
-      } catch {
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          ...notifyError((err as Error).message || "Quick ask failed"),
+        ]);
         setIsLoading(false);
       }
     },
@@ -341,9 +322,19 @@ export function useChatActions({
     if (hermesSessionIdRef.current) {
       const sid = hermesSessionIdRef.current;
       if (wsGatewayClient) {
-        wsGatewayClient.call("session.interrupt", { session_id: sid }).catch(() => {});
+        wsGatewayClient.call("session.interrupt", { session_id: sid }).catch((err) => {
+          setMessages((prev) => [
+            ...prev,
+            createStatusMessage("warning", "Interrupt failed", (err as Error).message || "Could not interrupt session"),
+          ]);
+        });
       } else {
-        gatewayClientRef.current.interrupt(sid).catch(() => {});
+        gatewayClientRef.current.interrupt(sid).catch((err) => {
+          setMessages((prev) => [
+            ...prev,
+            createStatusMessage("warning", "Interrupt failed", (err as Error).message || "Could not interrupt session"),
+          ]);
+        });
       }
     }
 
@@ -361,15 +352,7 @@ export function useChatActions({
     } else {
       setMessages((prev) => [
         ...prev,
-        {
-          id: `status-interrupted-${Date.now()}`,
-          kind: "system_status",
-          role: "agent",
-          tone: "warning",
-          title: "Session interrupted",
-          content: "Execution was cancelled by user.",
-          timestamp: Date.now(),
-        },
+        createStatusMessage("warning", "Session interrupted", "Execution was cancelled by user."),
       ]);
     }
     updateTab(activeTabId, {

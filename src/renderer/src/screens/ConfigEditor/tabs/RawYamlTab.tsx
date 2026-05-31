@@ -215,7 +215,7 @@ function RawYamlTab({ profile }: RawYamlTabProps): React.JSX.Element {
   }
 
   return (
-    <div className="config-tab-content">
+    <div className="config-tab-content config-tab-fill">
       {/* Warning Banner */}
       {showWarning && (
         <div className="config-warning-banner">

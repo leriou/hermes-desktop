@@ -82,18 +82,29 @@ export interface SystemStatusMessage {
   timestamp?: number;
 }
 
+export type SystemEventKind =
+  | "model_switch"
+  | "context_compress"
+  | "provider_error"
+  | "gateway_error"
+  | "gateway_timeout"
+  | "protocol_error"
+  | "agent_error"
+  | "stuck_timeout"
+  | "review"
+  | "background"
+  | "browser"
+  | "voice"
+  | "subagent_spawn"
+  | "status"
+  | "goal"
+  | "steer";
+
 export interface SystemEventMessage {
   id: string;
   kind: "system_event";
   role: "system";
-  event:
-    | "model_switch"
-    | "context_compress"
-    | "provider_error"
-    | "gateway_error"
-    | "status"
-    | "goal"
-    | "steer";
+  event: SystemEventKind;
   tone: "info" | "success" | "warning" | "error";
   title: string;
   content?: string;

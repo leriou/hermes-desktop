@@ -150,6 +150,35 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ws-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.ws-status-dot.connected {
+  background: #4ade80;
+  box-shadow: 0 0 4px rgba(74, 222, 128, 0.5);
+}
+.ws-status-dot.reconnecting {
+  background: #facc15;
+  box-shadow: 0 0 4px rgba(250, 204, 21, 0.4);
+  animation: ws-pulse 1.2s ease-in-out infinite;
+}
+.ws-status-dot.disconnected {
+  background: #f87171;
+  box-shadow: 0 0 4px rgba(248, 113, 113, 0.4);
+}
+@keyframes ws-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 .sidebar-collapse-btn {

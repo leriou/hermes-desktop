@@ -30,7 +30,7 @@ import { useSessionManager } from "../Chat/hooks/useSessionManager";
 import { useChatInbox } from "../Chat/hooks/useChatInbox";
 import { baseSessionTitle } from "../Chat/sessionDisplay";
 import { createWsGatewayClientImpl } from "@renderer/lib/wsGatewayClientImpl";
-import type { WsGatewayClient } from "@renderer/lib/wsGatewayClient";
+import type { WsConnectionState, WsGatewayClient } from "@renderer/lib/wsGatewayClient";
 import { rewriteTranscript } from "../Chat/renderTranscript";
 import { getStoreItem } from "@renderer/utils/store";
 import RemoteNotice from "../../components/RemoteNotice";
@@ -147,10 +147,12 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
   // WebSocket gateway client — connects directly to the Python gateway for
   // lower-latency streaming and full-duplex interrupt support.
   const wsClient = useMemo(() => createWsGatewayClientImpl(), []);
+  const [wsState, setWsState] = useState<WsConnectionState>("disconnected");
 
   useEffect(() => {
     wsClient.connect().catch(() => { /* will retry via reconnect timer */ });
-    return () => wsClient.close();
+    const unsub = wsClient.onConnectionChange(setWsState);
+    return () => { unsub(); wsClient.close(); };
   }, [wsClient]);
 
   useChatInbox({
@@ -334,7 +336,15 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
             </button>
           )}
           <div className="sidebar-footer-row">
-            <div className="sidebar-footer-text">{activeProfile === "default" ? t("common.appName") : activeProfile}</div>
+            <div className="sidebar-footer-text">
+              {wsState !== "unavailable" && (
+                <span
+                  className={`ws-status-dot ${wsState}`}
+                  title={wsState === "connected" ? "Gateway connected" : wsState === "reconnecting" ? "Reconnecting…" : "Disconnected"}
+                />
+              )}
+              {activeProfile === "default" ? t("common.appName") : activeProfile}
+            </div>
             <button className="sidebar-collapse-btn" onClick={() => setSidebarCollapsed((c) => !c)} title={sidebarCollapsed ? t("common.expandSidebar") : t("common.collapseSidebar")}>
               {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
             </button>

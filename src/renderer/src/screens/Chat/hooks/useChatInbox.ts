@@ -9,13 +9,23 @@ import type {
   ChatMessage,
   ReasoningMessage,
   SubagentMessage,
+  SystemEventMessage,
+  SystemStatusMessage,
   ToolCallMessage,
   UsageState,
   TodoItem,
 } from "../types";
 import type { SessionState } from "./useSessionManager";
 import { shortModelName } from "../sessionDisplay";
-import { createSystemEvent, systemEventFromError } from "../systemEvents";
+import {
+  createSystemEvent,
+  createStatusMessage,
+  notify,
+  notifyError,
+  notifyGatewayError,
+  notifyStuckTimeout,
+  systemEventFromError,
+} from "../systemEvents";
 import { rewriteTranscript } from "../renderTranscript";
 import { getStoreItem } from "@renderer/utils/store";
 import {
@@ -75,10 +85,14 @@ interface UseChatInboxArgs {
 const LIVE_EVENT_TYPES = new Set([
   "message.start",
   "message.delta",
+  "message.complete",
   "tool.start",
+  "tool.complete",
+  "tool.progress",
+  "tool.generating",
   "thinking.delta",
   "reasoning.delta",
-  "tool.generating",
+  "status.update",
 ]);
 
 type ProbeStatus = "running" | "idle" | "error" | "unknown";
@@ -254,10 +268,32 @@ export function useChatInbox({
   const STUCK_INITIAL_MS = 3_000;
   const STUCK_INTERVAL_MS = 3_000;
   const STUCK_MAX_ATTEMPTS = 5;
-  const SILENT_TIMEOUT_MS = 15_000;
-  const ANALYZING_TIMEOUT_MS = 15_000;
-  const DELTA_IDLE_TIMEOUT_MS = 10_000;
+  const SILENT_TIMEOUT_MS = 60_000;
+  const ANALYZING_TIMEOUT_MS = 30_000;
+  const DELTA_IDLE_TIMEOUT_MS = 30_000;
   const stuckStartRef = useRef<Map<string, number>>(new Map());
+
+  // Event dedup: track (type, sessionId, text) seen within a short window
+  // to prevent double-processing when both Tauri IPC and WS deliver the same event.
+  const seenEventsRef = useRef(new Map<string, number>());
+  const DEDUP_WINDOW_MS = 200;
+
+  function dedupKey(event: NormalizedTuiEvent): string {
+    const text = textFromPayload(event.payload).slice(0, 80);
+    return `${event.type}:${event.sessionId ?? ""}:${text}`;
+  }
+
+  function isDuplicate(event: NormalizedTuiEvent): boolean {
+    const key = dedupKey(event);
+    const now = Date.now();
+    // Prune expired entries
+    for (const [k, ts] of seenEventsRef.current) {
+      if (now - ts > DEDUP_WINDOW_MS) seenEventsRef.current.delete(k);
+    }
+    if (seenEventsRef.current.has(key)) return true;
+    seenEventsRef.current.set(key, now);
+    return false;
+  }
 
   function clearDeltaIdle(tabId: string): void {
     const timer = deltaIdleRef.current.get(tabId);
@@ -285,6 +321,9 @@ export function useChatInbox({
     const flushed = flushedTextRef.current.get(tabId) ?? "";
     const text = `${flushed}${pending}` || current.streamingText || "";
     const reasoning = current.streamingReasoning || "";
+    const stuckDuration = stuckStartRef.current.has(tabId)
+      ? Math.round((Date.now() - (stuckStartRef.current.get(tabId) ?? Date.now())) / 1000)
+      : 0;
     pendingChunksRef.current.delete(tabId);
     flushedTextRef.current.delete(tabId);
     turnCompletedRef.current.set(tabId, true);
@@ -303,6 +342,7 @@ export function useChatInbox({
       pendingModelSwitch: null,
       pendingModelSwitchMessageId: null,
     });
+    // Always commit whatever text was received — never lose partial responses
     if (text || reasoning) {
       updateTabMessages(tabId, (prev) => {
         const next: ChatMessage[] = [...prev];
@@ -329,16 +369,7 @@ export function useChatInbox({
     if (showWarning) {
       updateTabMessages(tabId, (prev) => [
         ...prev,
-        {
-          id: `stuck-warn-${Date.now()}`,
-          sessionId: sid,
-          role: "agent",
-          kind: "system_status" as const,
-          tone: "warning" as const,
-          title: "Response timed out",
-          content: "The agent did not finish responding. You can send a new message to continue.",
-          timestamp: Date.now(),
-        },
+        notifyStuckTimeout(stuckDuration),
       ]);
     }
   }
@@ -582,6 +613,7 @@ export function useChatInbox({
     }
 
     const processEvent = (event: NormalizedTuiEvent): void => {
+      if (isDuplicate(event)) return;
       const tabId = tabForEvent(event);
       if (!tabId) return;
       const state = sessionsRef.current.get(tabId);
@@ -626,6 +658,7 @@ export function useChatInbox({
           if (genName) {
             updateTab(tabId, { toolProgress: `drafting ${genName}…` });
           }
+          scheduleDeltaIdle(tabId, runtimeSid);
           scheduleStuckProbe(tabId, runtimeSid);
           break;
         }
@@ -916,10 +949,17 @@ export function useChatInbox({
           commitStreaming(tabId, runtimeSid);
           clearDeltaIdle(tabId);
           resetTurn(tabId);
-          const errorMessage = stringField(payload, "message");
+          const errorMessage = stringField(payload, "message")
+            || stringField(payload, "error")
+            || stringField(payload, "text")
+            || "Unknown error from agent";
+          const errorCode = stringField(payload, "code");
+          const errorDetails = stringField(payload, "details")
+            || stringField(payload, "traceback")
+            || stringField(payload, "stack");
           updateTabMessages(tabId, (prev) => [
             ...prev,
-            { ...systemEventFromError(errorMessage), sessionId: runtimeSid },
+            ...notifyError(errorMessage, { code: errorCode || undefined, details: errorDetails }),
           ]);
           updateTab(tabId, {
             isLoading: false,
@@ -992,26 +1032,15 @@ export function useChatInbox({
                 : statusKind === "goal"
                   ? "Goal update"
                   : "Session update";
-            const systemEvent =
-              statusKind === "compressing"
-                ? createSystemEvent("context_compress", title, statusText, {
-                    tone,
-                  })
-                : statusKind === "error"
-                  ? systemEventFromError(statusText)
-                  : null;
-            updateTabMessages(tabId, (prev) => [
-              ...prev,
-              systemEvent ?? {
-                id: `status-${Date.now()}`,
-                kind: "system_status",
-                role: "agent",
-                tone,
-                title,
-                content: statusText,
-                timestamp: Date.now(),
-              },
-            ]);
+            let msg: SystemEventMessage | SystemStatusMessage;
+            if (statusKind === "compressing") {
+              msg = createSystemEvent("context_compress", title, statusText, { tone });
+            } else if (statusKind === "error") {
+              msg = systemEventFromError(statusText);
+            } else {
+              msg = createStatusMessage(tone, title, statusText);
+            }
+            updateTabMessages(tabId, (prev) => [...prev, msg]);
             if (!chatVisibleRef.current || tabId !== activeTabIdRef.current) {
               updateTab(tabId, {
                 unreadCount: (current?.unreadCount ?? 0) + 1,
@@ -1028,6 +1057,7 @@ export function useChatInbox({
             updateTab(tabId, {
               streamingReasoning: `${state?.streamingReasoning ?? ""}${text}`,
             });
+            scheduleDeltaIdle(tabId, runtimeSid);
           }
           scheduleStuckProbe(tabId, runtimeSid);
           break;
@@ -1110,6 +1140,112 @@ export function useChatInbox({
           scheduleStuckProbe(tabId, runtimeSid);
           break;
         }
+
+        // ── Subagent spawn requested (before start — shows intent) ────
+        case "subagent.spawn_requested": {
+          const spawnGoal = stringField(payload, "goal") || stringField(payload, "label");
+          if (spawnGoal) {
+            updateTab(tabId, {
+              toolProgress: `spawning subagent: ${spawnGoal.slice(0, 60)}`,
+            });
+          }
+          scheduleDeltaIdle(tabId, runtimeSid);
+          scheduleStuckProbe(tabId, runtimeSid);
+          break;
+        }
+
+        // ── Review summary ────────────────────────────────────────────
+        case "review.summary": {
+          const reviewText = textFromPayload(payload);
+          if (reviewText) {
+            updateTabMessages(tabId, (prev) => [...prev, notify("review", reviewText)]);
+          }
+          scheduleStuckProbe(tabId, runtimeSid);
+          break;
+        }
+
+        // ── Background task completed ─────────────────────────────────
+        case "background.complete": {
+          const bgText = textFromPayload(payload);
+          const bgTaskId = stringField(payload, "task_id");
+          updateTabMessages(tabId, (prev) => [
+            ...prev,
+            notify("background", bgText || `Task ${bgTaskId || ""} finished`),
+          ]);
+          scheduleStuckProbe(tabId, runtimeSid);
+          break;
+        }
+
+        // ── Browser tool progress ─────────────────────────────────────
+        case "browser.progress": {
+          const browserMsg = stringField(payload, "message");
+          const browserLevel = stringField(payload, "level");
+          if (browserMsg) {
+            updateTab(tabId, {
+              toolProgress: browserLevel === "error"
+                ? `browser: ${browserMsg}`
+                : `browser: ${browserMsg}`,
+            });
+          }
+          scheduleDeltaIdle(tabId, runtimeSid);
+          scheduleStuckProbe(tabId, runtimeSid);
+          break;
+        }
+
+        // ── Reasoning content available (toggle hint) ─────────────────
+        case "reasoning.available": {
+          const reasonText = textFromPayload(payload);
+          if (reasonText) {
+            updateTab(tabId, { streamingReasoning: reasonText });
+          }
+          scheduleDeltaIdle(tabId, runtimeSid);
+          scheduleStuckProbe(tabId, runtimeSid);
+          break;
+        }
+
+        // ── Todo list updates during tool execution ───────────────────
+        case "todo.update": {
+          const todos = payload.todos;
+          if (todos !== undefined) {
+            updateTab(tabId, { todos: parseTodos(todos) });
+          }
+          scheduleStuckProbe(tabId, runtimeSid);
+          break;
+        }
+
+        // ── Voice status & transcript ─────────────────────────────────
+        case "voice.status": {
+          const voiceState = stringField(payload, "state");
+          if (voiceState === "listening") {
+            updateTab(tabId, { toolProgress: "🎤 Listening…" });
+          } else if (voiceState === "transcribing") {
+            updateTab(tabId, { toolProgress: "🎤 Transcribing…" });
+          }
+          scheduleDeltaIdle(tabId, runtimeSid);
+          break;
+        }
+
+        case "voice.transcript": {
+          const transcript = textFromPayload(payload);
+          if (transcript) {
+            updateTab(tabId, { toolProgress: null });
+          }
+          break;
+        }
+
+        // ── Gateway-level errors — always surface to user ────────────
+        case "gateway.error":
+        case "gateway.protocol_error":
+        case "gateway.start_timeout": {
+          updateTabMessages(tabId, (prev) => [
+            ...prev,
+            notifyGatewayError(event.type, payload),
+          ]);
+          if (state?.isLoading) {
+            updateTab(tabId, { isLoading: false, toolProgress: null });
+          }
+          break;
+        }
       }
     }
 
@@ -1125,6 +1261,7 @@ export function useChatInbox({
     return () => {
       flushFramesRef.current.clear();
       flushedTextRef.current.clear();
+      seenEventsRef.current.clear();
       for (const timer of stuckTimerRef.current.values()) clearTimeout(timer);
       stuckTimerRef.current.clear();
       for (const timer of silentTimerRef.current.values()) clearTimeout(timer);

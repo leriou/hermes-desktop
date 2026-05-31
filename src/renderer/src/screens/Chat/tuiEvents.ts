@@ -151,6 +151,9 @@ const EVENT_CLASSIFICATIONS: Record<string, EventClassification> = {
   // Terminal — end-of-turn, always safe to process
   "message.complete": { category: "terminal", safeAfterAbort: true },
   error: { category: "terminal", safeAfterAbort: true },
+  "gateway.error": { category: "terminal", safeAfterAbort: true },
+  "gateway.protocol_error": { category: "terminal", safeAfterAbort: true },
+  "gateway.start_timeout": { category: "terminal", safeAfterAbort: true },
 
   // Status — metadata/control, safe after abort unless they queue user action
   "message.start": { category: "status", safeAfterAbort: true },
@@ -158,6 +161,11 @@ const EVENT_CLASSIFICATIONS: Record<string, EventClassification> = {
   "tool.generating": { category: "status", safeAfterAbort: true },
   "session.info": { category: "status", safeAfterAbort: true },
   "todo.update": { category: "status", safeAfterAbort: true },
+  "subagent.spawn_requested": { category: "status", safeAfterAbort: true },
+  "review.summary": { category: "status", safeAfterAbort: true },
+  "background.complete": { category: "status", safeAfterAbort: true },
+  "gateway.ready": { category: "status", safeAfterAbort: true },
+  "skin.changed": { category: "status", safeAfterAbort: true },
 
   // Interaction requests — require user action, discard after abort
   "approval.request": { category: "status", safeAfterAbort: false },

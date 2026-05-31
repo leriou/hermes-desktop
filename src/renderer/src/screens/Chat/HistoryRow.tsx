@@ -8,6 +8,7 @@ import type {
   ToolCallMessage,
   ToolResultMessage,
 } from "./types";
+import { formatToolName, inferIcon } from "./ToolGroupRow";
 
 /* ── Tool category → icon mapping ──────────────────────────────────────── */
 
@@ -51,7 +52,7 @@ export function getToolMeta(name: string): ToolMeta {
   if (n.includes("memory")) return { icon: "\u{1F9E0}", label: "Memory" };
   if (n.includes("fact")) return { icon: "\u{1F4CB}", label: "Fact Store" };
   if (n.includes("cron")) return { icon: "\u{23F0}", label: "Cron" };
-  return { icon: "\u{1F527}", label: name };
+  return { icon: inferIcon(name), label: formatToolName(name) };
 }
 
 /* ── Shared collapsible primitive ─────────────────────────────────────── */

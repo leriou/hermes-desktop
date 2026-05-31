@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ToolResultRow } from "./HistoryRow";
 import { SubagentRow } from "./SubagentRow";
-import { ToolGroupRow } from "./ToolGroupRow";
+import { ToolGroupRow, getFriendlyToolDescription } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { buildRenderableTranscript } from "./renderTranscript";
@@ -37,107 +37,6 @@ function getActiveToolCall(messages: ChatMessage[]): ToolCallMessage | null {
     }
   }
   return null;
-}
-
-function getActiveCallDescription(call: ToolCallMessage) {
-  let argsObj: Record<string, any> = {};
-  try {
-    argsObj = JSON.parse(call.args || "{}");
-  } catch {
-    // ignore
-  }
-
-  const nameLower = (call.name || "").toLowerCase();
-  
-  const getParam = () => {
-    return (
-      argsObj.command ||
-      argsObj.code ||
-      argsObj.path ||
-      argsObj.filename ||
-      argsObj.filepath ||
-      argsObj.query ||
-      argsObj.pattern ||
-      argsObj.url ||
-      (Array.isArray(argsObj.urls) ? argsObj.urls[0] : argsObj.urls) ||
-      argsObj.content ||
-      argsObj.note ||
-      argsObj.text ||
-      argsObj.prompt ||
-      call.args ||
-      ""
-    );
-  };
-  
-  const rawParam = getParam();
-  const displayParam = rawParam.length > 40 ? rawParam.slice(0, 37) + "…" : rawParam;
-
-  if (
-    nameLower.includes("terminal") ||
-    nameLower.includes("command") ||
-    nameLower.includes("run") ||
-    nameLower.includes("shell") ||
-    nameLower.includes("execute")
-  ) {
-    return {
-      icon: "💻",
-      action: "Running",
-      detail: displayParam ? `$ ${displayParam}` : "command",
-      isCode: true,
-    };
-  }
-  if (
-    nameLower.includes("write") ||
-    nameLower.includes("patch") ||
-    nameLower.includes("edit") ||
-    nameLower.includes("create")
-  ) {
-    return {
-      icon: "✍️",
-      action: "Writing",
-      detail: displayParam || "file",
-      isPath: true,
-    };
-  }
-  if (nameLower.includes("read") || nameLower.includes("view") || nameLower.includes("get_file") || nameLower.includes("fetch_file")) {
-    return {
-      icon: "📖",
-      action: "Reading",
-      detail: displayParam || "file",
-      isPath: true,
-    };
-  }
-  if (nameLower.includes("search") || nameLower.includes("grep")) {
-    return {
-      icon: "🔍",
-      action: "Searching",
-      detail: displayParam || "query",
-      isText: true,
-    };
-  }
-  if (nameLower.includes("web") || nameLower.includes("url") || nameLower.includes("fetch") || nameLower.includes("download")) {
-    return {
-      icon: "🌐",
-      action: "Fetching",
-      detail: displayParam || "url",
-      isText: true,
-    };
-  }
-  if (nameLower.includes("memory") || nameLower.includes("fact") || nameLower.includes("todo")) {
-    return {
-      icon: "🧠",
-      action: "Recalling memory",
-      detail: displayParam || "knowledge",
-      isText: true,
-    };
-  }
-
-  return {
-    icon: "🔧",
-    action: "Executing",
-    detail: `${call.name || "tool"}${displayParam ? `: ${displayParam}` : ""}`,
-    isText: true,
-  };
 }
 
 /* ── Thinking indicator — shows during agent reasoning ─────────────── */
@@ -224,7 +123,7 @@ function ToolProgressIndicator({
   }
 
   if (activeCall) {
-    const desc = getActiveCallDescription(activeCall);
+    const desc = getFriendlyToolDescription(activeCall.name || "tool", activeCall.args || "");
     return (
       <div className="chat-message chat-message-agent">
         <HermesAvatar />
@@ -233,8 +132,8 @@ function ToolProgressIndicator({
             <div className="chat-tool-progress-spinner-dual" />
             <span className="chat-tool-progress-icon">{desc.icon}</span>
             <span className="chat-tool-progress-action-label">{desc.action}</span>
-            {desc.isCode || desc.isPath ? (
-              <code className={desc.isCode ? "chat-tool-progress-code-badge" : "chat-tool-progress-file-badge"}>
+            {desc.kind === "code" || desc.kind === "path" ? (
+              <code className={desc.kind === "code" ? "chat-tool-progress-code-badge" : "chat-tool-progress-file-badge"}>
                 {desc.detail}
               </code>
             ) : (

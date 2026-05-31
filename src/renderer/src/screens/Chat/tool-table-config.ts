@@ -112,8 +112,11 @@ const CONFIGS: Record<string, ColumnDef[]> = {
 
 export function getColumnsForTool(toolName: string): ColumnDef[] | null {
   const n = toolName.toLowerCase();
+  // Exact match first
+  if (CONFIGS[n]) return CONFIGS[n];
+  // Substring match
   for (const [key, cols] of Object.entries(CONFIGS)) {
-    if (n === key || n.includes(key)) return cols;
+    if (n.includes(key)) return cols;
   }
   return null;
 }

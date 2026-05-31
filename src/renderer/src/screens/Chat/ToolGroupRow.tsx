@@ -147,144 +147,186 @@ function DetailModal({
   );
 }
 
-/* ── Friendly Tool Parameter Translator ───────────────────────────── */
+/* ── Tool description helpers ───────────────────────────────────────── */
 
-export function getFriendlyToolDescription(toolName: string, argsStr: string): {
+export function formatToolName(name: string): string {
+  return name
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+const TARGET_KEYS = [
+  "symbol", "code", "ticker", "stock_code", "entity_id",
+  "path", "file", "filename", "filepath", "directory", "dir", "target", "dest",
+  "url", "link", "uri",
+  "query", "pattern", "search_query", "search",
+  "name", "id", "key",
+  "content", "text", "prompt", "note",
+  "command", "cmd",
+];
+
+const ACTION_KEYS = ["action", "operation", "method", "mode", "type", "verb"];
+
+function extractTarget(args: Record<string, any>): string {
+  for (const key of TARGET_KEYS) {
+    const val = args[key];
+    if (typeof val === "string" && val.trim()) return val.trim();
+    if (typeof val === "number") return String(val);
+  }
+  return "";
+}
+
+function extractAction(args: Record<string, any>): string {
+  for (const key of ACTION_KEYS) {
+    const val = args[key];
+    if (typeof val === "string" && val.trim()) return val.trim();
+  }
+  return "";
+}
+
+export function inferIcon(n: string): string {
+  if (n.includes("terminal") || n.includes("command") || n.includes("shell") || n.includes("execute") || n.includes("run")) return "💻";
+  if (n.includes("write") || n.includes("patch") || n.includes("edit") || n.includes("create")) return "✍️";
+  if (n.includes("read") || n.includes("view") || n.includes("get_file") || n.includes("fetch")) return "📖";
+  if (n.includes("search") || n.includes("grep") || n.includes("find")) return "🔍";
+  if (n.includes("web") || n.includes("url") || n.includes("browse") || n.includes("download")) return "🌐";
+  if (n.includes("memory") || n.includes("fact") || n.includes("store")) return "🧠";
+  if (n.includes("stock") || n.includes("finance") || n.includes("trade") || n.includes("market") || n.includes("ticker")) return "📊";
+  if (n.includes("file") || n.includes("dir")) return "📁";
+  if (n.includes("code") || n.includes("script") || n.includes("exec")) return "🔨";
+  if (n.includes("todo") || n.includes("task")) return "☑️";
+  if (n.includes("cron") || n.includes("schedule")) return "⏰";
+  if (n.includes("delegate") || n.includes("subagent")) return "👥";
+  return "🔧";
+}
+
+export interface ToolDescription {
   icon: string;
   action: string;
   detail: string;
-} {
+  kind: "code" | "path" | "text";
+}
+
+export function getFriendlyToolDescription(
+  toolName: string,
+  argsStr: string,
+): ToolDescription {
   let argsObj: Record<string, any> = {};
   try {
     argsObj = JSON.parse(argsStr || "{}");
-  } catch {
-    // ignore
-  }
+  } catch {}
 
   const nameLower = toolName.toLowerCase();
-  
+  const rawParam = extractTarget(argsObj);
+  const displayParam =
+    rawParam.length > 60 ? rawParam.slice(0, 57) + "…" : rawParam;
+
+  // ── Specific tool handlers ────────────────────────────────────────
+
   if (
-    nameLower === "run_command" ||
     nameLower.includes("terminal") ||
-    nameLower === "execute_command" ||
-    nameLower === "shell" ||
-    nameLower.includes("shell")
+    nameLower.includes("command") ||
+    nameLower.includes("shell") ||
+    nameLower.includes("execute") ||
+    nameLower.includes("run")
   ) {
-    const cmd =
-      argsObj.CommandLine ||
-      argsObj.command ||
-      argsObj.code ||
-      argsObj.cmd ||
-      argsStr ||
-      "";
     return {
       icon: "💻",
-      action: "Run command",
-      detail: cmd,
+      action: "Running",
+      detail: displayParam ? `$ ${displayParam}` : "command",
+      kind: "code",
     };
   }
-  
-  if (nameLower === "write_to_file" || nameLower === "write_file") {
-    const file = argsObj.TargetFile || argsObj.path || argsObj.filename || "";
+
+  if (
+    nameLower.includes("write") ||
+    nameLower.includes("patch") ||
+    nameLower.includes("edit") ||
+    nameLower.includes("create")
+  ) {
+    const actionType = extractAction(argsObj);
+    const formatted = formatToolName(toolName);
     return {
       icon: "✍️",
-      action: "Create file",
-      detail: file,
-    };
-  }
-  
-  if (nameLower === "replace_file_content") {
-    const file = argsObj.TargetFile || argsObj.path || "";
-    return {
-      icon: "📝",
-      action: "Edit file",
-      detail: file,
+      action: actionType ? `${formatted} · ${actionType}` : formatted,
+      detail: displayParam || "file",
+      kind: "path",
     };
   }
 
-  if (nameLower === "multi_replace_file_content") {
-    const file = argsObj.TargetFile || argsObj.path || "";
-    const chunks = Array.isArray(argsObj.ReplacementChunks) ? argsObj.ReplacementChunks.length : 0;
+  if (
+    nameLower.includes("read") ||
+    nameLower.includes("view") ||
+    nameLower.includes("get_file") ||
+    nameLower.includes("fetch")
+  ) {
+    const actionType = extractAction(argsObj);
+    const formatted = formatToolName(toolName);
     return {
-      icon: "🛠️",
-      action: `Edit file (${chunks} chunks)`,
-      detail: file,
+      icon: "📖",
+      action: actionType ? `${formatted} · ${actionType}` : formatted,
+      detail: displayParam || "file",
+      kind: "path",
     };
   }
 
-  if (nameLower === "view_file" || nameLower === "read_file") {
-    const file = argsObj.AbsolutePath || argsObj.path || "";
+  if (nameLower.includes("search") || nameLower.includes("grep")) {
     return {
       icon: "🔍",
-      action: "View file",
-      detail: file,
+      action: "Searching",
+      detail: displayParam || "query",
+      kind: "text",
     };
   }
 
-  if (nameLower === "list_dir") {
-    const dir = argsObj.DirectoryPath || argsObj.path || "";
-    return {
-      icon: "📁",
-      action: "List directory",
-      detail: dir,
-    };
-  }
-
-  if (nameLower === "grep_search") {
-    const query = argsObj.Query || "";
-    const path = argsObj.SearchPath || "";
-    const pathName = path.split("/").pop() || "";
-    return {
-      icon: "🔎",
-      action: "Search code",
-      detail: `"${query}"${pathName ? ` in ${pathName}` : ""}`,
-    };
-  }
-
-  if (nameLower === "ask_permission") {
-    const action = argsObj.Action || "";
-    const target = argsObj.Target || "";
-    return {
-      icon: "🔑",
-      action: "Request permission",
-      detail: `${action} on ${target}`,
-    };
-  }
-
-  if (nameLower === "search_web") {
-    const query = argsObj.query || "";
+  if (
+    nameLower.includes("web") ||
+    nameLower.includes("url") ||
+    nameLower.includes("browse") ||
+    nameLower.includes("download")
+  ) {
     return {
       icon: "🌐",
-      action: "Search web",
-      detail: query,
+      action: "Fetching",
+      detail: displayParam || "url",
+      kind: "text",
     };
   }
 
-  if (nameLower === "search_extract") {
-    const query = argsObj.query || "";
+  if (
+    nameLower.includes("memory") ||
+    nameLower.includes("fact") ||
+    nameLower.includes("todo")
+  ) {
     return {
-      icon: "📄",
-      action: "Search & Extract",
-      detail: query,
+      icon: "🧠",
+      action: "Recalling",
+      detail: displayParam || "knowledge",
+      kind: "text",
     };
   }
 
-  if (nameLower === "mcp_web_search_prime_web_search_prime") {
-    const query = argsObj.search_query || argsObj.query || "";
-    return {
-      icon: "🌐",
-      action: "Web Search",
-      detail: query,
-    };
-  }
+  // ── Smart fallback ────────────────────────────────────────────────
+  const formatted = formatToolName(toolName);
+  const actionType = extractAction(argsObj);
+  const target = extractTarget(argsObj);
+  const truncatedTarget =
+    target.length > 60 ? target.slice(0, 57) + "…" : target;
 
-  // fallback
-  const firstVal = Object.values(argsObj).find((v) => typeof v === "string" && v.length > 0) || "";
   return {
-    icon: "🔧",
-    action: toolName,
-    detail: String(firstVal || argsStr || ""),
+    icon: inferIcon(nameLower),
+    action: actionType ? `${formatted} · ${actionType}` : formatted,
+    detail: truncatedTarget || argsStr.slice(0, 60) || "",
+    kind: inferKind(argsObj),
   };
+}
+
+function inferKind(args: Record<string, any>): "code" | "path" | "text" {
+  if (args.command || args.cmd || args.code) return "code";
+  if (args.path || args.file || args.filename || args.filepath) return "path";
+  return "text";
 }
 
 /* ── Single Tool Footprint (TUI-style) ──────────────────────── */
