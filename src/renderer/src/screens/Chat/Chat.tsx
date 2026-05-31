@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 
-import { MessageList, StreamingBubble } from "./MessageList";
+import { MessageList } from "./MessageList";
 import { MessageTimelineNavigator } from "./MessageTimelineNavigator";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
@@ -85,6 +85,7 @@ interface ChatProps {
   todos?: import("./types").TodoItem[];
   pendingPrompt?: string | null;
   onConsumePendingPrompt?: () => void;
+  wsGatewayClient?: import("@renderer/lib/wsGatewayClient").WsGatewayClient;
 }
 
 function Chat({
@@ -111,6 +112,7 @@ function Chat({
   todos = [],
   pendingPrompt,
   onConsumePendingPrompt,
+  wsGatewayClient,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [remoteMode, setRemoteMode] = useState(false);
@@ -433,6 +435,7 @@ function Chat({
     updateTab,
     streamingText: streamingText,
     executeGatewayCommand,
+    wsGatewayClient,
   });
 
   const DEFAULT_SUGGESTIONS = ["Summarize my projects", "Write a Python script", "Search the web for news", "Help me debug code"];
@@ -596,8 +599,6 @@ function Chat({
               messages={messages}
               isLoading={isLoading}
               toolProgress={toolProgress}
-            />
-            <StreamingBubble
               streamingText={streamingText}
               streamingReasoning={streamingReasoning}
               todos={todos}

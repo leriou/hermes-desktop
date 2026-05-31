@@ -1390,6 +1390,10 @@ export function onVoiceRecordingStopped(
   return listenOnce("voice-recording-stopped", callback);
 }
 
+export function getGatewayWsPort(): Promise<string | null> {
+  return invoke("get_gateway_ws_port");
+}
+
 export function onTuiEvent(
   callback: (params: { type: string; payload: any; sid?: string }) => void,
 ): () => void {

@@ -117,10 +117,10 @@ export function useChatActions({
         if (sid) {
           try {
             if (wsGatewayClient) {
-              await wsGatewayClient.call("tui_clarify_respond", {
-                sessionId: sid,
+              await wsGatewayClient.call("clarify.respond", {
+                session_id: sid,
                 answer: text,
-                requestId: clarify?.requestId,
+                request_id: clarify?.requestId,
               });
             } else {
               await gatewayClientRef.current.respondClarify(
@@ -196,8 +196,8 @@ export function useChatActions({
           try {
             let result: any;
             if (wsGatewayClient) {
-              result = await wsGatewayClient.call("tui_steer", {
-                sessionId: sid,
+              result = await wsGatewayClient.call("prompt.steer", {
+                session_id: sid,
                 text: action.text,
               });
             } else {
@@ -246,7 +246,7 @@ export function useChatActions({
         if (sid) {
           const doInterrupt = async (): Promise<void> => {
             if (wsGatewayClient) {
-              await wsGatewayClient.call("tui_interrupt", { sessionId: sid });
+              await wsGatewayClient.call("session.interrupt", { session_id: sid });
             } else {
               await gatewayClientRef.current.interrupt(sid);
             }
@@ -341,7 +341,7 @@ export function useChatActions({
     if (hermesSessionIdRef.current) {
       const sid = hermesSessionIdRef.current;
       if (wsGatewayClient) {
-        wsGatewayClient.call("tui_interrupt", { sessionId: sid }).catch(() => {});
+        wsGatewayClient.call("session.interrupt", { session_id: sid }).catch(() => {});
       } else {
         gatewayClientRef.current.interrupt(sid).catch(() => {});
       }

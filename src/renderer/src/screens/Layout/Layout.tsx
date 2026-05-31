@@ -23,12 +23,14 @@ import {
   tuiResumeSession,
   tuiSessionHistory,
 } from "@renderer/lib/hermes-tauri";
-import { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from "react";
 import Chat, { ChatMessage } from "../Chat/Chat";
 import { SessionSidebar } from "../Chat/SessionSidebar";
 import { useSessionManager } from "../Chat/hooks/useSessionManager";
 import { useChatInbox } from "../Chat/hooks/useChatInbox";
 import { baseSessionTitle } from "../Chat/sessionDisplay";
+import { createWsGatewayClientImpl } from "@renderer/lib/wsGatewayClientImpl";
+import type { WsGatewayClient } from "@renderer/lib/wsGatewayClient";
 import { rewriteTranscript } from "../Chat/renderTranscript";
 import { getStoreItem } from "@renderer/utils/store";
 import RemoteNotice from "../../components/RemoteNotice";
@@ -141,9 +143,20 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
   const sessionManager = useSessionManager();
   const activeTabId = sessionManager.activeTabId;
   const activeTab = activeTabId ? sessionManager.sessions.get(activeTabId) : undefined;
+
+  // WebSocket gateway client — connects directly to the Python gateway for
+  // lower-latency streaming and full-duplex interrupt support.
+  const wsClient = useMemo(() => createWsGatewayClientImpl(), []);
+
+  useEffect(() => {
+    wsClient.connect().catch(() => { /* will retry via reconnect timer */ });
+    return () => wsClient.close();
+  }, [wsClient]);
+
   useChatInbox({
     sessions: sessionManager.sessions, activeTabId, chatVisible: primaryView === "chat",
     findTabBySessionId: sessionManager.findTabBySessionId, updateTab: sessionManager.updateTab, updateTabMessages: sessionManager.updateTabMessages,
+    gatewayClient: wsClient,
   });
 
   const goTo = useCallback((v: string) => {
@@ -348,6 +361,7 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
                     pendingApproval={tab.pendingApproval} pendingClarify={tab.pendingClarify} pendingSudo={tab.pendingSudo} pendingSecret={tab.pendingSecret}
                     pendingModelSwitchMessageId={tab.pendingModelSwitchMessageId} todos={tab.todos} profile={activeProfile} visible={visible}
                     pendingPrompt={pendingPrompt} onConsumePendingPrompt={() => setPendingPrompt(null)} onNewChat={handleNewChat}
+                    wsGatewayClient={wsClient}
                     onSessionStateChange={(patch) => { sessionManager.updateTab(tabId, {
                       ...(patch.hermesSessionId !== undefined ? { hermesSessionId: patch.hermesSessionId } : {}), ...(patch.dbSessionId !== undefined ? { dbSessionId: patch.dbSessionId } : {}),
                       ...(patch.title !== undefined ? { title: patch.title } : {}), ...(patch.model !== undefined ? { model: patch.model } : {}),

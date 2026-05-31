@@ -13,7 +13,6 @@ export type RenderTranscriptItem =
   | ChatMessage
   | { kind: "live_reasoning"; id: string; role: "agent"; text: string }
   | { kind: "live_assistant"; id: string; role: "agent"; content: string }
-  | { kind: "typing"; id: string; role: "agent"; toolProgress: string | null }
   | { kind: "tool_progress"; id: string; role: "agent"; content: string };
 
 interface BuildRenderableTranscriptArgs {
@@ -135,8 +134,12 @@ export function buildRenderableTranscript({
   streamingReasoning = "",
   todos = [],
 }: BuildRenderableTranscriptArgs): RenderTranscriptItem[] {
+  // Drop reasoning messages — they break tool-call grouping.
+  // Live thinking is shown via the streamingReasoning prop instead.
+  const filtered = messages.filter((m) => kindOf(m) !== "reasoning");
+
   const processed = mergeAgentTextsWithinTurns(
-    groupToolCalls(mergeContinuationLabels(messages)).filter((m) => {
+    groupToolCalls(mergeContinuationLabels(filtered)).filter((m) => {
       if (!isBubble(m)) return true;
       return ((m.content as string) || "").trim().length > 0;
     }),
@@ -144,54 +147,21 @@ export function buildRenderableTranscript({
 
   const items: RenderTranscriptItem[] = [...processed];
 
-  if (isLoading && streamingReasoning) {
-    items.push({
-      id: "live-reasoning",
-      kind: "live_reasoning",
-      role: "agent",
-      text: streamingReasoning,
-    });
-  }
-
-  if (isLoading && todos.length > 0) {
-    items.push({
-      id: "live-todos",
-      kind: "todo",
-      role: "system",
-      todos,
-      timestamp: Date.now(),
-    });
-  }
-
-  if (isLoading && streamingText) {
-    items.push({
-      id: "live-assistant",
-      kind: "live_assistant",
-      role: "agent",
-      content: streamingText,
-    });
-  }
+  // Streaming content (text, reasoning, todos) is rendered directly by
+  // MessageList — not injected into the transcript — so that it stays in
+  // the same DOM container and doesn't cause layout jumps on commit.
 
   let lastBubble: ChatMessage | undefined;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (isBubble(messages[i])) {
-      lastBubble = messages[i];
+  for (let i = filtered.length - 1; i >= 0; i--) {
+    if (isBubble(filtered[i])) {
+      lastBubble = filtered[i];
       break;
     }
   }
   const lastMessageIsAgent = !!lastBubble && lastBubble.role === "agent";
 
   if (isLoading) {
-    if (!lastMessageIsAgent && !streamingText) {
-      if (!streamingReasoning || toolProgress) {
-        items.push({
-          id: "typing",
-          kind: "typing",
-          role: "agent",
-          toolProgress,
-        });
-      }
-    } else if (toolProgress && (lastMessageIsAgent || streamingText)) {
+    if (toolProgress && (lastMessageIsAgent || streamingText)) {
       items.push({
         id: "tool-progress",
         kind: "tool_progress",

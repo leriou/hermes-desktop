@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react";
 import { HermesAvatar, MessageRow } from "./MessageRow";
-import { ReasoningRow, ToolResultRow } from "./HistoryRow";
+import { ToolResultRow } from "./HistoryRow";
 import { SubagentRow } from "./SubagentRow";
 import { ToolGroupRow } from "./ToolGroupRow";
 import { StreamingMarkdown } from "../../components/StreamingMarkdown";
@@ -22,6 +22,9 @@ interface MessageListProps {
   messages: ChatMessage[];
   isLoading: boolean;
   toolProgress: string | null;
+  streamingText?: string;
+  streamingReasoning?: string;
+  todos?: TodoItem[];
   scrollerRef?: React.Ref<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
 }
 
@@ -137,24 +140,22 @@ function getActiveCallDescription(call: ToolCallMessage) {
   };
 }
 
-/* ── Ephemeral thinking footprint (timeline-style) ───────────────────── */
-function LiveReasoningRow({ text }: { text: string }): React.JSX.Element {
-  const lineCount = text.split("\n").length;
-
-  // Extract last meaningful line for the snippet
-  const lines = text.split("\n").filter((l) => l.trim());
+/* ── Thinking indicator — shows during agent reasoning ─────────────── */
+function LiveReasoningRow({ text }: { text?: string }): React.JSX.Element {
+  const lines = text ? text.split("\n").filter((l) => l.trim()) : [];
   const lastLine = lines.length > 0 ? lines[lines.length - 1].trim() : "";
   const displayLine =
     lastLine.length > 80 ? lastLine.slice(0, 77) + "…" : lastLine;
 
   return (
-    <div className="chat-live-reasoning-footprint">
-      <div className="chat-live-reasoning-left">
-        <div className="chat-live-reasoning-dot" />
-      </div>
-      <div className="chat-live-reasoning-body">
+    <div className="chat-message chat-message-agent">
+      <HermesAvatar />
+      <div className="chat-bubble chat-bubble-agent chat-live-reasoning-bubble">
+        <span className="chat-live-reasoning-dot" />
         <span className="chat-live-reasoning-label">Thinking</span>
-        <span className="chat-live-reasoning-meta">{lineCount} lines</span>
+        {lines.length > 0 && (
+          <span className="chat-live-reasoning-meta">{lines.length} lines</span>
+        )}
         {displayLine && (
           <span className="chat-live-reasoning-snippet">{displayLine}</span>
         )}
@@ -163,93 +164,89 @@ function LiveReasoningRow({ text }: { text: string }): React.JSX.Element {
   );
 }
 
-function TypingIndicator({
+function ToolProgressIndicator({
   toolProgress,
   messages,
 }: {
   toolProgress: string | null;
   messages: ChatMessage[];
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   const activeCall = useMemo(() => getActiveToolCall(messages), [messages]);
 
-  const renderProgressContent = () => {
-    if (toolProgress) {
-      const draftMatch = toolProgress.match(/^drafting\s+(.+?)(?:…)?$/);
-      if (draftMatch) {
-        const fileName = draftMatch[1];
-        const displayPath = fileName.length > 50 ? "…" + fileName.slice(-47) : fileName;
-        return (
-          <div className="chat-tool-progress-drafting">
-            <span className="chat-tool-progress-icon-write">✍️</span>
-            <span className="chat-tool-progress-text-shimmer">Drafting</span>
-            <code className="chat-tool-progress-file-badge" title={fileName}>
-              {displayPath}
-            </code>
-          </div>
-        );
-      }
-
-      if (
-        toolProgress === "analyzing tool output…" ||
-        toolProgress.startsWith("analyzing")
-      ) {
-        return (
-          <div className="chat-tool-progress-analyzing">
-            <div className="chat-tool-progress-spinner-dual" />
-            <span className="chat-tool-progress-text-pulse">
-              Analyzing tool output…
-            </span>
-          </div>
-        );
-      }
-    }
-
-    if (activeCall) {
-      const desc = getActiveCallDescription(activeCall);
+  if (toolProgress) {
+    const draftMatch = toolProgress.match(/^drafting\s+(.+?)(?:…)?$/);
+    if (draftMatch) {
+      const fileName = draftMatch[1];
+      const displayPath = fileName.length > 50 ? "…" + fileName.slice(-47) : fileName;
       return (
-        <div className="chat-tool-progress-active">
-          <div className="chat-tool-progress-spinner-dual" />
-          <span className="chat-tool-progress-icon">{desc.icon}</span>
-          <span className="chat-tool-progress-action-label">{desc.action}</span>
-          {desc.isCode || desc.isPath ? (
-            <code className={desc.isCode ? "chat-tool-progress-code-badge" : "chat-tool-progress-file-badge"}>
-              {desc.detail}
-            </code>
-          ) : (
-            <span className="chat-tool-progress-detail-text">{desc.detail}</span>
-          )}
+        <div className="chat-message chat-message-agent">
+          <HermesAvatar />
+          <div className="chat-bubble chat-bubble-agent">
+            <div className="chat-tool-progress-drafting">
+              <span className="chat-tool-progress-icon-write">✍️</span>
+              <span className="chat-tool-progress-text-shimmer">Drafting</span>
+              <code className="chat-tool-progress-file-badge" title={fileName}>
+                {displayPath}
+              </code>
+            </div>
+          </div>
         </div>
       );
     }
 
-    if (toolProgress) {
-      return <div className="chat-tool-progress">{toolProgress}</div>;
+    if (
+      toolProgress === "analyzing tool output…" ||
+      toolProgress.startsWith("analyzing")
+    ) {
+      return (
+        <div className="chat-message chat-message-agent">
+          <HermesAvatar />
+          <div className="chat-bubble chat-bubble-agent">
+            <div className="chat-tool-progress-analyzing">
+              <div className="chat-tool-progress-spinner-dual" />
+              <span className="chat-tool-progress-text-pulse">
+                Analyzing tool output…
+              </span>
+            </div>
+          </div>
+        </div>
+      );
     }
 
-    return null;
-  };
-
-  const hasContent = toolProgress || activeCall;
-
-  return (
-    <div className="chat-message chat-message-agent">
-      <HermesAvatar />
-      <div className="chat-bubble chat-bubble-agent">
-        {hasContent ? (
-          renderProgressContent()
-        ) : (
-          <div className="chat-typing-container">
-            <div className="chat-typing">
-              <span className="chat-typing-dot" />
-              <span className="chat-typing-dot" />
-              <span className="chat-typing-dot" />
-            </div>
-            <span className="chat-typing-label">Thinking…</span>
-          </div>
-        )}
+    return (
+      <div className="chat-message chat-message-agent">
+        <HermesAvatar />
+        <div className="chat-bubble chat-bubble-agent">
+          <div className="chat-tool-progress">{toolProgress}</div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (activeCall) {
+    const desc = getActiveCallDescription(activeCall);
+    return (
+      <div className="chat-message chat-message-agent">
+        <HermesAvatar />
+        <div className="chat-bubble chat-bubble-agent">
+          <div className="chat-tool-progress-active">
+            <div className="chat-tool-progress-spinner-dual" />
+            <span className="chat-tool-progress-icon">{desc.icon}</span>
+            <span className="chat-tool-progress-action-label">{desc.action}</span>
+            {desc.isCode || desc.isPath ? (
+              <code className={desc.isCode ? "chat-tool-progress-code-badge" : "chat-tool-progress-file-badge"}>
+                {desc.detail}
+              </code>
+            ) : (
+              <span className="chat-tool-progress-detail-text">{desc.detail}</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function SystemStatusRow({
@@ -301,6 +298,9 @@ export const MessageList = memo(function MessageList({
   messages,
   isLoading,
   toolProgress,
+  streamingText = "",
+  streamingReasoning = "",
+  todos = [],
   scrollerRef,
 }: MessageListProps): React.JSX.Element {
   const visibleMessages = useMemo(
@@ -320,30 +320,6 @@ export const MessageList = memo(function MessageList({
     <div className="chat-messages-inner" ref={scrollerRef}>
       {visibleMessages.map((msg, i) => {
         const k = (msg as { kind?: string }).kind;
-        if (k === "reasoning") {
-          return (
-            <ReasoningRow
-              key={msg.id}
-              msg={msg as any}
-              defaultOpen={false}
-            />
-          );
-        }
-        if (k === "live_reasoning") {
-          return (
-            <LiveReasoningRow
-              key={msg.id}
-              text={
-                (
-                  msg as Extract<
-                    import("./renderTranscript").RenderTranscriptItem,
-                    { kind: "live_reasoning" }
-                  >
-                ).text
-              }
-            />
-          );
-        }
         if (k === "tool_group") {
           return <ToolGroupRow key={msg.id} msg={msg as ToolGroupMessage} />;
         }
@@ -383,33 +359,6 @@ export const MessageList = memo(function MessageList({
             />
           );
         }
-        if (k === "live_assistant") {
-          const liveMsg = msg as Extract<
-            import("./renderTranscript").RenderTranscriptItem,
-            { kind: "live_assistant" }
-          >;
-          return (
-            <div key={liveMsg.id} className="chat-message chat-message-agent">
-              <HermesAvatar />
-              <div className="chat-bubble chat-bubble-agent">
-                <StreamingMarkdown>{liveMsg.content}</StreamingMarkdown>
-              </div>
-            </div>
-          );
-        }
-        if (k === "typing") {
-          const typingMsg = msg as Extract<
-            import("./renderTranscript").RenderTranscriptItem,
-            { kind: "typing" }
-          >;
-          return (
-            <TypingIndicator
-              key={typingMsg.id}
-              toolProgress={typingMsg.toolProgress}
-              messages={messages}
-            />
-          );
-        }
         if (k === "tool_progress") {
           const progressMsg = msg as Extract<
             import("./renderTranscript").RenderTranscriptItem,
@@ -431,40 +380,17 @@ export const MessageList = memo(function MessageList({
           />
         );
       })}
-    </div>
-  );
-});
-
-/**
- * Streaming bubble rendered OUTSIDE the stable message list.
- * This avoids triggering re-renders on the entire virtual list every time
- * a new streaming chunk arrives. The component is stable enough to be memo'd.
- */
-export const StreamingBubble = memo(function StreamingBubble({
-  streamingText,
-  streamingReasoning,
-  todos,
-}: {
-  streamingText: string;
-  streamingReasoning: string;
-  todos: TodoItem[];
-}): React.JSX.Element | null {
-  if (!streamingReasoning && !streamingText && todos.length === 0) {
-    return null;
-  }
-
-  return (
-    <>
-      {streamingReasoning && (
+      {/* Live streaming content — same container prevents jump on commit */}
+      {isLoading && !streamingText && !toolProgress && (
         <LiveReasoningRow text={streamingReasoning} />
       )}
-      {todos.length > 0 && (
-        <TodoPanel
-          todos={todos}
-          defaultCollapsed={true}
-        />
+      {isLoading && !streamingText && toolProgress && (
+        <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />
       )}
-      {streamingText && (
+      {isLoading && todos.length > 0 && (
+        <TodoPanel todos={todos} defaultCollapsed />
+      )}
+      {isLoading && streamingText && (
         <div className="chat-message chat-message-agent">
           <HermesAvatar />
           <div className="chat-bubble chat-bubble-agent">
@@ -472,6 +398,7 @@ export const StreamingBubble = memo(function StreamingBubble({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 });
+
